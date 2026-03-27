@@ -1,0 +1,36 @@
+{
+  "name": "HumanChat",
+  "short_name": "HumanChat",
+  "description": "AIじゃない、本物の人間が返します",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a1628",
+  "theme_color": "#0a1628",
+  "orientation": "portrait",
+  "scope": "/",
+  "lang": "ja",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "チャットを開く",
+      "short_name": "チャット",
+      "description": "話し相手を選んでチャットを始める",
+      "url": "/characters",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "categories": ["social", "lifestyle"]
+}
