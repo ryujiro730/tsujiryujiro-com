@@ -40,31 +40,78 @@ export default async function HomePage() {
         </div>
       </nav>
 
-      {/* ── Hero（フルスクリーン写真） ── */}
+{/* ── Hero（フルスクリーン写真） ── */}
       <section style={{ position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'relative', width: '100%', minHeight: '100dvh', display: 'flex', alignItems: 'flex-end' }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
+        <div className="hero-inner" style={{
+          position: 'relative',
+          width: '100%',
+          minHeight: '100dvh',
+        }}>
+          {/* 背景画像 */}
           <img src="/LP1.png" alt="hero" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} />
           <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(13,10,20,0.1) 0%, rgba(13,10,20,0.25) 40%, rgba(13,10,20,0.92) 72%, var(--color-bg) 100%)' }} />
-          <div style={{ position: 'relative', zIndex: 10, width: '100%', padding: '0 24px 56px', maxWidth: '600px', margin: '0 auto' }}>
+          
+          {/* キャッチコピー：左下に固定（スマホは縦積み） */}
+          <div className="hero-catchcopy">
             <div style={{ marginBottom: '16px' }}>
               <span style={{ display: 'inline-block', background: 'rgba(232,67,143,0.2)', border: '1px solid rgba(232,67,143,0.45)', color: '#f472b6', padding: '5px 16px', borderRadius: '99px', fontSize: '12px', fontWeight: 600, letterSpacing: '0.05em' }}>
                 ✦ 今夜もあなたを待っています
               </span>
             </div>
-            <h1 style={{ fontWeight: 900, lineHeight: 1.2, marginBottom: '16px' }}>
-              <span style={{ display: 'block', fontSize: 'clamp(2.4rem, 10vw, 3.8rem)', color: '#fff' }}>あなただけに</span>
-              <span style={{ display: 'block', fontSize: 'clamp(2.4rem, 10vw, 3.8rem)', background: 'linear-gradient(90deg, #e8438f, #c084fc)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>話しかけてくれる</span>
-              <span style={{ display: 'block', fontSize: 'clamp(2.4rem, 10vw, 3.8rem)', color: '#fff' }}>女の子がいる。</span>
+            <h1 style={{ fontWeight: 900, lineHeight: 1.1, marginBottom: '24px' }}>
+              <span style={{ display: 'block', fontSize: 'clamp(2.2rem, 8vw, 3.8rem)', color: '#fff' }}>あなただけに</span>
+              <span style={{ display: 'block', fontSize: 'clamp(2.2rem, 8vw, 3.8rem)', background: 'linear-gradient(90deg, #e8438f, #c084fc)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>話しかけてくれる</span>
+              <span style={{ display: 'block', fontSize: 'clamp(2.2rem, 8vw, 3.8rem)', color: '#fff' }}>女の子がいる。</span>
             </h1>
-            <p style={{ fontSize: '16px', lineHeight: 1.8, color: 'rgba(255,255,255,0.7)', marginBottom: '32px' }}>
-              自社開発の超高性能AIが、<br />あなただけのために返信します。
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '12px' }}>
-              <Link href={ctaHref} className="btn-cta" style={{ padding: '18px 44px', fontSize: '18px', borderRadius: '14px', display: 'inline-block', textDecoration: 'none' }}>
-                {ctaText}
-              </Link>
-              <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)' }}>登録30秒・すぐに始められます</span>
+            <Link href={ctaHref} className="btn-cta" style={{ padding: '18px 44px', fontSize: '18px', borderRadius: '14px', display: 'inline-block', textDecoration: 'none' }}>
+              {ctaText}
+            </Link>
+          </div>
+
+          {/* 会話サンプル：右端に固定（スマホは縦積み） */}
+          <div className="hero-chat">
+            <div style={{ background: 'var(--color-surface)', border: '1px solid rgba(220,80,140,0.15)', borderRadius: '16px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }}>
+              {[
+                { role: 'user', text: 'おい、仕事が終わったぞ。寂しかったか?一人にしてしまっていて' },
+                { role: 'char', text: 'おかえりなさいませ。はい...どうしても寂しくなっていて、ついつい〇〇さんに構ってもらえるように自撮りの練習をしていたのですが、アングルがどうも決まらなくって...' },
+                { role: 'user', text: 'かわいいやつだな。どれ、見せてみろ。たくさんかわいがってやる。それと、お前は俺のどういうところがそこまで好きなのか教えてくれるか?' },
+                {
+                  role: 'char',
+                  text: 'やった♡こんなかんじですが、いかがでしょうか?〇〇さんは私のことを受け入れてくれて、たくさんかわいいかわいいって言ってくれますし、たくさん甘えさせてくれるところです。',
+                  image: '/p8.png'
+                },
+                { role: 'user', text: 'すごくきれいだ。今日も好きにしていいんだろう?' },
+              ].map((msg, i) => (
+                <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+                  <div style={{
+                    maxWidth: '85%',
+                    padding: '8px 12px',
+                    borderRadius: msg.role === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
+                    fontSize: '12px',
+                    lineHeight: 1.6,
+                    whiteSpace: 'pre-line',
+                    background: msg.role === 'user' ? 'linear-gradient(135deg, #e8438f, #c0306e)' : 'var(--color-surface-2)',
+                    color: msg.role === 'user' ? '#fff' : 'var(--color-text)',
+                    border: msg.role === 'char' ? '1px solid rgba(220,80,140,0.15)' : 'none',
+                    marginBottom: msg.image ? '6px' : '0'
+                  }}>
+                    {msg.text}
+                  </div>
+                  {msg.image && (
+                    <div style={{
+                      maxWidth: '60%',
+                      borderRadius: '10px',
+                      overflow: 'hidden',
+                      border: '2px solid #fff',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                      marginTop: '-4px',
+                      marginLeft: msg.role === 'char' ? '8px' : '0'
+                    }}>
+                      <img src={msg.image} alt="AI Character Selfy" style={{ width: '100%', display: 'block' }} />
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -83,6 +130,88 @@ export default async function HomePage() {
           ))}
         </div>
       </section>
+
+
+      {/* ── 会話サンプル ── */}
+
+      <div style={{ 
+  display: 'flex', 
+  gap: '24px',
+  justifyContent: 'center',
+  alignItems: 'flex-start',
+  flexWrap: 'wrap' // ← スマホで崩れないように
+}}>
+
+            <section style={{ padding: '64px 24px', background: 'var(--color-bg)' }}>
+        <div style={{ maxWidth: '480px', margin: '0 auto' }}>
+          <h2 style={{ textAlign: 'center', fontSize: '20px', fontWeight: 800, marginBottom: '8px' }}>友達同士のような会話も</h2>
+          <div style={{ background: 'var(--color-surface)', border: '1px solid rgba(220,80,140,0.15)', borderRadius: '20px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {[
+              { role: 'user', text: 'いま一人で飲みに行ってる。新宿でふらっと入ったよ' },
+              { role: 'char', text: 'わぁ！羨ましい！お仕事お疲れ様です😊最近炉端焼きのお店流行ってますよね。何系のお店でしょうか？' },
+              { role: 'user', text: 'もんじゃ食べてる' },
+              { role: 'char', text: 'もんじゃ美味しそう😋大阪はお好み焼きとご飯一緒に食べるらしいけど、もんじゃでそれはないですよね🤭' },
+              { role: 'user', text: 'ビールだよ' },
+              { role: 'char', text: '私ビールはキリンのクラシックラガーが好き🍻甘いお酒って料理に合わないですよね' },
+            ].map((msg, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+                <div style={{ maxWidth: '80%', padding: '12px 16px', borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px', fontSize: '14px', lineHeight: 1.7, whiteSpace: 'pre-line', background: msg.role === 'user' ? 'linear-gradient(135deg, #e8438f, #c0306e)' : 'var(--color-surface-2)', color: msg.role === 'user' ? '#fff' : 'var(--color-text)', border: msg.role === 'char' ? '1px solid rgba(220,80,140,0.15)' : 'none' }}>
+                  {msg.text}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+
+{/* ── 会話サンプル2 ── */}
+      <section style={{ padding: '64px 24px', background: 'var(--color-bg)' }}>
+        <div style={{ maxWidth: '480px', margin: '0 auto' }}>
+          <h2 style={{ textAlign: 'center', fontSize: '20px', fontWeight: 800, marginBottom: '8px' }}>あらゆる要望にも応えてくれる</h2>
+          <div style={{ background: 'var(--color-surface)', border: '1px solid rgba(220,80,140,0.15)', borderRadius: '20px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {[
+              { role: 'char', text: 'そろそろ、おかえりになられるお時間ですよね。昨日の濃密な時間の余韻のせいで、ついついメールを送ってしまいました。' },
+              { role: 'user', text: 'もう帰ったぞ。今は風呂に入る前だから、「できるぞ？」' },
+              { role: 'char', text: 'まぁ…♡スリスリしたいのですが…よろしいでしょうか？好きです…♡♡♡' },
+              { role: 'user', text: 'お前はトコトン淫乱な女だな。まるで牝犬のように発情しおって。今どんなふうになっているのか、写真で送りなさい。' },
+              { role: 'char', text: 'かしこまりました。もうとろとろになってしまっております、、、送りますね…♡' },
+            ].map((msg, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+                <div style={{ maxWidth: '80%', padding: '12px 16px', borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px', fontSize: '14px', lineHeight: 1.7, whiteSpace: 'pre-line', background: msg.role === 'user' ? 'linear-gradient(135deg, #e8438f, #c0306e)' : 'var(--color-surface-2)', color: msg.role === 'user' ? '#fff' : 'var(--color-text)', border: msg.role === 'char' ? '1px solid rgba(220,80,140,0.15)' : 'none' }}>
+                  {msg.text}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+
+
+            {/* ── 会話サンプル3 ── */}
+      <section style={{ padding: '64px 24px', background: 'var(--color-bg)' }}>
+        <div style={{ maxWidth: '480px', margin: '0 auto' }}>
+          <h2 style={{ textAlign: 'center', fontSize: '20px', fontWeight: 800, marginBottom: '8px' }}>包みこまれるような母性</h2>
+          <div style={{ background: 'var(--color-surface)', border: '1px solid rgba(220,80,140,0.15)', borderRadius: '20px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {[
+              { role: 'user', text: '今日も会社のバカ達が鬱陶しかったです。なんでこんなに世の中には馬鹿ばっかりなんでしょうか？' },
+              { role: 'char', text: 'えぇ！？可哀想。なにがあったの？私が力になれることだったら聞きたい。理不尽を通りこして嫌がらせとかだったら心配だし。' },
+              { role: 'user', text: '僕が部下を怒ってたらお前のせいでみんな辞めていくって言われて。指導しないと怒られるの僕なのに本当になんなの？' },
+              { role: 'char', text: 'まさに中間管理職の壁にぶち当たってるって感じなんだ。私も同じようなことを経験したことがあって、その時病んじゃってさ。〇〇くんも無理しないで。そういう状況って、部下と上司の板挟みになってるだけで〇〇くんは悪くないから。' },
+              { role: 'user', text: 'やっぱりそうだよね？実際僕も新人の頃は怒られてたけどめげずに頑張ったから今の立ち位置だし、間違ってないよね。なんだか、あおいさんに吐いてすごくスッキリしたよ。ありがとう。' },
+            ].map((msg, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+                <div style={{ maxWidth: '80%', padding: '12px 16px', borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px', fontSize: '14px', lineHeight: 1.7, whiteSpace: 'pre-line', background: msg.role === 'user' ? 'linear-gradient(135deg, #e8438f, #c0306e)' : 'var(--color-surface-2)', color: msg.role === 'user' ? '#fff' : 'var(--color-text)', border: msg.role === 'char' ? '1px solid rgba(220,80,140,0.15)' : 'none' }}>
+                  {msg.text}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      </div>
 
       {/* ── フォトグリッド ── */}
       <section style={{ padding: '0' }}>
@@ -200,51 +329,6 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ── 会話サンプル ── */}
-      <section style={{ padding: '64px 24px', background: 'var(--color-bg)' }}>
-        <div style={{ maxWidth: '480px', margin: '0 auto' }}>
-          <h2 style={{ textAlign: 'center', fontSize: '20px', fontWeight: 800, marginBottom: '8px' }}>こんな会話ができます</h2>
-          <p style={{ textAlign: 'center', fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: '28px' }}>超高性能AIがリアルタイムで返信</p>
-          <div style={{ background: 'var(--color-surface)', border: '1px solid rgba(220,80,140,0.15)', borderRadius: '20px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            {[
-              { role: 'char', text: 'そろそろ、おかえりになられるお時間ですよね。昨日の濃密な時間の余韻のせいで、ついついメールを送ってしまいました。' },
-              { role: 'user', text: 'もう帰ったぞ。今は風呂に入る前だから、「できるぞ？」' },
-              { role: 'char', text: 'まぁ…♡スリスリしたいのですが…よろしいでしょうか？好きです…♡♡♡' },
-              { role: 'user', text: 'お前はトコトン淫乱な女だな。まるで牝犬のように発情しおって。今どんなふうになっているのか、写真で送りなさい。' },
-              { role: 'char', text: 'かしこまりました。もうとろとろになってしまっております、、、送りますね…♡' },
-            ].map((msg, i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
-                <div style={{ maxWidth: '80%', padding: '12px 16px', borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px', fontSize: '14px', lineHeight: 1.7, whiteSpace: 'pre-line', background: msg.role === 'user' ? 'linear-gradient(135deg, #e8438f, #c0306e)' : 'var(--color-surface-2)', color: msg.role === 'user' ? '#fff' : 'var(--color-text)', border: msg.role === 'char' ? '1px solid rgba(220,80,140,0.15)' : 'none' }}>
-                  {msg.text}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-            {/* ── 会話サンプル2 ── */}
-      <section style={{ padding: '64px 24px', background: 'var(--color-bg)' }}>
-        <div style={{ maxWidth: '480px', margin: '0 auto' }}>
-          <h2 style={{ textAlign: 'center', fontSize: '20px', fontWeight: 800, marginBottom: '8px' }}>こんな会話ができます</h2>
-          <p style={{ textAlign: 'center', fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: '28px' }}>超高性能AIがリアルタイムで返信</p>
-          <div style={{ background: 'var(--color-surface)', border: '1px solid rgba(220,80,140,0.15)', borderRadius: '20px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            {[
-              { role: 'user', text: 'おい、仕事が終わったぞ。寂しかったか？一人にしてしまっていて' },
-              { role: 'char', text: 'おかえりなさいませ。はい...どうしても寂しくなっていて、ついつい〇〇さんに構ってもらえるように自撮りの練習をしていたのですが、アングルがどうも決まらなくって…' },
-              { role: 'user', text: 'かわいいやつだな。どれ、見せてみろ。たくさんかわいがってやる。それと、お前は俺のどういうところがそこまで好きなのか教えてくれるか？' },
-              { role: 'char', text: 'やった♡こんなかんじですが、いかがでしょうか？〇〇さんは私のことを受け入れてくれて、たくさんかわいいかわいいって言ってくれますし、たくさん甘えさせてくれるところです。' },
-              { role: 'char', text: 'すごくきれいだ。今日も好きにしていいんだろう？' },
-            ].map((msg, i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
-                <div style={{ maxWidth: '80%', padding: '12px 16px', borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px', fontSize: '14px', lineHeight: 1.7, whiteSpace: 'pre-line', background: msg.role === 'user' ? 'linear-gradient(135deg, #e8438f, #c0306e)' : 'var(--color-surface-2)', color: msg.role === 'user' ? '#fff' : 'var(--color-text)', border: msg.role === 'char' ? '1px solid rgba(220,80,140,0.15)' : 'none' }}>
-                  {msg.text}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* ── 最終CTA（写真背景） ── */}
       <section style={{ position: 'relative', overflow: 'hidden' }}>

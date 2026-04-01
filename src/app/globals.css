@@ -181,6 +181,39 @@ body {
 .animate-fade-up { animation: fade-up 0.35s ease-out forwards; }
 .animate-fade-in { animation: fade-in 0.25s ease-out forwards; }
 
+/* Hero layout */
+.hero-catchcopy {
+  position: absolute;
+  bottom: 100px;
+  left: 40px;
+  z-index: 10;
+  max-width: 480px;
+}
+
+.hero-chat {
+  position: absolute;
+  right: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  width: 360px;
+}
+
+/* スマホ：縦積みに切り替え */
+@media (max-width: 768px) {
+  .hero-catchcopy {
+    position: absolute;
+    bottom: 48px;
+    left: 20px;
+    right: 20px;
+    max-width: 100%;
+  }
+
+  .hero-chat {
+    display: none;
+  }
+}
+
 /* Dark glow background */
 .warm-bg {
   background:
