@@ -72,7 +72,7 @@ export default function AdminCharactersPage() {
     if (files.length === 0 || !selectedCharId) return
 
     setPhotoUploading(true)
-    const newPhotos = []
+    const newPhotos: CharacterPhoto[] = []
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i]
