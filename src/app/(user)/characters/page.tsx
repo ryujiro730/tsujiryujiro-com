@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/server'
 
 export default async function CharactersPage() {
@@ -51,8 +52,7 @@ export default async function CharactersPage() {
                 boxShadow: '0 0 14px var(--color-primary-glow)',
                 cursor: 'pointer',
               }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={char.avatar_url} alt={char.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <Image src={char.avatar_url} alt={char.name} width={68} height={68} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </div>
             </Link>
 

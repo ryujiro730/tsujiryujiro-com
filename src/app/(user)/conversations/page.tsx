@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
+import Image from 'next/image'
 import { formatDistanceToNow } from 'date-fns'
 import { ja } from 'date-fns/locale'
 
@@ -10,10 +11,32 @@ export default async function ConversationsPage() {
 
   const { data: conversations } = await supabase
     .from('conversations')
-    .select(`id, last_message_at, characters(id, name, avatar_url), messages(id, content, sender_role, created_at, is_read)`)
+    .select(`id, last_message_at, characters(id, name, avatar_url)`)
     .eq('user_id', user.id)
     .not('last_message_at', 'is', null)
     .order('last_message_at', { ascending: false })
+
+  const convIds = (conversations ?? []).map(c => c.id)
+
+  // 各会話の最新メッセージと未読数だけ取得
+  const { data: lastMessages } = convIds.length > 0
+    ? await supabase
+        .from('messages')
+        .select('conversation_id, content, sender_role, created_at, is_read')
+        .in('conversation_id', convIds)
+        .order('created_at', { ascending: false })
+    : { data: [] }
+
+  const lastMsgMap = new Map<string, { content: string; sender_role: string }>()
+  const unreadMap = new Map<string, number>()
+  lastMessages?.forEach(msg => {
+    if (!lastMsgMap.has(msg.conversation_id)) {
+      lastMsgMap.set(msg.conversation_id, { content: msg.content, sender_role: msg.sender_role })
+    }
+    if (msg.sender_role === 'character' && !msg.is_read) {
+      unreadMap.set(msg.conversation_id, (unreadMap.get(msg.conversation_id) ?? 0) + 1)
+    }
+  })
 
   return (
     <div>
@@ -27,11 +50,8 @@ export default async function ConversationsPage() {
       {conversations && conversations.length > 0 ? (
         <div className="space-y-2">
           {conversations.map((conv: any) => {
-            const msgs: any[] = conv.messages ?? []
-            const lastMsg = msgs.sort((a, b) =>
-              new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-            )[0]
-            const unread = msgs.filter(m => m.sender_role === 'character' && !m.is_read).length
+            const lastMsg = lastMsgMap.get(conv.id)
+            const unread = unreadMap.get(conv.id) ?? 0
 
             return (
               <Link
@@ -41,8 +61,7 @@ export default async function ConversationsPage() {
               >
                 <div className="relative flex-shrink-0">
                   <div className="w-12 h-12 rounded-full overflow-hidden border border-[var(--color-border-warm)]">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={conv.characters?.avatar_url} alt={conv.characters?.name} className="w-full h-full object-cover" />
+                    <Image src={conv.characters?.avatar_url} alt={conv.characters?.name ?? ''} width={48} height={48} className="w-full h-full object-cover" />
                   </div>
                   {unread > 0 && (
                     <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full flex items-center justify-center text-[10px] text-white font-bold" style={{ background: 'var(--color-primary)' }}>
