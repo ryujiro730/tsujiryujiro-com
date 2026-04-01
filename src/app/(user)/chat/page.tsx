@@ -3,12 +3,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Send, ChevronLeft } from 'lucide-react'
+import { Send, ChevronLeft, Images, X } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { ja } from 'date-fns/locale'
-import type { Character, Message, Profile } from '@/types'
+import type { Character, Message, Profile, CharacterPhoto } from '@/types'
 import { FREE_MESSAGE_LIMIT } from '@/types'
 import Link from 'next/link'
+import Lightbox from '@/components/Lightbox'
 
 export default function ChatPage() {
   const searchParams = useSearchParams()
@@ -23,6 +24,10 @@ export default function ChatPage() {
   const [sending, setSending] = useState(false)
   const [loading, setLoading] = useState(true)
   const [isTyping, setIsTyping] = useState(false)
+  const [photos, setPhotos] = useState<CharacterPhoto[]>([])
+  const [showAlbum, setShowAlbum] = useState(false)
+  const [lightboxPhotos, setLightboxPhotos] = useState<string[]>([])
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
 
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -52,12 +57,14 @@ export default function ChatPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push('/auth/login'); return }
 
-    const [profRes, charRes] = await Promise.all([
+    const [profRes, charRes, photosRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', user.id).single(),
       supabase.from('characters').select('*').eq('id', characterId).single(),
+      supabase.from('character_photos').select('*').eq('character_id', characterId).order('order_index'),
     ])
     setProfile(profRes.data)
     setCharacter(charRes.data)
+    setPhotos(photosRes.data || [])
 
     let { data: conv } = await supabase
       .from('conversations').select('id')
@@ -80,21 +87,17 @@ export default function ChatPage() {
       .order('created_at', { ascending: true })
     setMessages(msgs || [])
 
-    // チャンネルセットアップ（user と admin で同じ chat:${conv.id}）
     const channel = supabase.channel(`chat:${conv.id}`)
 
-    // ① broadcast: adminが送信した新着メッセージを受信（メイン）
     channel.on('broadcast', { event: 'new_message' }, ({ payload }) => {
       const msg = payload.message as Message
       addMessage(msg)
       if (msg.sender_role === 'character') {
         setIsTyping(false)
-        // 既読にする
         supabase.from('messages').update({ is_read: true }).eq('id', msg.id).then(() => {})
       }
     })
 
-    // ② broadcast: adminのタイピング状態
     channel.on('broadcast', { event: 'typing' }, ({ payload }) => {
       const typing: boolean = payload?.isTyping ?? false
       setIsTyping(typing)
@@ -104,7 +107,6 @@ export default function ChatPage() {
       }
     })
 
-    // ③ postgres_changes: バックアップ（Supabase Realtimeが有効な場合）
     channel.on('postgres_changes', {
       event: 'INSERT', schema: 'public', table: 'messages',
       filter: `conversation_id=eq.${conv.id}`,
@@ -154,14 +156,12 @@ export default function ChatPage() {
 
     if (!msg) { setSending(false); return }
 
-    // 楽観的更新
     addMessage(msg)
 
     await supabase.from('conversations').update({
       last_message_at: new Date().toISOString(), is_unread_staff: true,
     }).eq('id', conversationId)
 
-    // adminに新着をbroadcast（postgres_changesが無効でも届く）
     channelRef.current?.send({
       type: 'broadcast',
       event: 'new_message',
@@ -177,6 +177,14 @@ export default function ChatPage() {
     e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'
   }
 
+  const openAlbumLightbox = (index: number) => {
+    if (!character) return
+    const all = [character.avatar_url, ...photos.map(p => p.url)]
+    setLightboxPhotos(all)
+    setLightboxIndex(index)
+    setShowAlbum(false)
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-[70vh]">
@@ -189,6 +197,7 @@ export default function ChatPage() {
   if (!character) return null
 
   const currentFreeLeft = profile ? Math.max(0, FREE_MESSAGE_LIMIT - profile.free_messages_used) : 0
+  const hasPhotos = photos.length > 0
 
   return (
     <div className="flex flex-col h-[calc(100dvh-52px)] -mt-5 -mx-4">
@@ -198,17 +207,29 @@ export default function ChatPage() {
         <Link href="/characters" className="p-1 -ml-1 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors">
           <ChevronLeft size={22} />
         </Link>
-        <div className="w-9 h-9 rounded-full overflow-hidden border border-[var(--color-border-warm)] flex-shrink-0">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={character.avatar_url} alt={character.name} className="w-full h-full object-cover" />
-        </div>
+        <Link href={`/characters/${character.id}`}>
+          <div className="w-9 h-9 rounded-full overflow-hidden border border-[var(--color-border-warm)] flex-shrink-0">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={character.avatar_url} alt={character.name} className="w-full h-full object-cover" />
+          </div>
+        </Link>
         <div className="flex-1">
-          <p className="text-sm font-medium leading-tight">{character.name}</p>
+          <Link href={`/characters/${character.id}`}>
+            <p className="text-sm font-medium leading-tight hover:opacity-80 transition-opacity">{character.name}</p>
+          </Link>
           <div className="flex items-center gap-1.5 mt-0.5">
             <span className="online-dot" style={{ width: '6px', height: '6px' }} />
             <p className="text-[var(--color-text-muted)] text-xs">人間が返信します</p>
           </div>
         </div>
+        {hasPhotos && (
+          <button
+            onClick={() => setShowAlbum(true)}
+            className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
+          >
+            <Images size={19} />
+          </button>
+        )}
         <Link href="/payment" className="text-xs text-[var(--color-accent)] px-2.5 py-1 rounded-lg border border-[var(--color-border)]">
           {currentFreeLeft > 0 ? `無料${currentFreeLeft}通` : `${profile?.points ?? 0}T`}
         </Link>
@@ -286,6 +307,57 @@ export default function ChatPage() {
           </button>
         </div>
       </div>
+
+      {/* アルバムオーバーレイ */}
+      {showAlbum && (
+        <div className="fixed inset-0 z-40 flex flex-col" style={{ background: 'rgba(0,0,0,0.85)' }}>
+          <div className="flex items-center justify-between px-4 py-4">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={character.avatar_url} alt="" className="w-full h-full object-cover" />
+              </div>
+              <p className="text-white font-semibold text-sm">{character.name}のフォト</p>
+            </div>
+            <button onClick={() => setShowAlbum(false)} className="p-2 text-white/70 hover:text-white">
+              <X size={22} />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto px-3 pb-6">
+            <div className="grid grid-cols-3 gap-1.5">
+              {/* アバターも含む */}
+              <div
+                className="overflow-hidden rounded-xl cursor-pointer"
+                style={{ aspectRatio: '1' }}
+                onClick={() => openAlbumLightbox(0)}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={character.avatar_url} alt="" className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
+              </div>
+              {photos.map((photo, i) => (
+                <div
+                  key={photo.id}
+                  className="overflow-hidden rounded-xl cursor-pointer"
+                  style={{ aspectRatio: '1' }}
+                  onClick={() => openAlbumLightbox(i + 1)}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={photo.url} alt="" className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {lightboxIndex !== null && (
+        <Lightbox
+          photos={lightboxPhotos}
+          index={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+          onChange={setLightboxIndex}
+        />
+      )}
     </div>
   )
 }

@@ -44,9 +44,9 @@ export default function LoginPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-1">おかえり</h1>
+      <h1 className="text-2xl font-bold mb-1">ログイン</h1>
       <p className="text-[var(--color-text-muted)] text-sm mb-8">
-        また話しかけてくれて嬉しいです
+        
       </p>
 
       <form onSubmit={handleLogin} className="space-y-4">

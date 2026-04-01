@@ -12,6 +12,7 @@ export default async function ConversationsPage() {
     .from('conversations')
     .select(`id, last_message_at, characters(id, name, avatar_url), messages(id, content, sender_role, created_at, is_read)`)
     .eq('user_id', user.id)
+    .not('last_message_at', 'is', null)
     .order('last_message_at', { ascending: false })
 
   return (

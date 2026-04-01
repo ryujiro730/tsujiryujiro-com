@@ -33,6 +33,15 @@ export interface Character {
   created_at: string
 }
 
+export interface CharacterPhoto {
+  id: string
+  character_id: string
+  url: string
+  caption: string | null
+  order_index: number
+  created_at: string
+}
+
 export interface Conversation {
   id: string
   user_id: string

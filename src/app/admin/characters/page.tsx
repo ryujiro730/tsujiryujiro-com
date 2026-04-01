@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Edit2, Trash2, Loader2, Check, X, Upload } from 'lucide-react'
-import type { Character } from '@/types'
+import { Plus, Edit2, Trash2, Loader2, Check, X, Upload, Images } from 'lucide-react'
+import type { Character, CharacterPhoto } from '@/types'
 
 export default function AdminCharactersPage() {
   const [characters, setCharacters] = useState<Character[]>([])
@@ -20,7 +20,14 @@ export default function AdminCharactersPage() {
     avatar_url: '',
     is_active: true,
   })
+  // フォト管理
+  const [selectedCharId, setSelectedCharId] = useState<string | null>(null)
+  const [photos, setPhotos] = useState<CharacterPhoto[]>([])
+  const [photosLoading, setPhotosLoading] = useState(false)
+  const [photoUploading, setPhotoUploading] = useState(false)
+
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const photoInputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
 
   useEffect(() => { loadCharacters() }, [])
@@ -60,9 +67,72 @@ export default function AdminCharactersPage() {
     setUploading(false)
   }
 
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? [])
+    if (files.length === 0 || !selectedCharId) return
+
+    setPhotoUploading(true)
+    const newPhotos = []
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
+      const ext = file.name.split('.').pop()
+      const fileName = `${Date.now()}-${i}.${ext}`
+
+      const { error } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, { upsert: true })
+
+      if (error) {
+        alert(`${file.name} のアップロード失敗: ` + error.message)
+        continue
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName)
+
+      const { data: newPhoto } = await supabase
+        .from('character_photos')
+        .insert({ character_id: selectedCharId, url: publicUrl, order_index: photos.length + newPhotos.length })
+        .select()
+        .single()
+
+      if (newPhoto) newPhotos.push(newPhoto)
+    }
+
+    setPhotos(prev => [...prev, ...newPhotos])
+    setPhotoUploading(false)
+    if (photoInputRef.current) photoInputRef.current.value = ''
+  }
+
+  const deletePhoto = async (photoId: string) => {
+    await supabase.from('character_photos').delete().eq('id', photoId)
+    setPhotos(prev => prev.filter(p => p.id !== photoId))
+  }
+
+  const openPhotos = async (charId: string) => {
+    if (selectedCharId === charId) {
+      setSelectedCharId(null)
+      setPhotos([])
+      return
+    }
+    setSelectedCharId(charId)
+    setPhotosLoading(true)
+    const { data } = await supabase
+      .from('character_photos')
+      .select('*')
+      .eq('character_id', charId)
+      .order('order_index')
+    setPhotos(data || [])
+    setPhotosLoading(false)
+  }
+
   const startEdit = (char: Character) => {
     setEditing(char)
     setIsNew(false)
+    setSelectedCharId(null)
+    setPhotos([])
     setForm({
       name: char.name,
       age: char.age,
@@ -76,6 +146,8 @@ export default function AdminCharactersPage() {
   const startNew = () => {
     setEditing(null)
     setIsNew(true)
+    setSelectedCharId(null)
+    setPhotos([])
     setForm({ name: '', age: 25, description: '', personality: '', avatar_url: '', is_active: true })
   }
 
@@ -108,6 +180,7 @@ export default function AdminCharactersPage() {
     if (!confirm('このキャラクターを削除しますか？')) return
     await supabase.from('characters').delete().eq('id', id)
     setCharacters(prev => prev.filter(c => c.id !== id))
+    if (selectedCharId === id) { setSelectedCharId(null); setPhotos([]) }
   }
 
   if (loading) {
@@ -154,11 +227,10 @@ export default function AdminCharactersPage() {
               </div>
             </div>
 
-            {/* 画像アップロード */}
+            {/* アバター画像 */}
             <div>
-              <label className="text-xs text-[var(--color-text-muted)] mb-1 block">アバター画像</label>
+              <label className="text-xs text-[var(--color-text-muted)] mb-1 block">アバター画像（メイン）</label>
               <div className="flex items-center gap-3">
-                {/* プレビュー */}
                 <div className="w-16 h-16 rounded-full overflow-hidden border border-[var(--color-border)] flex-shrink-0 bg-[var(--color-surface-2)] flex items-center justify-center">
                   {form.avatar_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -186,11 +258,6 @@ export default function AdminCharactersPage() {
                       : <><Upload size={14} />画像をアップロード</>
                     }
                   </button>
-                  {form.avatar_url && (
-                    <p className="text-xs text-[var(--color-text-muted)] mt-1 truncate max-w-xs">
-                      {form.avatar_url.split('/').pop()}
-                    </p>
-                  )}
                 </div>
               </div>
             </div>
@@ -245,35 +312,103 @@ export default function AdminCharactersPage() {
       {/* キャラクター一覧 */}
       <div className="space-y-3">
         {characters.map((char) => (
-          <div key={char.id} className="glass rounded-2xl px-5 py-4 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full overflow-hidden border border-[var(--color-border)] flex-shrink-0">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={char.avatar_url} alt={char.name} className="w-full h-full object-cover" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-0.5">
-                <span className="font-semibold text-sm">{char.name}</span>
-                <span className="text-xs text-[var(--color-text-muted)]">{char.age}歳</span>
-                <span className={`text-xs px-2 py-0.5 rounded-full ${char.is_active ? 'bg-emerald-900/40 text-emerald-400' : 'bg-gray-800 text-gray-500'}`}>
-                  {char.is_active ? '公開中' : '非公開'}
-                </span>
+          <div key={char.id}>
+            <div className="glass rounded-2xl px-5 py-4 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full overflow-hidden border border-[var(--color-border)] flex-shrink-0">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={char.avatar_url} alt={char.name} className="w-full h-full object-cover" />
               </div>
-              <p className="text-[var(--color-text-muted)] text-xs truncate">{char.description}</p>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="font-semibold text-sm">{char.name}</span>
+                  <span className="text-xs text-[var(--color-text-muted)]">{char.age}歳</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${char.is_active ? 'bg-emerald-900/40 text-emerald-400' : 'bg-gray-800 text-gray-500'}`}>
+                    {char.is_active ? '公開中' : '非公開'}
+                  </span>
+                </div>
+                <p className="text-[var(--color-text-muted)] text-xs truncate">{char.description}</p>
+              </div>
+              <div className="flex gap-2 flex-shrink-0">
+                <button
+                  onClick={() => openPhotos(char.id)}
+                  className={`p-2 rounded-lg transition-colors ${selectedCharId === char.id ? 'bg-[var(--color-primary)] text-white' : 'hover:bg-[var(--color-surface-2)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}`}
+                  title="フォト管理"
+                >
+                  <Images size={16} />
+                </button>
+                <button
+                  onClick={() => startEdit(char)}
+                  className="p-2 rounded-lg hover:bg-[var(--color-surface-2)] transition-colors text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+                >
+                  <Edit2 size={16} />
+                </button>
+                <button
+                  onClick={() => deleteChar(char.id)}
+                  className="p-2 rounded-lg hover:bg-red-900/30 transition-colors text-[var(--color-text-muted)] hover:text-red-400"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
             </div>
-            <div className="flex gap-2 flex-shrink-0">
-              <button
-                onClick={() => startEdit(char)}
-                className="p-2 rounded-lg hover:bg-[var(--color-surface-2)] transition-colors text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
-              >
-                <Edit2 size={16} />
-              </button>
-              <button
-                onClick={() => deleteChar(char.id)}
-                className="p-2 rounded-lg hover:bg-red-900/30 transition-colors text-[var(--color-text-muted)] hover:text-red-400"
-              >
-                <Trash2 size={16} />
-              </button>
-            </div>
+
+            {/* フォト管理パネル */}
+            {selectedCharId === char.id && (
+              <div className="mt-1 glass rounded-2xl p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold flex items-center gap-1.5">
+                    <Images size={14} />
+                    {char.name}のフォト
+                  </h3>
+                  <div>
+                    <input
+                      ref={photoInputRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handlePhotoUpload}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => photoInputRef.current?.click()}
+                      disabled={photoUploading}
+                      className="btn-primary px-3 py-1.5 text-xs flex items-center gap-1.5 disabled:opacity-60"
+                    >
+                      {photoUploading
+                        ? <><Loader2 size={12} className="animate-spin" />追加中...</>
+                        : <><Upload size={12} />写真を追加</>
+                      }
+                    </button>
+                  </div>
+                </div>
+
+                {photosLoading ? (
+                  <div className="flex justify-center py-4">
+                    <Loader2 size={20} className="animate-spin text-[var(--color-text-muted)]" />
+                  </div>
+                ) : photos.length === 0 ? (
+                  <p className="text-[var(--color-text-muted)] text-xs text-center py-4">
+                    フォトはまだありません。写真を追加してください。
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-4 gap-2">
+                    {photos.map((photo) => (
+                      <div key={photo.id} className="relative group rounded-xl overflow-hidden" style={{ aspectRatio: '1' }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={photo.url} alt="" className="w-full h-full object-cover" />
+                        <button
+                          onClick={() => deletePhoto(photo.id)}
+                          className="absolute top-1 right-1 p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                          style={{ background: 'rgba(0,0,0,0.6)' }}
+                        >
+                          <Trash2 size={12} className="text-red-400" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         ))}
       </div>

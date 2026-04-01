@@ -3,15 +3,10 @@ import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
 import { ja } from 'date-fns/locale'
 
-export default async function AdminConversationsPage({
-  searchParams,
-}: {
-  searchParams: { filter?: string }
-}) {
+export default async function AdminConversationsPage() {
   const supabase = createClient()
-  const showUnreadOnly = searchParams.filter === 'unread'
 
-  let query = supabase
+  const { data: conversations } = await supabase
     .from('conversations')
     .select(`
       id,
@@ -20,13 +15,8 @@ export default async function AdminConversationsPage({
       characters ( id, name, avatar_url ),
       profiles ( id, user_code, display_name, points, free_messages_used )
     `)
+    .eq('is_unread_staff', true)
     .order('last_message_at', { ascending: false })
-
-  if (showUnreadOnly) {
-    query = query.eq('is_unread_staff', true)
-  }
-
-  const { data: conversations } = await query
 
   // 各会話の最新メッセージを取得
   const convIds = (conversations ?? []).map(c => c.id)
@@ -47,22 +37,8 @@ export default async function AdminConversationsPage({
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-6">
         <h1 className="text-2xl font-bold">受信トレイ</h1>
-        <div className="flex gap-2">
-          <Link
-            href="/admin/conversations"
-            className={`px-4 py-2 rounded-xl text-sm transition-colors ${!showUnreadOnly ? 'btn-primary' : 'btn-ghost'}`}
-          >
-            すべて
-          </Link>
-          <Link
-            href="/admin/conversations?filter=unread"
-            className={`px-4 py-2 rounded-xl text-sm transition-colors ${showUnreadOnly ? 'btn-primary' : 'btn-ghost'}`}
-          >
-            未読のみ
-          </Link>
-        </div>
       </div>
 
       <div className="space-y-2">
