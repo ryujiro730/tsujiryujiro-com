@@ -179,8 +179,7 @@ export default function AdminConversationDetailPage() {
               </p>
               {userProfile && (
                 <p className="text-[var(--color-text-muted)] text-xs">
-                  相手: {userProfile.display_name || userProfile.email || '匿名'} · 残
-                  {Math.max(0, 5 - userProfile.free_messages_used)}無料 · {userProfile.points}T
+                  相手: {userProfile.display_name || userProfile.email || '匿名'} · {userProfile.points}T
                 </p>
               )}
             </div>

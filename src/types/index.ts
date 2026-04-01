@@ -87,4 +87,3 @@ export const TOKEN_PACKAGES: TokenPackage[] = [
   { id: 'pack_100', name: '100トークン', tokens: 100, price_yen: 2500, is_popular: false, stripe_price_id: 'price_100tokens' },
 ]
 
-export const FREE_MESSAGE_LIMIT = 5

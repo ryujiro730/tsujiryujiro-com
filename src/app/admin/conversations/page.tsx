@@ -90,7 +90,7 @@ export default async function AdminConversationsPage() {
 
                   <div className="flex items-center gap-3 mt-1.5">
                     <span className="text-xs text-[var(--color-text-muted)]">
-                      残り: {(conv.profiles?.points ?? 0)}T / 無料 {Math.max(0, 5 - (conv.profiles?.free_messages_used ?? 0))}通
+                      残り: {(conv.profiles?.points ?? 0)}T
                     </span>
                     {conv.is_unread_staff && (
                       <span className="text-xs text-red-400 font-medium">● 未返信</span>

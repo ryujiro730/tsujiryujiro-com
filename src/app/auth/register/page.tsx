@@ -38,9 +38,6 @@ export default function RegisterPage() {
           <span className="text-[var(--color-text)]">{email}</span> に確認メールを送りました。<br />
           メール内のリンクから登録を完了してください。
         </p>
-        <p className="text-xs mt-4" style={{ color: 'var(--color-accent)' }}>
-          ※ 登録後すぐに5通の無料メッセージが使えます
-        </p>
       </div>
     )
   }
@@ -49,7 +46,7 @@ export default function RegisterPage() {
     <div>
       <h1 className="text-2xl font-bold mb-1">はじめまして</h1>
       <p className="text-[var(--color-text-muted)] text-sm mb-8">
-        最初の5通は無料です。登録は30秒くらいで終わります。
+        登録は30秒くらいで終わります。
       </p>
 
       <form onSubmit={handleRegister} className="space-y-4">

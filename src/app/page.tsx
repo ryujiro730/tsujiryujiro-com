@@ -64,7 +64,7 @@ export default async function HomePage() {
               <Link href={ctaHref} className="btn-cta" style={{ padding: '18px 44px', fontSize: '18px', borderRadius: '14px', display: 'inline-block', textDecoration: 'none' }}>
                 {ctaText}
               </Link>
-              <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)' }}>登録30秒・最初の5通は無料</span>
+              <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)' }}>登録30秒・すぐに始められます</span>
             </div>
           </div>
         </div>
@@ -234,7 +234,7 @@ export default async function HomePage() {
             あなたのことを知りたい<br />女の子が待っています
           </h2>
           <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '15px', marginBottom: '36px', lineHeight: 1.7 }}>
-            最初の5通は完全無料。<br />登録は30秒。
+            今すぐ登録して話しかけよう。<br />登録は30秒。
           </p>
           <Link href={ctaHref} className="btn-cta" style={{ display: 'block', padding: '20px', fontSize: '19px', borderRadius: '16px', textDecoration: 'none' }}>
             {user ? 'つづきを話す →' : '無料で女の子に話しかける →'}

@@ -4,7 +4,7 @@ import ServiceWorkerRegister from '@/components/ServiceWorkerRegister'
 
 export const metadata: Metadata = {
   title: 'LoveChat - 超高性能AIがあなただけに返信します',
-  description: '自社開発の超高性能AIが、あなたのメッセージにリアルタイムで返信します。最初の5通は無料。',
+  description: '自社開発の超高性能AIが、あなたのメッセージにリアルタイムで返信します。アダルトOK・画像送り合いOK。',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,

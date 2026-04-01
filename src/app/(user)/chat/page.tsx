@@ -7,7 +7,6 @@ import { Send, ChevronLeft, Images, X } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import type { Character, Message, Profile, CharacterPhoto } from '@/types'
-import { FREE_MESSAGE_LIMIT } from '@/types'
 import Link from 'next/link'
 import Lightbox from '@/components/Lightbox'
 
@@ -121,10 +120,7 @@ export default function ChatPage() {
     setLoading(false)
   }
 
-  const freeLeft = profile ? Math.max(0, FREE_MESSAGE_LIMIT - profile.free_messages_used) : 0
-  const canSendFree = freeLeft > 0
-  const canSendPaid = (profile?.points ?? 0) > 0
-  const canSend = canSendFree || canSendPaid
+  const canSend = (profile?.points ?? 0) > 0
 
   const sendMessage = async () => {
     if (!input.trim() || sending || !conversationId || !profile || !character) return
@@ -138,20 +134,15 @@ export default function ChatPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    if (canSendFree) {
-      await supabase.from('profiles').update({ free_messages_used: profile.free_messages_used + 1 }).eq('id', user.id)
-      setProfile(prev => prev ? { ...prev, free_messages_used: prev.free_messages_used + 1 } : prev)
-    } else {
-      await supabase.from('profiles').update({ points: profile.points - 1 }).eq('id', user.id)
-      await supabase.from('point_transactions').insert({
-        user_id: user.id, amount: -1, type: 'spend', description: `${character.name}へのメッセージ`,
-      })
-      setProfile(prev => prev ? { ...prev, points: prev.points - 1 } : prev)
-    }
+    await supabase.from('profiles').update({ points: profile.points - 1 }).eq('id', user.id)
+    await supabase.from('point_transactions').insert({
+      user_id: user.id, amount: -1, type: 'spend', description: `${character.name}へのメッセージ`,
+    })
+    setProfile(prev => prev ? { ...prev, points: prev.points - 1 } : prev)
 
     const { data: msg } = await supabase.from('messages').insert({
       conversation_id: conversationId, sender_role: 'user',
-      content, points_used: canSendFree ? 0 : 1,
+      content, points_used: 1,
     }).select().single()
 
     if (!msg) { setSending(false); return }
@@ -196,7 +187,6 @@ export default function ChatPage() {
   }
   if (!character) return null
 
-  const currentFreeLeft = profile ? Math.max(0, FREE_MESSAGE_LIMIT - profile.free_messages_used) : 0
   const hasPhotos = photos.length > 0
 
   return (
@@ -231,7 +221,7 @@ export default function ChatPage() {
           </button>
         )}
         <Link href="/payment" className="text-xs text-[var(--color-accent)] px-2.5 py-1 rounded-lg border border-[var(--color-border)]">
-          {currentFreeLeft > 0 ? `無料${currentFreeLeft}通` : `${profile?.points ?? 0}T`}
+          {profile?.points ?? 0}T
         </Link>
       </div>
 
@@ -274,7 +264,7 @@ export default function ChatPage() {
         {!canSend && (
           <div className="mb-3 rounded-xl p-3 text-center"
             style={{ background: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}>
-            <p className="text-[var(--color-text-muted)] text-xs mb-1">無料分を使い切りました</p>
+            <p className="text-[var(--color-text-muted)] text-xs mb-1">トークンがありません</p>
             <Link href="/payment" className="text-xs font-medium" style={{ color: 'var(--color-primary)' }}>
               トークンを購入してつづける →
             </Link>
@@ -282,7 +272,7 @@ export default function ChatPage() {
         )}
         {canSend && (
           <p className="text-[var(--color-text-muted)] text-xs mb-2">
-            {canSendFree ? `無料メッセージ残り ${currentFreeLeft}通` : `1トークン消費（残り${profile?.points ?? 0}T）`}
+            1トークン消費（残り{profile?.points ?? 0}T）
           </p>
         )}
         <div className="flex gap-2 items-end">

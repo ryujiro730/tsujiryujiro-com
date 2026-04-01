@@ -63,8 +63,6 @@ export default function PaymentPage() {
     )
   }
 
-  const freeLeft = Math.max(0, 5 - (profile?.free_messages_used ?? 0))
-
   return (
     <div className="pt-2">
       <h1 className="text-xl font-bold mb-6">トークンを購入する</h1>
@@ -90,12 +88,6 @@ export default function PaymentPage() {
             <p className="text-3xl font-bold">{profile?.points ?? 0}</p>
             <p className="text-[var(--color-text-muted)] text-xs mt-0.5">トークン</p>
           </div>
-          {freeLeft > 0 && (
-            <div>
-              <p className="text-xl font-medium" style={{ color: 'var(--color-accent)' }}>{freeLeft}通</p>
-              <p className="text-[var(--color-text-muted)] text-xs mt-0.5">無料メッセージ残り</p>
-            </div>
-          )}
         </div>
       </div>
 

@@ -50,8 +50,6 @@ export default function SettingsPage() {
     )
   }
 
-  const freeLeft = Math.max(0, 5 - (profile?.free_messages_used ?? 0))
-
   return (
     <div className="pt-2 max-w-sm">
       <h1 className="text-xl font-bold mb-6">設定</h1>
@@ -84,11 +82,7 @@ export default function SettingsPage() {
         <p className="text-xs text-[var(--color-text-muted)] font-medium uppercase tracking-wider mb-4">残高</p>
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
-            <span className="text-[var(--color-text-muted)]">無料メッセージ</span>
-            <span style={{ color: 'var(--color-online)' }}>残り{freeLeft}通</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-[var(--color-text-muted)]">トークン</span>
+            <span className="text-[var(--color-text-muted)]">トークン残高</span>
             <span style={{ color: 'var(--color-accent)' }}>{profile?.points ?? 0}T</span>
           </div>
         </div>
