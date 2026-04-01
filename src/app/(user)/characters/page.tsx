@@ -12,54 +12,69 @@ export default async function CharactersPage() {
 
   return (
     <div>
-      <div className="mb-6 pt-2">
-        <h1 className="text-xl font-bold mb-1">話し相手を選ぶ</h1>
+      <div className="mb-7 pt-1">
+        <h1 className="text-xl font-bold mb-1">誰に話しかける？</h1>
         <p className="text-[var(--color-text-muted)] text-sm">
-          キャラクターは違っても、返すのは同じ人間です。
+          好きな子を選んで、今すぐ話しかけてみて
         </p>
       </div>
 
-      <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))' }}>
         {characters?.map((char) => (
-          <div key={char.id} className="card p-4">
-            <div className="flex items-start gap-4">
-              <div className="relative flex-shrink-0">
-                <div className="w-[60px] h-[60px] rounded-full overflow-hidden border border-[var(--color-border-warm)]">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={char.avatar_url} alt={char.name} className="w-full h-full object-cover" />
-                </div>
-                <span className="online-dot absolute bottom-0 right-0 border-2 border-[var(--color-bg)]" />
+          <Link key={char.id} href={`/chat?character=${char.id}`} style={{ textDecoration: 'none' }}>
+            <div
+              className="card"
+              style={{
+                padding: '20px 14px', textAlign: 'center', cursor: 'pointer',
+                position: 'relative', overflow: 'hidden',
+                transition: 'border-color 0.2s, box-shadow 0.2s',
+                height: '100%',
+              }}
+            >
+              {/* オンラインバッジ */}
+              <div style={{
+                position: 'absolute', top: '10px', right: '10px',
+                background: 'rgba(126,200,80,0.15)',
+                border: '1px solid rgba(126,200,80,0.35)',
+                borderRadius: '99px', padding: '2px 7px',
+                fontSize: '10px', color: '#7ec850', fontWeight: 600,
+              }}>
+                ● ON
               </div>
 
-              <div className="flex-1 min-w-0">
-                <div className="flex items-baseline gap-2 mb-1">
-                  <span className="font-medium">{char.name}</span>
-                  <span className="text-xs text-[var(--color-text-muted)]">{char.age}歳</span>
-                </div>
-                <p className="text-[var(--color-text-muted)] text-sm leading-relaxed mb-1">
-                  {char.description}
-                </p>
-                <p className="text-xs" style={{ color: 'var(--color-accent)' }}>
-                  {char.personality}
-                </p>
+              {/* アバター */}
+              <div style={{
+                width: '68px', height: '68px', borderRadius: '50%',
+                overflow: 'hidden', margin: '0 auto 12px',
+                border: '2px solid var(--color-primary)',
+                boxShadow: '0 0 14px var(--color-primary-glow)',
+              }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={char.avatar_url} alt={char.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </div>
-            </div>
 
-            <div className="mt-4 flex gap-2">
-              <Link
-                href={`/chat?character=${char.id}`}
-                className="btn-primary flex-1 py-2.5 text-sm text-center"
+              <p className="font-bold text-sm mb-0.5">{char.name}</p>
+              <p className="text-xs mb-2" style={{ color: 'var(--color-text-muted)' }}>{char.age}歳</p>
+              <p className="text-xs mb-3 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+                {char.description.length > 35 ? char.description.slice(0, 35) + '…' : char.description}
+              </p>
+              <div
+                className="btn-cta"
+                style={{
+                  padding: '8px 0', fontSize: '13px', borderRadius: '8px',
+                  textAlign: 'center', width: '100%',
+                }}
               >
-                話しかける
-              </Link>
+                話す ♡
+              </div>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
 
       {(!characters || characters.length === 0) && (
         <div className="card p-10 text-center">
-          <p className="text-[var(--color-text-muted)] text-sm">現在、話し相手は準備中です。</p>
+          <p className="text-[var(--color-text-muted)] text-sm">準備中です</p>
         </div>
       )}
     </div>

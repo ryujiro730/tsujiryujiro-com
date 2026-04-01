@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2026-02-25.clover',
+})
+
 export async function POST(request: Request) {
   try {
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-      apiVersion: '2026-02-25.clover',
-    })
     const { packageId, userId, tokens, priceYen } = await request.json()
 
     const session = await stripe.checkout.sessions.create({

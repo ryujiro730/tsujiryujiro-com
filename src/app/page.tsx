@@ -5,124 +5,221 @@ export default async function HomePage() {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
+  const { data: characters } = await supabase
+    .from('characters')
+    .select('id, name, age, description, personality, avatar_url')
+    .eq('is_active', true)
+    .limit(7)
+
   return (
-    <main style={{ background: '#fff', color: '#333', fontFamily: 'var(--font-body)' }}>
+    <main style={{ background: 'var(--color-bg)', color: 'var(--color-text)', minHeight: '100vh' }}>
 
       {/* ── Nav ── */}
       <nav style={{
         position: 'sticky', top: 0, zIndex: 50,
-        background: 'rgba(255,255,255,0.92)',
-        backdropFilter: 'blur(16px)',
-        borderBottom: '1px solid rgba(126,200,80,0.22)',
+        background: 'rgba(13,10,20,0.9)',
+        backdropFilter: 'blur(20px)',
+        borderBottom: '1px solid rgba(220,80,140,0.15)',
         padding: '0 20px', height: '56px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       }}>
-        <span style={{ fontWeight: 700, fontSize: '16px', color: '#7ec850' }}>HumanChat</span>
-        <a href="#" style={{
-          background: '#e8834a', color: '#fff', padding: '10px 20px',
-          borderRadius: '10px', fontWeight: 700, fontSize: '14px',
-          textDecoration: 'none',
-        }}>
-          無料で始める
-        </a>
+        <span style={{ fontWeight: 800, fontSize: '18px', background: 'linear-gradient(90deg, #e8438f, #a060e0)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+          LoveChat
+        </span>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          {user ? (
+            <Link href="/characters" className="btn-cta" style={{ padding: '8px 20px', fontSize: '14px', borderRadius: '8px' }}>
+              つづける
+            </Link>
+          ) : (
+            <>
+              <Link href="/auth/login" className="btn-ghost" style={{ padding: '8px 16px', fontSize: '14px' }}>
+                ログイン
+              </Link>
+              <Link href="/auth/register" className="btn-cta" style={{ padding: '8px 18px', fontSize: '14px', borderRadius: '8px' }}>
+                無料で始める
+              </Link>
+            </>
+          )}
+        </div>
       </nav>
 
-      {/* ── Section 1: ファーストビュー ── */}
+      {/* ── Hero ── */}
       <section style={{
-        maxWidth: '560px', margin: '0 auto',
-        padding: '72px 24px 64px', textAlign: 'center',
+        maxWidth: '640px', margin: '0 auto',
+        padding: '80px 24px 60px', textAlign: 'center',
       }}>
         {/* バッジ */}
-        <div style={{ animationDelay: '0.1s' }} className="lp-fadein">
+        <div style={{ marginBottom: '28px' }}>
           <span style={{
             display: 'inline-block',
-            background: '#edf7e4', color: '#7ec850',
-            padding: '6px 16px', borderRadius: '99px',
-            fontSize: '14px', fontWeight: 500, marginBottom: '24px',
+            background: 'rgba(232,67,143,0.12)',
+            border: '1px solid rgba(232,67,143,0.3)',
+            color: '#e8438f',
+            padding: '6px 18px', borderRadius: '99px',
+            fontSize: '13px', fontWeight: 500,
           }}>
-            ✦ 本物の人間が、あなたの話を聞きます
+            ✦ 今夜もあなたを待っています
           </span>
         </div>
 
-        {/* h1 */}
-        <h1 style={{ fontWeight: 700, lineHeight: 1.2, marginBottom: '16px' }}>
-          <span className="lp-fadein" style={{ display: 'block', fontSize: 'clamp(2rem, 8vw, 3rem)', color: '#333', animationDelay: '0.3s' }}>
-            今夜、
+        <h1 style={{ fontWeight: 900, lineHeight: 1.15, marginBottom: '20px' }}>
+          <span style={{ display: 'block', fontSize: 'clamp(2.2rem, 9vw, 3.5rem)', color: 'var(--color-text)' }}>
+            あなただけに
           </span>
-          <span className="lp-fadein" style={{ display: 'block', fontSize: 'clamp(2rem, 8vw, 3rem)', color: '#7ec850', animationDelay: '0.65s' }}>
-            話せる人がいる。
+          <span style={{
+            display: 'block', fontSize: 'clamp(2.2rem, 9vw, 3.5rem)',
+            background: 'linear-gradient(90deg, #e8438f, #a060e0)',
+            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+          }}>
+            話しかけてくれる
+          </span>
+          <span style={{ display: 'block', fontSize: 'clamp(2.2rem, 9vw, 3.5rem)', color: 'var(--color-text)' }}>
+            女の子がいる。
           </span>
         </h1>
 
-        {/* サブコピー */}
-        <p className="lp-fadein" style={{
-          fontSize: '18px', lineHeight: 1.8, color: 'rgba(51,51,51,0.55)',
-          marginBottom: '40px', animationDelay: '1s',
+        <p style={{
+          fontSize: '17px', lineHeight: 1.85,
+          color: 'var(--color-text-muted)',
+          marginBottom: '44px', maxWidth: '460px', margin: '0 auto 44px',
         }}>
-          AIではなく、本物の人間が<br />
-          あなたの話をしっかり聞きます。
+          AIじゃない。本物の女の子が、<br />
+          あなたのメッセージを読んで返信します。
         </p>
 
-        {/* CTA */}
-        <div className="lp-fadein" style={{ animationDelay: '1.35s' }}>
-          <a href="#" style={{
-            display: 'inline-flex', alignItems: 'center', gap: '8px',
-            background: '#e8834a', color: '#fff',
-            padding: '18px 36px', borderRadius: '14px',
-            fontSize: '18px', fontWeight: 700, textDecoration: 'none',
-            boxShadow: '0 4px 18px rgba(232,131,74,0.35)',
-            width: '100%', maxWidth: '320px', justifyContent: 'center',
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px' }}>
+          <Link href={user ? '/characters' : '/auth/register'} className="btn-cta" style={{
+            padding: '18px 48px', fontSize: '18px', borderRadius: '14px',
+            display: 'inline-block', textDecoration: 'none',
           }}>
-            LINEで無料で始める
-          </a>
-          <p style={{ fontSize: '13px', color: 'rgba(51,51,51,0.45)', marginTop: '12px' }}>
-            登録無料・今すぐ話せます
-          </p>
+            {user ? 'つづきを話す' : '今すぐ無料で話す →'}
+          </Link>
+          <span style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>
+            登録30秒・最初の5通は無料
+          </span>
         </div>
 
-        {/* トラスト */}
-        <div className="lp-fadein" style={{
-          display: 'flex', justifyContent: 'center', gap: '16px',
-          marginTop: '32px', fontSize: '13px', color: 'rgba(51,51,51,0.45)',
-          flexWrap: 'wrap', animationDelay: '1.6s',
+        {/* 数字 */}
+        <div style={{
+          display: 'flex', justifyContent: 'center', gap: '40px',
+          marginTop: '56px', paddingTop: '40px',
+          borderTop: '1px solid rgba(220,80,140,0.12)',
         }}>
-          {['🔒 個人情報を守ります', '👤 実在する人が返信', '💬 5通まで無料'].map(t => (
-            <span key={t}>{t}</span>
+          {[
+            { num: '7人', label: '個性豊かな女の子' },
+            { num: '24h', label: 'いつでも話せる' },
+            { num: '100%', label: '本物の人間が返信' },
+          ].map(s => (
+            <div key={s.label} style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '24px', fontWeight: 800, color: '#e8438f', marginBottom: '4px' }}>{s.num}</div>
+              <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>{s.label}</div>
+            </div>
           ))}
         </div>
       </section>
 
-      {/* ── Section 2: 3つの特徴 ── */}
-      <section style={{ background: '#f7fcf2', padding: '64px 24px' }}>
-        <div style={{ maxWidth: '560px', margin: '0 auto' }}>
-          <p style={{ textAlign: 'center', color: '#7ec850', fontSize: '14px', fontWeight: 500, marginBottom: '8px' }}>
-            HumanChatの特徴
+      {/* ── キャラクター ── */}
+      <section style={{
+        padding: '64px 24px',
+        background: 'linear-gradient(180deg, var(--color-bg) 0%, var(--color-surface) 100%)',
+        borderTop: '1px solid rgba(220,80,140,0.1)',
+      }}>
+        <div style={{ maxWidth: '640px', margin: '0 auto' }}>
+          <p style={{ textAlign: 'center', color: '#e8438f', fontSize: '13px', fontWeight: 600, marginBottom: '10px', letterSpacing: '0.1em' }}>
+            CHARACTERS
           </p>
-          <h2 style={{ textAlign: 'center', fontSize: '22px', fontWeight: 700, marginBottom: '40px', color: '#333' }}>
-            だから、安心して話せます
+          <h2 style={{ textAlign: 'center', fontSize: '24px', fontWeight: 800, marginBottom: '8px' }}>
+            あなたと話したい女の子たち
+          </h2>
+          <p style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '14px', marginBottom: '36px' }}>
+            1人を選んで、今すぐ話しかけてみて
+          </p>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(175px, 1fr))', gap: '14px' }}>
+            {characters?.map((char) => (
+              <Link
+                key={char.id}
+                href={user ? `/chat?character=${char.id}` : '/auth/register'}
+                style={{ textDecoration: 'none' }}
+              >
+                <div style={{
+                  background: 'var(--color-surface-2)',
+                  border: '1px solid rgba(220,80,140,0.18)',
+                  borderRadius: '16px', padding: '20px 16px',
+                  textAlign: 'center', cursor: 'pointer',
+                  transition: 'border-color 0.2s, transform 0.2s',
+                  position: 'relative', overflow: 'hidden',
+                }}>
+                  {/* オンラインバッジ */}
+                  <div style={{
+                    position: 'absolute', top: '12px', right: '12px',
+                    background: 'rgba(126,200,80,0.2)', border: '1px solid rgba(126,200,80,0.4)',
+                    borderRadius: '99px', padding: '2px 8px',
+                    fontSize: '10px', color: '#7ec850', fontWeight: 600,
+                  }}>
+                    ● オンライン
+                  </div>
+
+                  {/* アバター */}
+                  <div style={{
+                    width: '72px', height: '72px', borderRadius: '50%',
+                    overflow: 'hidden', margin: '0 auto 12px',
+                    border: '2px solid rgba(232,67,143,0.4)',
+                    boxShadow: '0 0 16px rgba(232,67,143,0.2)',
+                  }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={char.avatar_url} alt={char.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </div>
+
+                  <p style={{ fontWeight: 700, fontSize: '15px', marginBottom: '2px', color: 'var(--color-text)' }}>
+                    {char.name}
+                  </p>
+                  <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '8px' }}>
+                    {char.age}歳
+                  </p>
+                  <p style={{ fontSize: '11px', color: '#e8438f', fontWeight: 500 }}>
+                    {char.personality.split('・')[0]}
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          <div style={{ textAlign: 'center', marginTop: '32px' }}>
+            <Link href={user ? '/characters' : '/auth/register'} className="btn-cta" style={{
+              padding: '14px 40px', fontSize: '15px', borderRadius: '12px',
+              display: 'inline-block', textDecoration: 'none',
+            }}>
+              全員と話してみる →
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ── 仕組み ── */}
+      <section style={{ padding: '64px 24px', background: 'var(--color-surface)' }}>
+        <div style={{ maxWidth: '560px', margin: '0 auto' }}>
+          <h2 style={{ textAlign: 'center', fontSize: '22px', fontWeight: 800, marginBottom: '40px' }}>
+            なぜ、こんなに<span style={{ color: '#e8438f' }}>リアル</span>に感じるの？
           </h2>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {[
-              { icon: '👤', title: '本物の人間が返信', desc: 'AIは一切使用していません。実在するスタッフが、あなたのメッセージを読んで、心を込めて返信します。' },
-              { icon: '🕐', title: '24時間いつでも話せる', desc: '夜中でも、早朝でも。気が向いたときにメッセージを送れます。返信はスタッフが確認次第お届けします。' },
-              { icon: '🔒', title: '秘密は厳守', desc: 'お話の内容は外部に漏れることはありません。安心して、何でも話しかけてください。' },
+              { icon: '👩', title: 'AIゼロ。全員、本物の人間', desc: '返信するのは実在する女性スタッフです。だから気持ちが伝わる。だから会話が続く。' },
+              { icon: '💬', title: 'あなたのことを覚えている', desc: '昨日の話の続きから始められます。「また話したい」と思ってもらえるよう、ちゃんと読んでいます。' },
+              { icon: '🔒', title: '秘密は絶対に守ります', desc: 'やりとりの内容が外に漏れることはありません。誰にも言えない話も、ここなら大丈夫。' },
             ].map((f) => (
               <div key={f.title} style={{
-                background: '#fff', border: '1px solid rgba(126,200,80,0.22)',
-                borderRadius: '16px', padding: '24px',
-                display: 'flex', gap: '20px', alignItems: 'flex-start',
+                display: 'flex', gap: '18px', alignItems: 'flex-start',
+                background: 'var(--color-surface-2)',
+                border: '1px solid rgba(220,80,140,0.15)',
+                borderRadius: '16px', padding: '22px',
               }}>
-                <div style={{
-                  width: '52px', height: '52px', borderRadius: '14px',
-                  background: '#edf7e4', display: 'flex', alignItems: 'center',
-                  justifyContent: 'center', fontSize: '24px', flexShrink: 0,
-                }}>
-                  {f.icon}
-                </div>
+                <span style={{ fontSize: '28px', flexShrink: 0 }}>{f.icon}</span>
                 <div>
-                  <p style={{ fontWeight: 700, fontSize: '18px', marginBottom: '8px', color: '#333' }}>{f.title}</p>
-                  <p style={{ fontSize: '16px', lineHeight: 1.7, color: 'rgba(51,51,51,0.6)' }}>{f.desc}</p>
+                  <p style={{ fontWeight: 700, fontSize: '16px', marginBottom: '6px' }}>{f.title}</p>
+                  <p style={{ fontSize: '14px', lineHeight: 1.7, color: 'var(--color-text-muted)' }}>{f.desc}</p>
                 </div>
               </div>
             ))}
@@ -130,116 +227,99 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ── Section 3: 安心感 ── */}
-      <section style={{ padding: '64px 24px', background: '#fff' }}>
-        <div style={{ maxWidth: '560px', margin: '0 auto' }}>
-
-          {/* 声 */}
-          <div style={{
-            background: '#edf7e4',
-            borderLeft: '4px solid #7ec850',
-            borderRadius: '12px', padding: '24px', marginBottom: '48px',
-          }}>
-            <p style={{ fontSize: '17px', lineHeight: 1.8, color: '#333', marginBottom: '12px' }}>
-              「子どもたちは忙しそうで、なかなか話しかけられなくて。<br />
-              ここで話してから、少し気持ちが楽になりました。」
-            </p>
-            <p style={{ fontSize: '14px', color: 'rgba(51,51,51,0.5)' }}>— 68歳・女性</p>
-          </div>
-
-          {/* FAQ */}
-          <h2 style={{ fontSize: '22px', fontWeight: 700, marginBottom: '24px', color: '#333' }}>
-            よくある質問
+      {/* ── 会話サンプル ── */}
+      <section style={{ padding: '64px 24px', background: 'var(--color-bg)' }}>
+        <div style={{ maxWidth: '480px', margin: '0 auto' }}>
+          <h2 style={{ textAlign: 'center', fontSize: '20px', fontWeight: 800, marginBottom: '8px' }}>
+            こんな会話ができます
           </h2>
+          <p style={{ textAlign: 'center', fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: '28px' }}>
+            全部、人間が書いています
+          </p>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '48px' }}>
+          <div style={{
+            background: 'var(--color-surface)',
+            border: '1px solid rgba(220,80,140,0.15)',
+            borderRadius: '20px', padding: '24px',
+            display: 'flex', flexDirection: 'column', gap: '14px',
+          }}>
             {[
-              { q: '本当に人間が返信しているんですか？', a: 'はい。AIは一切使用していません。弊社のスタッフが実際にメッセージを読み、返信しています。' },
-              { q: '個人情報は安全ですか？', a: 'LINEアカウントのみで登録できます。氏名・住所・電話番号などは不要です。やり取りの内容は厳重に管理し、第三者への提供は一切行いません。' },
-              { q: '返信はどのくらいで来ますか？', a: '通常、数時間以内にお返しします。深夜や早朝は翌朝になることもありますが、必ずお返しします。' },
-            ].map((item, i) => (
-              <div key={i} style={{
-                background: '#f7fcf2', border: '1px solid rgba(126,200,80,0.22)',
-                borderRadius: '14px', padding: '20px',
-              }}>
-                <p style={{ fontWeight: 700, fontSize: '16px', marginBottom: '8px', color: '#333' }}>Q. {item.q}</p>
-                <p style={{ fontSize: '16px', lineHeight: 1.7, color: 'rgba(51,51,51,0.6)' }}>{item.a}</p>
+              { role: 'char', text: 'おかえり〜！今日どうだった？なんか疲れた感じする？' },
+              { role: 'user', text: 'わかる？ちょっとしんどかった' },
+              { role: 'char', text: 'わかるよ。顔見えないのに伝わってくるもん笑\n何があったか話してみて？ちゃんと聞くから' },
+              { role: 'user', text: '仕事でミスして、ずっと引きずってる' },
+              { role: 'char', text: 'それはしんどいね…。でも引きずれるって、それだけちゃんと向き合ってる証拠だと思う。\nどんなミスだったか、もう少し教えてもらえる？' },
+            ].map((msg, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+                <div style={{
+                  maxWidth: '80%', padding: '12px 16px',
+                  borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                  fontSize: '14px', lineHeight: 1.7, whiteSpace: 'pre-line',
+                  background: msg.role === 'user'
+                    ? 'linear-gradient(135deg, #e8438f, #c0306e)'
+                    : 'var(--color-surface-2)',
+                  color: msg.role === 'user' ? '#fff' : 'var(--color-text)',
+                  border: msg.role === 'char' ? '1px solid rgba(220,80,140,0.15)' : 'none',
+                }}>
+                  {msg.text}
+                </div>
               </div>
             ))}
-          </div>
-
-          {/* 運営情報 */}
-          <div style={{
-            background: '#f7fcf2', border: '1px solid rgba(126,200,80,0.22)',
-            borderRadius: '14px', padding: '20px',
-            fontSize: '14px', color: 'rgba(51,51,51,0.55)', lineHeight: 2,
-          }}>
-            <p style={{ fontWeight: 700, color: '#333', marginBottom: '4px' }}>運営会社</p>
-            <p>株式会社 ○○○○</p>
-            <p>所在地：東京都○○区○○ ○-○-○</p>
-            <div style={{ display: 'flex', gap: '16px', marginTop: '8px', flexWrap: 'wrap' }}>
-              {[
-                { label: 'プライバシーポリシー', href: '/legal/privacy' },
-                { label: '利用規約', href: '/legal/terms' },
-                { label: '特定商取引法', href: '/legal/tokusho' },
-              ].map(l => (
-                <Link key={l.label} href={l.href} style={{ color: '#7ec850', textDecoration: 'underline' }}>
-                  {l.label}
-                </Link>
-              ))}
-            </div>
           </div>
         </div>
       </section>
 
-      {/* ── Section 4: 最終CTA ── */}
-      <section style={{ background: '#f7fcf2', padding: '80px 24px' }}>
-        <div style={{ maxWidth: '360px', margin: '0 auto', textAlign: 'center' }}>
-          <p style={{ color: '#7ec850', fontSize: '14px', fontWeight: 500, marginBottom: '12px' }}>
-            今夜から始められます
+      {/* ── 最終CTA ── */}
+      <section style={{
+        padding: '80px 24px',
+        background: 'linear-gradient(180deg, var(--color-surface) 0%, #1a0d24 100%)',
+        textAlign: 'center',
+      }}>
+        <div style={{ maxWidth: '420px', margin: '0 auto' }}>
+          <p style={{ color: '#e8438f', fontSize: '13px', fontWeight: 600, marginBottom: '14px', letterSpacing: '0.1em' }}>
+            ✦ 今夜、話しかけてみませんか
           </p>
-          <h2 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '16px', color: '#333' }}>
-            まずは、話してみてください
+          <h2 style={{ fontSize: '26px', fontWeight: 900, marginBottom: '14px', lineHeight: 1.3 }}>
+            あなたのことを知りたい<br />女の子が待っています
           </h2>
-          <p style={{ fontSize: '16px', lineHeight: 1.8, color: 'rgba(51,51,51,0.55)', marginBottom: '32px' }}>
-            最初の5通は無料です。<br />
-            登録はLINEだけ。30秒で始められます。
+          <p style={{ color: 'var(--color-text-muted)', fontSize: '15px', marginBottom: '36px', lineHeight: 1.7 }}>
+            最初の5通は完全無料。<br />
+            登録は30秒。今すぐ話しかけてみてください。
           </p>
-          <a href="#" style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-            background: '#e8834a', color: '#fff',
-            padding: '20px', borderRadius: '14px',
-            fontSize: '20px', fontWeight: 700, textDecoration: 'none',
-            boxShadow: '0 4px 20px rgba(232,131,74,0.35)',
+          <Link href={user ? '/characters' : '/auth/register'} className="btn-cta" style={{
+            display: 'block', padding: '20px', fontSize: '19px',
+            borderRadius: '16px', textDecoration: 'none',
           }}>
-            まずは無料で話してみる
-          </a>
-          <p style={{ fontSize: '13px', color: 'rgba(51,51,51,0.4)', marginTop: '16px' }}>
-            🔒 個人情報は安全に管理します
+            {user ? 'つづきを話す →' : '無料で女の子に話しかける →'}
+          </Link>
+          <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '16px' }}>
+            🔒 個人情報は厳重に管理します
           </p>
         </div>
       </section>
 
       {/* ── Footer ── */}
       <footer style={{
-        borderTop: '1px solid rgba(126,200,80,0.22)',
-        padding: '24px 20px', background: '#fff',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        borderTop: '1px solid rgba(220,80,140,0.1)',
+        padding: '24px 20px', background: 'var(--color-bg)',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px',
       }}>
-        <span style={{ fontWeight: 700, color: '#7ec850', fontSize: '14px' }}>HumanChat</span>
-        <span style={{ fontSize: '12px', color: 'rgba(51,51,51,0.4)' }}>© 2025 HumanChat</span>
+        <span style={{ fontWeight: 800, fontSize: '14px', background: 'linear-gradient(90deg, #e8438f, #a060e0)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+          LoveChat
+        </span>
+        <div style={{ display: 'flex', gap: '20px' }}>
+          {[
+            { label: '特定商取引法', href: '/legal/tokusho' },
+            { label: 'プライバシー', href: '/legal/privacy' },
+            { label: '利用規約', href: '/legal/terms' },
+          ].map(l => (
+            <Link key={l.label} href={l.href} style={{ color: 'var(--color-text-muted)', fontSize: '12px', textDecoration: 'none' }}>
+              {l.label}
+            </Link>
+          ))}
+        </div>
+        <span style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>© 2025 LoveChat</span>
       </footer>
-
-      <style>{`
-        .lp-fadein {
-          opacity: 0;
-          transform: translateY(20px);
-          animation: lpFadeIn 0.7s ease-out forwards;
-        }
-        @keyframes lpFadeIn {
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
 
     </main>
   )
