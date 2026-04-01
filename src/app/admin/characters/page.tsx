@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Edit2, Trash2, Loader2, Check, X } from 'lucide-react'
+import { Plus, Edit2, Trash2, Loader2, Check, X, Upload } from 'lucide-react'
 import type { Character } from '@/types'
 
 export default function AdminCharactersPage() {
@@ -11,6 +11,7 @@ export default function AdminCharactersPage() {
   const [editing, setEditing] = useState<Character | null>(null)
   const [isNew, setIsNew] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [form, setForm] = useState({
     name: '',
     age: 25,
@@ -19,6 +20,7 @@ export default function AdminCharactersPage() {
     avatar_url: '',
     is_active: true,
   })
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
 
   useEffect(() => { loadCharacters() }, [])
@@ -30,6 +32,32 @@ export default function AdminCharactersPage() {
       .order('created_at', { ascending: true })
     setCharacters(data || [])
     setLoading(false)
+  }
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploading(true)
+    const ext = file.name.split('.').pop()
+    const fileName = `${Date.now()}.${ext}`
+
+    const { error } = await supabase.storage
+      .from('avatars')
+      .upload(fileName, file, { upsert: true })
+
+    if (error) {
+      alert('アップロード失敗: ' + error.message)
+      setUploading(false)
+      return
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(fileName)
+
+    setForm(f => ({ ...f, avatar_url: publicUrl }))
+    setUploading(false)
   }
 
   const startEdit = (char: Character) => {
@@ -100,7 +128,7 @@ export default function AdminCharactersPage() {
         </button>
       </div>
 
-      {/* フォーム (新規 or 編集) */}
+      {/* フォーム */}
       {(isNew || editing) && (
         <div className="glass rounded-2xl p-6 mb-6">
           <h2 className="font-semibold mb-4">{isNew ? '新しいキャラクターを追加' : 'キャラクターを編集'}</h2>
@@ -125,15 +153,48 @@ export default function AdminCharactersPage() {
                 />
               </div>
             </div>
+
+            {/* 画像アップロード */}
             <div>
-              <label className="text-xs text-[var(--color-text-muted)] mb-1 block">アバターURL</label>
-              <input
-                value={form.avatar_url}
-                onChange={e => setForm(f => ({ ...f, avatar_url: e.target.value }))}
-                className="w-full bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[var(--color-primary)]"
-                placeholder="https://..."
-              />
+              <label className="text-xs text-[var(--color-text-muted)] mb-1 block">アバター画像</label>
+              <div className="flex items-center gap-3">
+                {/* プレビュー */}
+                <div className="w-16 h-16 rounded-full overflow-hidden border border-[var(--color-border)] flex-shrink-0 bg-[var(--color-surface-2)] flex items-center justify-center">
+                  {form.avatar_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={form.avatar_url} alt="preview" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-[var(--color-text-muted)] text-xs">未設定</span>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="btn-ghost px-4 py-2 text-sm flex items-center gap-2 disabled:opacity-60"
+                  >
+                    {uploading
+                      ? <><Loader2 size={14} className="animate-spin" />アップロード中...</>
+                      : <><Upload size={14} />画像をアップロード</>
+                    }
+                  </button>
+                  {form.avatar_url && (
+                    <p className="text-xs text-[var(--color-text-muted)] mt-1 truncate max-w-xs">
+                      {form.avatar_url.split('/').pop()}
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
+
             <div>
               <label className="text-xs text-[var(--color-text-muted)] mb-1 block">一言プロフィール</label>
               <textarea
