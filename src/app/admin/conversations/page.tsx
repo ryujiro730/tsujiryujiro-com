@@ -2,10 +2,14 @@ import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
 import { ja } from 'date-fns/locale'
-export default async function AdminConversationsPage() {
-  const supabase = createClient()
 
-  const { data: conversations } = await supabase
+type SearchParams = { filter?: string }
+
+export default async function AdminConversationsPage({ searchParams }: { searchParams: SearchParams }) {
+  const supabase = createClient()
+  const unreadOnly = searchParams.filter !== 'all'
+
+  let query = supabase
     .from('conversations')
     .select(`
       id,
@@ -14,8 +18,13 @@ export default async function AdminConversationsPage() {
       characters ( id, name, avatar_url ),
       profiles ( id, user_code, display_name, points )
     `)
-    .eq('is_unread_staff', true)
     .order('last_message_at', { ascending: false })
+
+  if (unreadOnly) {
+    query = query.eq('is_unread_staff', true)
+  }
+
+  const { data: conversations } = await query
 
   const convIds = (conversations ?? []).map(c => c.id)
   const { data: lastMessages } = convIds.length > 0
@@ -35,8 +44,22 @@ export default async function AdminConversationsPage() {
 
   return (
     <div>
-      <div className="mb-6">
+      <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold">受信トレイ</h1>
+        <div className="flex gap-2">
+          <Link
+            href="/admin/conversations"
+            className={`px-4 py-1.5 rounded-lg text-sm transition-colors ${unreadOnly ? 'bg-[var(--color-primary)] text-white' : 'glass text-[var(--color-text-muted)]'}`}
+          >
+            未返信のみ
+          </Link>
+          <Link
+            href="?filter=all"
+            className={`px-4 py-1.5 rounded-lg text-sm transition-colors ${!unreadOnly ? 'bg-[var(--color-primary)] text-white' : 'glass text-[var(--color-text-muted)]'}`}
+          >
+            すべて
+          </Link>
+        </div>
       </div>
 
       <div className="space-y-2">
@@ -103,7 +126,7 @@ export default async function AdminConversationsPage() {
 
       {(!conversations || conversations.length === 0) && (
         <div className="text-center py-20 text-[var(--color-text-muted)]">
-          <p>メッセージはありません</p>
+          <p>{unreadOnly ? '未返信のメッセージはありません' : '会話がありません'}</p>
         </div>
       )}
     </div>

@@ -43,11 +43,14 @@ export async function POST(request: Request) {
         .update({ points: profile.points + tokenCount })
         .eq('id', userId)
 
+      const priceYen = session.amount_total ?? null
+
       await supabase.from('point_transactions').insert({
         user_id: userId,
         amount: tokenCount,
         type: 'purchase',
         description: `${tokenCount}トークン購入`,
+        price_yen: priceYen,
       })
     }
   }

@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import Link from 'next/link'
 import { Search } from 'lucide-react'
 
 type SearchParams = {
@@ -292,7 +293,7 @@ export default async function AdminUsersPage({
 
       <div className="space-y-2">
         {users?.map((user) => (
-          <div key={user.id} className="glass rounded-xl px-5 py-4">
+          <Link key={user.id} href={`/admin/users/${user.id}`} className="block glass rounded-xl px-5 py-4 hover:border-[var(--color-primary-light)]/40 transition-all">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0 flex-1">
                 {/* 1行目: ID・名前・性別・年齢 */}
@@ -340,7 +341,7 @@ export default async function AdminUsersPage({
                 </div>
               </div>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
 

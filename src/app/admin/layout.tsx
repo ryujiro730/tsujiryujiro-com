@@ -5,8 +5,29 @@ import RealtimeRefresher from './conversations/RealtimeRefresher'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/auth/login')
+
+  // getUser() makes a network call — fall back to getSession() (cookie-only) if unreachable
+  let user
+  let networkError = false
+  try {
+    const { data } = await supabase.auth.getUser()
+    user = data.user
+  } catch { networkError = true }
+
+  if (!user) {
+    try {
+      const { data } = await supabase.auth.getSession()
+      user = data.session?.user ?? null
+    } catch { /* session fetch also failed */ }
+  }
+
+  // ネットワークエラーで両方失敗した場合はログイン画面に飛ばさない
+  if (!user && !networkError) redirect('/auth/login')
+  if (!user) return (
+    <div className="min-h-screen warm-bg flex items-center justify-center">
+      <p className="text-[var(--color-text-muted)] text-sm">接続エラーが発生しました。ページを再読み込みしてください。</p>
+    </div>
+  )
 
   const { data: profile } = await supabase
     .from('profiles').select('role, display_name').eq('id', user.id).single()
@@ -21,14 +42,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const navItems = [
     { href: '/admin', label: '概要' },
     { href: '/admin/conversations', label: `受信トレイ${(unread ?? 0) > 0 ? ` (${unread})` : ''}` },
+    { href: '/admin/conversations/search', label: 'やり取り検索' },
     { href: '/admin/users', label: 'ユーザー' },
     { href: '/admin/characters', label: 'キャラ管理' },
+    { href: '/admin/analytics', label: '集計' },
   ]
 
   return (
     <div className="min-h-screen warm-bg">
       <header className="glass px-5" style={{ position: 'sticky', top: 0, zIndex: 50 }}>
-        <div className="max-w-3xl mx-auto flex items-center gap-6 h-12">
+        <div className="w-full px-5 flex items-center gap-6 h-12">
           <span className="text-sm font-medium text-[var(--color-text-warm)]">HumanChat</span>
           <span className="text-[var(--color-border-warm)] text-xs">|</span>
           <nav className="flex items-center gap-1">
@@ -46,7 +69,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       </header>
 
       <RealtimeRefresher />
-      <main className="max-w-3xl mx-auto px-5 py-6">
+      <main className="w-full px-5 py-6">
         {children}
       </main>
     </div>

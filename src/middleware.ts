@@ -9,9 +9,13 @@ export async function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() { return request.cookies.getAll() },
+        getAll() {
+          return request.cookies.getAll()
+        },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value)
+          )
           supabaseResponse = NextResponse.next({ request })
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
@@ -25,17 +29,16 @@ export async function middleware(request: NextRequest) {
   try {
     const { data } = await supabase.auth.getUser()
     user = data.user
-  } catch {
-    // Supabase未設定でもページは表示できるようにする
-  }
+  } catch {}
 
   const path = request.nextUrl.pathname
 
   const protectedPaths = ['/characters', '/chat', '/payment', '/conversations', '/settings', '/admin']
   const isProtected = protectedPaths.some(p => path.startsWith(p))
   const isAuthPage = path.startsWith('/auth')
+  const isAdminPath = path.startsWith('/admin')
 
-  if (!user && isProtected) {
+  if (!user && isProtected && !isAdminPath) {
     return NextResponse.redirect(new URL('/auth/login', request.url))
   }
 
@@ -43,6 +46,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/characters', request.url))
   }
 
+  // ← ここが正しい位置
   return supabaseResponse
 }
 

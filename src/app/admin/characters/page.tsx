@@ -2,8 +2,21 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Edit2, Trash2, Loader2, Check, X, Upload, Images } from 'lucide-react'
+import { Plus, Edit2, Trash2, Loader2, Check, X, Upload, Images, Megaphone, Calendar, Users, Send } from 'lucide-react'
 import type { Character, CharacterPhoto } from '@/types'
+
+const STATUS_LABEL: Record<string, string> = {
+  pending: '待機中',
+  processing: '送信中',
+  done: '完了',
+  failed: '失敗',
+}
+const STATUS_COLOR: Record<string, string> = {
+  pending: 'bg-yellow-900/40 text-yellow-400',
+  processing: 'bg-blue-900/40 text-blue-400',
+  done: 'bg-emerald-900/40 text-emerald-400',
+  failed: 'bg-red-900/40 text-red-400',
+}
 
 export default function AdminCharactersPage() {
   const [characters, setCharacters] = useState<Character[]>([])
@@ -25,6 +38,26 @@ export default function AdminCharactersPage() {
   const [photos, setPhotos] = useState<CharacterPhoto[]>([])
   const [photosLoading, setPhotosLoading] = useState(false)
   const [photoUploading, setPhotoUploading] = useState(false)
+
+  // 同報送信
+  const [broadcastCharId, setBroadcastCharId] = useState<string | null>(null)
+  const [broadcastJobs, setBroadcastJobs] = useState<any[]>([])
+  const [bForm, setBForm] = useState({
+    excludeWithConv: true,
+    registeredFrom: '',
+    registeredTo: '',
+    chargedMin: '',
+    chargedMax: '',
+    gender: '',
+    ageMin: '',
+    ageMax: '',
+    message: '',
+    scheduledAt: '',
+  })
+  const [bPreview, setBPreview] = useState<{ count: number; samples: string[] } | null>(null)
+  const [bPreviewing, setBPreviewing] = useState(false)
+  const [bSending, setBSending] = useState(false)
+  const [bSent, setBSent] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const photoInputRef = useRef<HTMLInputElement>(null)
@@ -126,6 +159,78 @@ export default function AdminCharactersPage() {
       .order('order_index')
     setPhotos(data || [])
     setPhotosLoading(false)
+  }
+
+  const openBroadcast = async (charId: string) => {
+    if (broadcastCharId === charId) {
+      setBroadcastCharId(null)
+      setBroadcastJobs([])
+      setBPreview(null)
+      return
+    }
+    setBroadcastCharId(charId)
+    setBPreview(null)
+    setBSent(false)
+    // 過去の同報ジョブを取得
+    const { data } = await supabase.from('broadcast_jobs')
+      .select('id, message, status, target_count, sent_count, scheduled_at, created_at')
+      .eq('character_id', charId)
+      .order('created_at', { ascending: false })
+      .limit(10)
+    setBroadcastJobs(data ?? [])
+  }
+
+  const previewBroadcast = async (charId: string) => {
+    setBPreviewing(true)
+    setBPreview(null)
+    const params = new URLSearchParams({ characterId: charId, excludeWithConv: String(bForm.excludeWithConv) })
+    if (bForm.registeredFrom) params.set('registeredFrom', bForm.registeredFrom)
+    if (bForm.registeredTo) params.set('registeredTo', bForm.registeredTo)
+    if (bForm.chargedMin) params.set('chargedMin', bForm.chargedMin)
+    if (bForm.chargedMax) params.set('chargedMax', bForm.chargedMax)
+    if (bForm.gender) params.set('gender', bForm.gender)
+    if (bForm.ageMin) params.set('ageMin', bForm.ageMin)
+    if (bForm.ageMax) params.set('ageMax', bForm.ageMax)
+    const res = await fetch(`/api/admin/broadcast/preview?${params}`)
+    const data = await res.json()
+    setBPreview(data)
+    setBPreviewing(false)
+  }
+
+  const sendBroadcast = async (charId: string) => {
+    if (!bForm.message.trim()) return
+    if (!confirm(`${bPreview?.count ?? '?'}人に送信します。よろしいですか？`)) return
+    setBSending(true)
+    const res = await fetch('/api/admin/broadcast', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        characterId: charId,
+        message: bForm.message,
+        scheduledAt: bForm.scheduledAt || null,
+        filters: {
+          excludeWithConv: bForm.excludeWithConv,
+          registeredFrom: bForm.registeredFrom || null,
+          registeredTo: bForm.registeredTo || null,
+          chargedMin: bForm.chargedMin ? parseInt(bForm.chargedMin) : null,
+          chargedMax: bForm.chargedMax ? parseInt(bForm.chargedMax) : null,
+          gender: bForm.gender || null,
+          ageMin: bForm.ageMin ? parseInt(bForm.ageMin) : null,
+          ageMax: bForm.ageMax ? parseInt(bForm.ageMax) : null,
+        },
+      }),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      alert('送信失敗: ' + data.error)
+    } else {
+      setBSent(true)
+      setBForm(f => ({ ...f, message: '', scheduledAt: '' }))
+      setBPreview(null)
+      // ジョブリストを再取得
+      await openBroadcast(charId)
+    }
+    setBSending(false)
   }
 
   const startEdit = (char: Character) => {
@@ -337,6 +442,13 @@ export default function AdminCharactersPage() {
                   <Images size={16} />
                 </button>
                 <button
+                  onClick={() => openBroadcast(char.id)}
+                  className={`p-2 rounded-lg transition-colors ${broadcastCharId === char.id ? 'bg-[var(--color-primary)] text-white' : 'hover:bg-[var(--color-surface-2)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}`}
+                  title="同報送信"
+                >
+                  <Megaphone size={16} />
+                </button>
+                <button
                   onClick={() => startEdit(char)}
                   className="p-2 rounded-lg hover:bg-[var(--color-surface-2)] transition-colors text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
                 >
@@ -405,6 +517,216 @@ export default function AdminCharactersPage() {
                         </button>
                       </div>
                     ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 同報送信パネル */}
+            {broadcastCharId === char.id && (
+              <div className="mt-1 glass rounded-2xl p-5 space-y-5">
+                {/* ヘッダー */}
+                <h3 className="text-sm font-semibold flex items-center gap-1.5">
+                  <Megaphone size={14} />
+                  {char.name}への同報送信
+                </h3>
+
+                {/* フィルター設定 */}
+                <div className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl p-4 space-y-4">
+                  <p className="text-xs font-medium text-[var(--color-text-muted)] flex items-center gap-1.5">
+                    <Users size={12} />
+                    送信対象フィルター
+                  </p>
+
+                  {/* やり取り除外 */}
+                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={bForm.excludeWithConv}
+                      onChange={e => setBForm(f => ({ ...f, excludeWithConv: e.target.checked }))}
+                      className="rounded"
+                    />
+                    やり取りがあるユーザーを除外
+                  </label>
+
+                  {/* 登録日 */}
+                  <div>
+                    <label className="text-xs text-[var(--color-text-muted)] mb-1.5 block">登録日</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="date"
+                        value={bForm.registeredFrom}
+                        onChange={e => setBForm(f => ({ ...f, registeredFrom: e.target.value }))}
+                        className="flex-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-[var(--color-primary)]"
+                      />
+                      <span className="text-xs text-[var(--color-text-muted)]">〜</span>
+                      <input
+                        type="date"
+                        value={bForm.registeredTo}
+                        onChange={e => setBForm(f => ({ ...f, registeredTo: e.target.value }))}
+                        className="flex-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-[var(--color-primary)]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* 総入金額 */}
+                  <div>
+                    <label className="text-xs text-[var(--color-text-muted)] mb-1.5 block">総入金額（円）</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={bForm.chargedMin}
+                        onChange={e => setBForm(f => ({ ...f, chargedMin: e.target.value }))}
+                        placeholder="下限"
+                        className="flex-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-[var(--color-primary)]"
+                      />
+                      <span className="text-xs text-[var(--color-text-muted)]">〜</span>
+                      <input
+                        type="number"
+                        value={bForm.chargedMax}
+                        onChange={e => setBForm(f => ({ ...f, chargedMax: e.target.value }))}
+                        placeholder="上限"
+                        className="flex-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-[var(--color-primary)]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* 性別 */}
+                  <div>
+                    <label className="text-xs text-[var(--color-text-muted)] mb-1.5 block">性別</label>
+                    <select
+                      value={bForm.gender}
+                      onChange={e => setBForm(f => ({ ...f, gender: e.target.value }))}
+                      className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-[var(--color-primary)]"
+                    >
+                      <option value="">すべて</option>
+                      <option value="male">男性</option>
+                      <option value="female">女性</option>
+                      <option value="other">その他</option>
+                    </select>
+                  </div>
+
+                  {/* 年齢 */}
+                  <div>
+                    <label className="text-xs text-[var(--color-text-muted)] mb-1.5 block">年齢</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={bForm.ageMin}
+                        onChange={e => setBForm(f => ({ ...f, ageMin: e.target.value }))}
+                        placeholder="下限"
+                        className="flex-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-[var(--color-primary)]"
+                      />
+                      <span className="text-xs text-[var(--color-text-muted)]">〜</span>
+                      <input
+                        type="number"
+                        value={bForm.ageMax}
+                        onChange={e => setBForm(f => ({ ...f, ageMax: e.target.value }))}
+                        placeholder="上限"
+                        className="flex-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-[var(--color-primary)]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* プレビューボタン */}
+                  <button
+                    onClick={() => previewBroadcast(char.id)}
+                    disabled={bPreviewing}
+                    className="btn-ghost px-4 py-2 text-sm flex items-center gap-1.5 disabled:opacity-60"
+                  >
+                    {bPreviewing
+                      ? <><Loader2 size={14} className="animate-spin" />確認中...</>
+                      : <><Users size={14} />対象ユーザーを確認</>
+                    }
+                  </button>
+
+                  {/* プレビュー結果 */}
+                  {bPreview && (
+                    <div className="bg-[var(--color-surface)] rounded-lg px-4 py-3 text-sm">
+                      <p className="font-semibold text-[var(--color-text)]">
+                        対象: <span className="text-[var(--color-primary)]">{bPreview.count}人</span>
+                      </p>
+                      {bPreview.samples.length > 0 && (
+                        <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                          例: {bPreview.samples.join('、')}
+                          {bPreview.count > bPreview.samples.length && ` …他${bPreview.count - bPreview.samples.length}人`}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* メッセージ入力 */}
+                <div>
+                  <label className="text-xs text-[var(--color-text-muted)] mb-1.5 block">送信メッセージ</label>
+                  <textarea
+                    value={bForm.message}
+                    onChange={e => setBForm(f => ({ ...f, message: e.target.value }))}
+                    rows={4}
+                    placeholder={`${char.name}からのメッセージを入力...`}
+                    className="w-full bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl px-4 py-2.5 text-sm resize-none focus:outline-none focus:border-[var(--color-primary)]"
+                  />
+                </div>
+
+                {/* 送信日時（スケジュール） */}
+                <div>
+                  <label className="text-xs text-[var(--color-text-muted)] mb-1.5 flex items-center gap-1">
+                    <Calendar size={11} />
+                    送信日時（空欄なら即時送信）
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={bForm.scheduledAt}
+                    onChange={e => setBForm(f => ({ ...f, scheduledAt: e.target.value }))}
+                    className="w-full bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[var(--color-primary)]"
+                  />
+                </div>
+
+                {/* 送信ボタン */}
+                {bSent && (
+                  <div className="flex items-center gap-2 text-sm text-emerald-400">
+                    <Check size={14} />
+                    送信が開始されました
+                  </div>
+                )}
+                <button
+                  onClick={() => sendBroadcast(char.id)}
+                  disabled={bSending || !bForm.message.trim() || !bPreview}
+                  className="btn-primary px-5 py-2.5 text-sm flex items-center gap-1.5 disabled:opacity-60"
+                >
+                  {bSending
+                    ? <><Loader2 size={14} className="animate-spin" />送信中...</>
+                    : <><Send size={14} />同報送信</>
+                  }
+                </button>
+
+                {/* 同報履歴 */}
+                {broadcastJobs.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-[var(--color-text-muted)] mb-2">過去の同報履歴</p>
+                    <div className="space-y-2">
+                      {broadcastJobs.map((job) => (
+                        <div
+                          key={job.id}
+                          className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-xs"
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className={`px-2 py-0.5 rounded-full text-xs ${STATUS_COLOR[job.status] ?? 'bg-gray-800 text-gray-400'}`}>
+                              {STATUS_LABEL[job.status] ?? job.status}
+                            </span>
+                            <span className="text-[var(--color-text-muted)]">
+                              {new Date(job.created_at).toLocaleString('ja-JP', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <p className="text-[var(--color-text)] line-clamp-2">{job.message}</p>
+                          <p className="text-[var(--color-text-muted)] mt-1">
+                            {job.target_count != null ? `対象: ${job.target_count}人` : '対象: 集計中'}
+                            {job.status === 'done' && ` / 送信: ${job.sent_count}人`}
+                            {job.scheduled_at && ` / 予定: ${new Date(job.scheduled_at).toLocaleString('ja-JP', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}`}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
