@@ -179,7 +179,7 @@ export default function AdminConversationDetailPage() {
               </p>
               {userProfile && (
                 <p className="text-[var(--color-text-muted)] text-xs">
-                  相手: {userProfile.display_name ?? '匿名'} · 残
+                  相手: {userProfile.display_name || userProfile.email || '匿名'} · 残
                   {Math.max(0, 5 - userProfile.free_messages_used)}無料 · {userProfile.points}T
                 </p>
               )}
@@ -212,7 +212,7 @@ export default function AdminConversationDetailPage() {
                     {msg.content}
                   </div>
                   <span className="text-[var(--color-text-muted)] text-[11px] px-1">
-                    {isOp ? character?.name : userProfile?.display_name}
+                    {isOp ? character?.name : (userProfile?.display_name || userProfile?.email || '匿名')}
                     {' · '}
                     {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true, locale: ja })}
                   </span>

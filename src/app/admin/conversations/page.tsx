@@ -67,7 +67,7 @@ export default async function AdminConversationsPage() {
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-sm">
-                        {conv.profiles?.display_name ?? '匿名ユーザー'}
+                        {conv.profiles?.display_name || conv.profiles?.email || '匿名ユーザー'}
                       </span>
                       {conv.profiles?.user_code && (
                         <span className="font-mono text-xs text-[var(--color-text-muted)] bg-[var(--color-surface-2)] px-1.5 py-0.5 rounded">

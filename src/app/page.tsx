@@ -45,75 +45,92 @@ export default async function HomePage() {
       </nav>
 
       {/* ── Hero ── */}
-      <section style={{
-        maxWidth: '640px', margin: '0 auto',
-        padding: '80px 24px 60px', textAlign: 'center',
-      }}>
-        {/* バッジ */}
-        <div style={{ marginBottom: '28px' }}>
-          <span style={{
-            display: 'inline-block',
-            background: 'rgba(232,67,143,0.12)',
-            border: '1px solid rgba(232,67,143,0.3)',
-            color: '#e8438f',
-            padding: '6px 18px', borderRadius: '99px',
-            fontSize: '13px', fontWeight: 500,
-          }}>
-            ✦ 今夜もあなたを待っています
-          </span>
+      <section style={{ position: 'relative', overflow: 'hidden' }}>
+        {/* 画像＋オーバーレイ */}
+        <div style={{ position: 'relative', width: '100%', minHeight: '100dvh', display: 'flex', alignItems: 'flex-end' }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/LP1.png"
+            alt="hero"
+            style={{
+              position: 'absolute', inset: 0,
+              width: '100%', height: '100%',
+              objectFit: 'cover', objectPosition: 'top center',
+            }}
+          />
+          {/* グラデーションオーバーレイ */}
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: 'linear-gradient(to bottom, rgba(13,10,20,0.15) 0%, rgba(13,10,20,0.3) 40%, rgba(13,10,20,0.92) 75%, var(--color-bg) 100%)',
+          }} />
+
+          {/* テキスト */}
+          <div style={{ position: 'relative', zIndex: 10, width: '100%', padding: '0 24px 56px', maxWidth: '600px', margin: '0 auto' }}>
+            <div style={{ marginBottom: '16px' }}>
+              <span style={{
+                display: 'inline-block',
+                background: 'rgba(232,67,143,0.2)',
+                border: '1px solid rgba(232,67,143,0.45)',
+                color: '#f472b6',
+                padding: '5px 16px', borderRadius: '99px',
+                fontSize: '12px', fontWeight: 600, letterSpacing: '0.05em',
+              }}>
+                ✦ 今夜もあなたを待っています
+              </span>
+            </div>
+
+            <h1 style={{ fontWeight: 900, lineHeight: 1.2, marginBottom: '16px' }}>
+              <span style={{ display: 'block', fontSize: 'clamp(2.4rem, 10vw, 3.8rem)', color: '#fff' }}>
+                あなただけに
+              </span>
+              <span style={{
+                display: 'block', fontSize: 'clamp(2.4rem, 10vw, 3.8rem)',
+                background: 'linear-gradient(90deg, #e8438f, #c084fc)',
+                WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+              }}>
+                話しかけてくれる
+              </span>
+              <span style={{ display: 'block', fontSize: 'clamp(2.4rem, 10vw, 3.8rem)', color: '#fff' }}>
+                女の子がいる。
+              </span>
+            </h1>
+
+            <p style={{ fontSize: '16px', lineHeight: 1.8, color: 'rgba(255,255,255,0.7)', marginBottom: '32px' }}>
+              自社開発の超高性能AIが、<br />あなただけのために返信します。
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '12px' }}>
+              <Link href={user ? '/characters' : '/auth/register'} className="btn-cta" style={{
+                padding: '18px 44px', fontSize: '18px', borderRadius: '14px',
+                display: 'inline-block', textDecoration: 'none',
+              }}>
+                {user ? 'つづきを話す' : '今すぐ無料で話す →'}
+              </Link>
+              <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)' }}>
+                登録30秒・最初の5通は無料
+              </span>
+            </div>
+          </div>
         </div>
 
-        <h1 style={{ fontWeight: 900, lineHeight: 1.15, marginBottom: '20px' }}>
-          <span style={{ display: 'block', fontSize: 'clamp(2.2rem, 9vw, 3.5rem)', color: 'var(--color-text)' }}>
-            あなただけに
-          </span>
-          <span style={{
-            display: 'block', fontSize: 'clamp(2.2rem, 9vw, 3.5rem)',
-            background: 'linear-gradient(90deg, #e8438f, #a060e0)',
-            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-          }}>
-            話しかけてくれる
-          </span>
-          <span style={{ display: 'block', fontSize: 'clamp(2.2rem, 9vw, 3.5rem)', color: 'var(--color-text)' }}>
-            女の子がいる。
-          </span>
-        </h1>
-
-        <p style={{
-          fontSize: '17px', lineHeight: 1.85,
-          color: 'var(--color-text-muted)',
-          marginBottom: '44px', maxWidth: '460px', margin: '0 auto 44px',
-        }}>
-          自社開発の超高性能AIが、<br />
-          あなただけのために返信します。
-        </p>
-
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px' }}>
-          <Link href={user ? '/characters' : '/auth/register'} className="btn-cta" style={{
-            padding: '18px 48px', fontSize: '18px', borderRadius: '14px',
-            display: 'inline-block', textDecoration: 'none',
-          }}>
-            {user ? 'つづきを話す' : '今すぐ無料で話す →'}
-          </Link>
-          <span style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>
-            登録30秒・最初の5通は無料
-          </span>
-        </div>
-
-        {/* 数字 */}
+        {/* 数字バー */}
         <div style={{
-          display: 'flex', justifyContent: 'center', gap: '40px',
-          marginTop: '56px', paddingTop: '40px',
-          borderTop: '1px solid rgba(220,80,140,0.12)',
+          display: 'flex', justifyContent: 'center', gap: '0',
+          background: 'var(--color-surface)',
+          borderTop: '1px solid rgba(220,80,140,0.15)',
+          borderBottom: '1px solid rgba(220,80,140,0.15)',
         }}>
           {[
             { num: '7人', label: '個性豊かな女の子' },
             { num: '24h', label: 'いつでも話せる' },
             { num: '独自AI', label: '超高性能AIが返信' },
-          ].map(s => (
-            <div key={s.label} style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '24px', fontWeight: 800, color: '#e8438f', marginBottom: '4px' }}>{s.num}</div>
-              <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>{s.label}</div>
+          ].map((s, i) => (
+            <div key={s.label} style={{
+              flex: 1, textAlign: 'center', padding: '20px 8px',
+              borderRight: i < 2 ? '1px solid rgba(220,80,140,0.15)' : 'none',
+            }}>
+              <div style={{ fontSize: '22px', fontWeight: 800, color: '#e8438f', marginBottom: '4px' }}>{s.num}</div>
+              <div style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>{s.label}</div>
             </div>
           ))}
         </div>
