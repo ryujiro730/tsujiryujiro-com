@@ -3,8 +3,8 @@ import './globals.css'
 import ServiceWorkerRegister from '@/components/ServiceWorkerRegister'
 
 export const metadata: Metadata = {
-  title: 'HumanChat - AIじゃない、本物の人間が返します',
-  description: 'GPTと話すのに疲れませんか？本物の人間があなたのメッセージを読んで、心を込めて返信します。最初の5通は無料。',
+  title: 'LoveChat - 超高性能AIがあなただけに返信します',
+  description: '自社開発の超高性能AIが、あなたのメッセージにリアルタイムで返信します。最初の5通は無料。',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,

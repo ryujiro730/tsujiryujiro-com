@@ -219,7 +219,7 @@ export default function ChatPage() {
           </Link>
           <div className="flex items-center gap-1.5 mt-0.5">
             <span className="online-dot" style={{ width: '6px', height: '6px' }} />
-            <p className="text-[var(--color-text-muted)] text-xs">人間が返信します</p>
+            <p className="text-[var(--color-text-muted)] text-xs">AIが返信します</p>
           </div>
         </div>
         {hasPhotos && (
@@ -245,7 +245,7 @@ export default function ChatPage() {
             </div>
             <p className="font-medium mb-1">{character.name}</p>
             <p className="text-[var(--color-text-muted)] text-sm">最初のメッセージを送ってみましょう</p>
-            <p className="text-xs mt-2" style={{ color: 'var(--color-accent)' }}>人間が読んで返事を書きます</p>
+            <p className="text-xs mt-2" style={{ color: 'var(--color-accent)' }}>AIがすぐに返事を書きます</p>
           </div>
         )}
         {messages.map((msg) => (
@@ -258,7 +258,7 @@ export default function ChatPage() {
               <img src={character.avatar_url} alt="" className="w-full h-full object-cover" />
             </div>
             <div className="bubble-operator px-4 py-3 flex items-center gap-2">
-              <span className="text-[var(--color-text-muted)] text-xs">人間が返信中</span>
+              <span className="text-[var(--color-text-muted)] text-xs">AIが返信中</span>
               <div className="flex gap-1">
                 <div className="typing-dot" /><div className="typing-dot" /><div className="typing-dot" />
               </div>
@@ -385,7 +385,7 @@ function MessageBubble({ message, characterName, characterAvatar }: {
           {isUser && message.is_read && (
             <span className="text-[11px]" style={{ color: 'var(--color-primary)' }}>既読</span>
           )}
-          {!isUser && <span className="text-[11px] text-[var(--color-text-muted)]">人間より</span>}
+          {!isUser && <span className="text-[11px] text-[var(--color-text-muted)]">AIより</span>}
         </div>
       </div>
     </div>

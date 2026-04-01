@@ -84,8 +84,8 @@ export default async function HomePage() {
           color: 'var(--color-text-muted)',
           marginBottom: '44px', maxWidth: '460px', margin: '0 auto 44px',
         }}>
-          AIじゃない。本物の女の子が、<br />
-          あなたのメッセージを読んで返信します。
+          自社開発の超高性能AIが、<br />
+          あなただけのために返信します。
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px' }}>
@@ -109,7 +109,7 @@ export default async function HomePage() {
           {[
             { num: '7人', label: '個性豊かな女の子' },
             { num: '24h', label: 'いつでも話せる' },
-            { num: '100%', label: '本物の人間が返信' },
+            { num: '独自AI', label: '超高性能AIが返信' },
           ].map(s => (
             <div key={s.label} style={{ textAlign: 'center' }}>
               <div style={{ fontSize: '24px', fontWeight: 800, color: '#e8438f', marginBottom: '4px' }}>{s.num}</div>
@@ -206,8 +206,8 @@ export default async function HomePage() {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {[
-              { icon: '👩', title: 'AIゼロ。全員、本物の人間', desc: '返信するのは実在する女性スタッフです。だから気持ちが伝わる。だから会話が続く。' },
-              { icon: '💬', title: 'あなたのことを覚えている', desc: '昨日の話の続きから始められます。「また話したい」と思ってもらえるよう、ちゃんと読んでいます。' },
+              { icon: '🤖', title: '自社開発の超高性能AI', desc: '一般公開されているAIとは別次元。独自チューニングにより、まるで本物の女の子と話しているような自然な会話を実現。' },
+              { icon: '💬', title: 'あなたのことを覚えている', desc: '昨日の話の続きから始められます。会話の文脈を深く理解するから「また話したい」と思える会話が続く。' },
               { icon: '🔒', title: '秘密は絶対に守ります', desc: 'やりとりの内容が外に漏れることはありません。誰にも言えない話も、ここなら大丈夫。' },
             ].map((f) => (
               <div key={f.title} style={{
@@ -234,7 +234,7 @@ export default async function HomePage() {
             こんな会話ができます
           </h2>
           <p style={{ textAlign: 'center', fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: '28px' }}>
-            全部、人間が書いています
+            超高性能AIがリアルタイムで返信
           </p>
 
           <div style={{
