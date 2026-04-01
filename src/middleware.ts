@@ -21,7 +21,14 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  let user = null
+  try {
+    const { data } = await supabase.auth.getUser()
+    user = data.user
+  } catch {
+    // Supabase未設定でもページは表示できるようにする
+  }
+
   const path = request.nextUrl.pathname
 
   const protectedPaths = ['/characters', '/chat', '/payment', '/conversations', '/settings', '/admin']
