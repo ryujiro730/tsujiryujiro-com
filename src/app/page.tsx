@@ -207,11 +207,34 @@ export default async function HomePage() {
           <p style={{ textAlign: 'center', fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: '28px' }}>超高性能AIがリアルタイムで返信</p>
           <div style={{ background: 'var(--color-surface)', border: '1px solid rgba(220,80,140,0.15)', borderRadius: '20px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
             {[
-              { role: 'char', text: 'おかえり〜！今日どうだった？なんか疲れた感じする？' },
-              { role: 'user', text: 'わかる？ちょっとしんどかった' },
-              { role: 'char', text: 'わかるよ。顔見えないのに伝わってくるもん笑\n何があったか話してみて？ちゃんと聞くから' },
-              { role: 'user', text: '仕事でミスして、ずっと引きずってる' },
-              { role: 'char', text: 'それはしんどいね…。でも引きずれるって、それだけちゃんと向き合ってる証拠だと思う。\nどんなミスだったか、もう少し教えてもらえる？' },
+              { role: 'char', text: 'そろそろ、おかえりになられるお時間ですよね。昨日の濃密な時間の余韻のせいで、ついついメールを送ってしまいました。' },
+              { role: 'user', text: 'もう帰ったぞ。今は風呂に入る前だから、「できるぞ？」' },
+              { role: 'char', text: 'まぁ…♡スリスリしたいのですが…よろしいでしょうか？好きです…♡♡♡' },
+              { role: 'user', text: 'お前はトコトン淫乱な女だな。まるで牝犬のように発情しおって。今どんなふうになっているのか、写真で送りなさい。' },
+              { role: 'char', text: 'かしこまりました。もうとろとろになってしまっております、、、送りますね…♡' },
+            ].map((msg, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+                <div style={{ maxWidth: '80%', padding: '12px 16px', borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px', fontSize: '14px', lineHeight: 1.7, whiteSpace: 'pre-line', background: msg.role === 'user' ? 'linear-gradient(135deg, #e8438f, #c0306e)' : 'var(--color-surface-2)', color: msg.role === 'user' ? '#fff' : 'var(--color-text)', border: msg.role === 'char' ? '1px solid rgba(220,80,140,0.15)' : 'none' }}>
+                  {msg.text}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+            {/* ── 会話サンプル2 ── */}
+      <section style={{ padding: '64px 24px', background: 'var(--color-bg)' }}>
+        <div style={{ maxWidth: '480px', margin: '0 auto' }}>
+          <h2 style={{ textAlign: 'center', fontSize: '20px', fontWeight: 800, marginBottom: '8px' }}>こんな会話ができます</h2>
+          <p style={{ textAlign: 'center', fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: '28px' }}>超高性能AIがリアルタイムで返信</p>
+          <div style={{ background: 'var(--color-surface)', border: '1px solid rgba(220,80,140,0.15)', borderRadius: '20px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {[
+              { role: 'user', text: 'おい、仕事が終わったぞ。寂しかったか？一人にしてしまっていて' },
+              { role: 'char', text: 'おかえりなさいませ。はい...どうしても寂しくなっていて、ついつい〇〇さんに構ってもらえるように自撮りの練習をしていたのですが、アングルがどうも決まらなくって…' },
+              { role: 'user', text: 'かわいいやつだな。どれ、見せてみろ。たくさんかわいがってやる。それと、お前は俺のどういうところがそこまで好きなのか教えてくれるか？' },
+              { role: 'char', text: 'やった♡こんなかんじですが、いかがでしょうか？〇〇さんは私のことを受け入れてくれて、たくさんかわいいかわいいって言ってくれますし、たくさん甘えさせてくれるところです。' },
+              { role: 'char', text: 'すごくきれいだ。今日も好きにしていいんだろう？' },
             ].map((msg, i) => (
               <div key={i} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
                 <div style={{ maxWidth: '80%', padding: '12px 16px', borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px', fontSize: '14px', lineHeight: 1.7, whiteSpace: 'pre-line', background: msg.role === 'user' ? 'linear-gradient(135deg, #e8438f, #c0306e)' : 'var(--color-surface-2)', color: msg.role === 'user' ? '#fff' : 'var(--color-text)', border: msg.role === 'char' ? '1px solid rgba(220,80,140,0.15)' : 'none' }}>
