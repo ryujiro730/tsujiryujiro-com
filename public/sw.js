@@ -1,4 +1,4 @@
-const CACHE_NAME = 'humanchat-v1'
+const CACHE_NAME = 'lovechat-v1'
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -47,14 +47,18 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  // _next/static はキャッシュファースト
+  // _next/static はネットワークファースト（デプロイ後に古いJSが残らないように）
   if (url.pathname.startsWith('/_next/static/')) {
     event.respondWith(
-      caches.match(request).then((cached) => cached || fetch(request).then((response) => {
-        const clone = response.clone()
-        caches.open(CACHE_NAME).then((cache) => cache.put(request, clone))
-        return response
-      }))
+      fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            const clone = response.clone()
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone))
+          }
+          return response
+        })
+        .catch(() => caches.match(request))
     )
     return
   }

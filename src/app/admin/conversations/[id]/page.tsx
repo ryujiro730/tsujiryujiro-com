@@ -71,8 +71,8 @@ export default function AdminConversationDetailPage() {
       setMessages(prev => prev.find(p => p.id === m.id) ? prev : [...prev, m])
     })
 
-    channel.subscribe()
     channelRef.current = channel
+    channel.subscribe()
 
     setLoading(false)
   }
@@ -146,6 +146,9 @@ export default function AdminConversationDetailPage() {
     // ユーザーのメッセージを既読にする
     await supabase.from('messages').update({ is_read: true })
       .eq('conversation_id', id).eq('sender_role', 'user').eq('is_read', false)
+
+    // 受信トレイのキャッシュを無効化（戻ったとき古い未読が残らないように）
+    router.refresh()
 
     setSending(false)
   }

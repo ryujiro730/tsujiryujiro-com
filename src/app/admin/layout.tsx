@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import RealtimeRefresher from './conversations/RealtimeRefresher'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = createClient()
@@ -44,6 +45,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </div>
       </header>
 
+      <RealtimeRefresher />
       <main className="max-w-3xl mx-auto px-5 py-6">
         {children}
       </main>

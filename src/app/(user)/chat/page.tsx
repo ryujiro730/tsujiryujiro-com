@@ -33,6 +33,8 @@ export default function ChatPage() {
   const supabaseRef = useRef(createClient())
   const channelRef = useRef<ReturnType<typeof supabaseRef.current.channel> | null>(null)
   const typingTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const convIdRef = useRef<string | null>(null)
   const supabase = supabaseRef.current
 
   const addMessage = useCallback((msg: Message) => {
@@ -45,6 +47,7 @@ export default function ChatPage() {
     return () => {
       if (channelRef.current) supabase.removeChannel(channelRef.current)
       if (typingTimerRef.current) clearTimeout(typingTimerRef.current)
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
     }
   }, [characterId])
 
@@ -79,12 +82,24 @@ export default function ChatPage() {
     if (!conv) { setLoading(false); return }
 
     setConversationId(conv.id)
+    convIdRef.current = conv.id
 
     const { data: msgs } = await supabase
       .from('messages').select('*')
       .eq('conversation_id', conv.id)
       .order('created_at', { ascending: true })
     setMessages(msgs || [])
+
+    // 5秒ごとにポーリング（リアルタイムが来なくても確実に反映）
+    pollIntervalRef.current = setInterval(async () => {
+      const cid = convIdRef.current
+      if (!cid) return
+      const { data } = await supabase
+        .from('messages').select('*')
+        .eq('conversation_id', cid)
+        .order('created_at', { ascending: true })
+      if (data) data.forEach(m => addMessage(m))
+    }, 5000)
 
     const channel = supabase.channel(`chat:${conv.id}`)
 
@@ -115,8 +130,8 @@ export default function ChatPage() {
       if (msg.sender_role === 'character') setIsTyping(false)
     })
 
-    channel.subscribe()
     channelRef.current = channel
+    channel.subscribe()
     setLoading(false)
   }
 
