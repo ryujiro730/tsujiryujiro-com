@@ -30,6 +30,7 @@ export default function AdminConversationDetailPage() {
   const [adminNote, setAdminNote] = useState('')
   const [adminNoteLoading, setAdminNoteLoading] = useState(false)
   const [adminNoteSaved, setAdminNoteSaved] = useState(false)
+  const [queueInfo, setQueueInfo] = useState<{ pos: number; total: number } | null>(null)
 
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -135,6 +136,21 @@ export default function AdminConversationDetailPage() {
     channel.subscribe()
 
     setLoading(false)
+
+    // キュー情報を読み込み
+    try {
+      const raw = sessionStorage.getItem('convQueue')
+      const pos = parseInt(sessionStorage.getItem('convQueuePos') ?? '-1')
+      if (raw && pos >= 0) {
+        const queue: string[] = JSON.parse(raw)
+        setQueueInfo({ pos, total: queue.length })
+      } else {
+        setQueueInfo(null)
+      }
+    } catch { /* ignore */ }
+
+    // キーボードファーストのためテキストエリアにフォーカス
+    setTimeout(() => textareaRef.current?.focus(), 80)
   }
 
   const broadcastTyping = useCallback((isTyping: boolean) => {
@@ -170,6 +186,28 @@ export default function AdminConversationDetailPage() {
       clearTimeout(stopTypingTimerRef.current)
 
     broadcastTyping(false)
+  }
+
+  const advanceToNext = () => {
+    try {
+      const raw = sessionStorage.getItem('convQueue')
+      const pos = parseInt(sessionStorage.getItem('convQueuePos') ?? '-1')
+      if (raw && pos >= 0) {
+        const queue: string[] = JSON.parse(raw)
+        const nextPos = pos + 1
+        if (nextPos < queue.length) {
+          sessionStorage.setItem('convQueuePos', String(nextPos))
+          router.push(`/admin/conversations/${queue[nextPos]}`)
+          return
+        }
+      }
+    } catch { /* ignore */ }
+    // キューが終わった or キューなし → アクセス元に戻る
+    const returnTo = sessionStorage.getItem('convQueueReturn') ?? '/admin/conversations'
+    sessionStorage.removeItem('convQueue')
+    sessionStorage.removeItem('convQueuePos')
+    sessionStorage.removeItem('convQueueReturn')
+    router.push(returnTo)
   }
 
   const toggleLabel = async (labelId: string) => {
@@ -271,9 +309,14 @@ export default function AdminConversationDetailPage() {
       .eq('sender_role', 'user')
       .eq('is_read', false)
 
-    router.refresh()
-
     setSending(false)
+
+    // キューがあれば次へ自動遷移、なければリフレッシュ
+    if (sessionStorage.getItem('convQueue')) {
+      advanceToNext()
+    } else {
+      router.refresh()
+    }
   }
 
   if (loading) {
@@ -411,6 +454,21 @@ return (
         >
           <ChevronLeft size={20} />
         </Link>
+
+        {queueInfo && (
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span className="text-xs text-[var(--color-text-muted)] font-mono">
+              {queueInfo.pos + 1} / {queueInfo.total}
+            </span>
+            <button
+              onClick={advanceToNext}
+              className="text-xs px-2 py-1 rounded-lg bg-[var(--color-surface-2)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
+              title="スキップして次へ"
+            >
+              スキップ →
+            </button>
+          </div>
+        )}
 
         {character && (
           <div className="flex items-center gap-2.5 flex-1 min-w-0">

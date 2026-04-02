@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
 import { ja } from 'date-fns/locale'
+import { ConvQueueLink } from '@/components/admin/ConvQueueLink'
 
 type SearchParams = { filter?: string }
 
@@ -66,9 +67,11 @@ export default async function AdminConversationsPage({ searchParams }: { searchP
         {conversations?.map((conv: any) => {
           const lastMsg = lastMsgMap.get(conv.id)
           return (
-            <Link
+            <ConvQueueLink
               key={conv.id}
-              href={`/admin/conversations/${conv.id}`}
+              convId={conv.id}
+              allConvIds={(conversations ?? []).map((c: any) => c.id)}
+              returnTo={`/admin/conversations${unreadOnly ? '' : '?filter=all'}`}
               className={`block glass rounded-xl px-5 py-4 hover:border-[var(--color-primary-light)]/40 transition-all ${
                 conv.is_unread_staff ? 'border-[var(--color-primary)]/40 ring-1 ring-[var(--color-primary)]/20' : ''
               }`}
@@ -119,7 +122,7 @@ export default async function AdminConversationsPage({ searchParams }: { searchP
                   </div>
                 </div>
               </div>
-            </Link>
+            </ConvQueueLink>
           )
         })}
       </div>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import { getAuthUser } from '@/lib/supabase/get-auth-user'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AdminSupabase = SupabaseClient<any, any, any>
@@ -195,8 +196,8 @@ export async function processBroadcast(jobId: string): Promise<void> {
 export async function POST(req: NextRequest) {
   // 認証チェック
   const authClient = createServerClient()
-  const { data: { user }, error: authError } = await authClient.auth.getUser()
-  if (authError || !user) {
+  const user = await getAuthUser(authClient)
+  if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   const { data: profile } = await authClient
