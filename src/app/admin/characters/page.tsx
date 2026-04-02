@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Edit2, Trash2, Loader2, Check, X, Upload, Images, Megaphone, Calendar, Users, Send } from 'lucide-react'
+import { Plus, Edit2, Trash2, Loader2, Check, X, Upload, Images, Megaphone, Calendar, Users, Send, Timer, ChevronDown, ChevronUp, Power } from 'lucide-react'
 import type { Character, CharacterPhoto } from '@/types'
 
 const STATUS_LABEL: Record<string, string> = {
@@ -38,6 +38,17 @@ export default function AdminCharactersPage() {
   const [photos, setPhotos] = useState<CharacterPhoto[]>([])
   const [photosLoading, setPhotosLoading] = useState(false)
   const [photoUploading, setPhotoUploading] = useState(false)
+
+  // 自動同報
+  const [autoCharId, setAutoCharId] = useState<string | null>(null)
+  const [sequences, setSequences] = useState<any[]>([])
+  const [autoLoading, setAutoLoading] = useState(false)
+  const [newSeqName, setNewSeqName] = useState('')
+  const [addingSeq, setAddingSeq] = useState(false)
+  // ステップ追加フォーム: sequenceId -> { delayMinutes, message }
+  const [stepForm, setStepForm] = useState<Record<string, { delayMinutes: string; message: string }>>({})
+  // ステップ編集中: stepId -> { delayMinutes, message }
+  const [editingStep, setEditingStep] = useState<Record<string, { delayMinutes: string; message: string }>>({})
 
   // 同報送信
   const [broadcastCharId, setBroadcastCharId] = useState<string | null>(null)
@@ -159,6 +170,103 @@ export default function AdminCharactersPage() {
       .order('order_index')
     setPhotos(data || [])
     setPhotosLoading(false)
+  }
+
+  const openAutobroadcast = async (charId: string) => {
+    if (autoCharId === charId) { setAutoCharId(null); setSequences([]); return }
+    setAutoCharId(charId)
+    setAutoLoading(true)
+    const res = await fetch(`/api/admin/auto-broadcast?characterId=${charId}`)
+    const data = await res.json()
+    setSequences(Array.isArray(data) ? data : [])
+    setAutoLoading(false)
+  }
+
+  const createSequence = async (charId: string) => {
+    if (!newSeqName.trim()) return
+    setAddingSeq(true)
+    const res = await fetch('/api/admin/auto-broadcast', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ characterId: charId, name: newSeqName.trim() }),
+    })
+    const data = await res.json()
+    if (res.ok) {
+      setSequences(prev => [...prev, { ...data, auto_broadcast_steps: [] }])
+      setNewSeqName('')
+    }
+    setAddingSeq(false)
+  }
+
+  const toggleSequence = async (seqId: string, isActive: boolean) => {
+    const res = await fetch(`/api/admin/auto-broadcast/${seqId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_active: isActive }),
+    })
+    if (res.ok) {
+      setSequences(prev => prev.map(s => s.id === seqId ? { ...s, is_active: isActive } : s))
+    }
+  }
+
+  const deleteSequence = async (seqId: string) => {
+    if (!confirm('このシーケンスを削除しますか？')) return
+    const res = await fetch(`/api/admin/auto-broadcast/${seqId}`, { method: 'DELETE' })
+    if (res.ok) setSequences(prev => prev.filter(s => s.id !== seqId))
+  }
+
+  const addStep = async (seqId: string) => {
+    const f = stepForm[seqId]
+    if (!f?.delayMinutes || !f?.message?.trim()) return
+    const res = await fetch(`/api/admin/auto-broadcast/${seqId}/steps`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ delay_minutes: parseInt(f.delayMinutes), message: f.message.trim() }),
+    })
+    const data = await res.json()
+    if (res.ok) {
+      setSequences(prev => prev.map(s =>
+        s.id === seqId ? { ...s, auto_broadcast_steps: [...(s.auto_broadcast_steps ?? []), data] } : s
+      ))
+      setStepForm(prev => ({ ...prev, [seqId]: { delayMinutes: '', message: '' } }))
+    }
+  }
+
+  const updateStep = async (stepId: string, seqId: string) => {
+    const f = editingStep[stepId]
+    if (!f?.delayMinutes || !f?.message?.trim()) return
+    const res = await fetch(`/api/admin/auto-broadcast/steps/${stepId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ delay_minutes: parseInt(f.delayMinutes), message: f.message.trim() }),
+    })
+    const data = await res.json()
+    if (res.ok) {
+      setSequences(prev => prev.map(s =>
+        s.id === seqId
+          ? { ...s, auto_broadcast_steps: s.auto_broadcast_steps.map((st: any) => st.id === stepId ? data : st) }
+          : s
+      ))
+      setEditingStep(prev => { const n = { ...prev }; delete n[stepId]; return n })
+    }
+  }
+
+  const deleteStep = async (stepId: string, seqId: string) => {
+    if (!confirm('このステップを削除しますか？')) return
+    const res = await fetch(`/api/admin/auto-broadcast/steps/${stepId}`, { method: 'DELETE' })
+    if (res.ok) {
+      setSequences(prev => prev.map(s =>
+        s.id === seqId
+          ? { ...s, auto_broadcast_steps: s.auto_broadcast_steps.filter((st: any) => st.id !== stepId) }
+          : s
+      ))
+    }
+  }
+
+  const formatDelay = (minutes: number) => {
+    if (minutes < 60) return `${minutes}分後`
+    if (minutes < 60 * 24) return `${Math.floor(minutes / 60)}時間後`
+    return `${Math.floor(minutes / 60 / 24)}日後`
   }
 
   const openBroadcast = async (charId: string) => {
@@ -449,6 +557,13 @@ export default function AdminCharactersPage() {
                   <Megaphone size={16} />
                 </button>
                 <button
+                  onClick={() => openAutobroadcast(char.id)}
+                  className={`p-2 rounded-lg transition-colors ${autoCharId === char.id ? 'bg-[var(--color-primary)] text-white' : 'hover:bg-[var(--color-surface-2)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}`}
+                  title="自動同報"
+                >
+                  <Timer size={16} />
+                </button>
+                <button
                   onClick={() => startEdit(char)}
                   className="p-2 rounded-lg hover:bg-[var(--color-surface-2)] transition-colors text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
                 >
@@ -518,6 +633,168 @@ export default function AdminCharactersPage() {
                       </div>
                     ))}
                   </div>
+                )}
+              </div>
+            )}
+
+            {/* 自動同報パネル */}
+            {autoCharId === char.id && (
+              <div className="mt-1 glass rounded-2xl p-5 space-y-4">
+                <h3 className="text-sm font-semibold flex items-center gap-1.5">
+                  <Timer size={14} />
+                  {char.name}の自動同報シーケンス
+                </h3>
+
+                {autoLoading ? (
+                  <div className="flex justify-center py-4">
+                    <Loader2 size={20} className="animate-spin text-[var(--color-text-muted)]" />
+                  </div>
+                ) : (
+                  <>
+                    {sequences.length === 0 && (
+                      <p className="text-xs text-[var(--color-text-muted)] text-center py-2">シーケンスがまだありません</p>
+                    )}
+
+                    {sequences.map((seq) => (
+                      <div key={seq.id} className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl p-4 space-y-3">
+                        {/* シーケンスヘッダー */}
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => toggleSequence(seq.id, !seq.is_active)}
+                            className={`p-1 rounded-md transition-colors ${seq.is_active ? 'text-emerald-400' : 'text-[var(--color-text-muted)]'}`}
+                            title={seq.is_active ? 'ON（クリックでOFF）' : 'OFF（クリックでON）'}
+                          >
+                            <Power size={14} />
+                          </button>
+                          <span className="font-medium text-sm flex-1">{seq.name}</span>
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${seq.is_active ? 'bg-emerald-900/40 text-emerald-400' : 'bg-gray-800 text-gray-500'}`}>
+                            {seq.is_active ? 'ON' : 'OFF'}
+                          </span>
+                          <button
+                            onClick={() => deleteSequence(seq.id)}
+                            className="p-1 rounded-md hover:bg-red-900/30 text-[var(--color-text-muted)] hover:text-red-400 transition-colors"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+
+                        {/* ステップ一覧 */}
+                        {(seq.auto_broadcast_steps ?? []).length === 0 && (
+                          <p className="text-xs text-[var(--color-text-muted)] pl-2">ステップなし</p>
+                        )}
+                        {(seq.auto_broadcast_steps ?? []).map((step: any, idx: number) => (
+                          <div key={step.id} className="bg-[var(--color-surface)] rounded-lg px-3 py-2.5 space-y-1.5">
+                            {editingStep[step.id] ? (
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-[var(--color-text-muted)] w-20 flex-shrink-0">遅延（分）</span>
+                                  <input
+                                    type="number"
+                                    value={editingStep[step.id].delayMinutes}
+                                    onChange={e => setEditingStep(prev => ({ ...prev, [step.id]: { ...prev[step.id], delayMinutes: e.target.value } }))}
+                                    className="w-24 bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-[var(--color-primary)]"
+                                    min={1}
+                                  />
+                                </div>
+                                <textarea
+                                  value={editingStep[step.id].message}
+                                  onChange={e => setEditingStep(prev => ({ ...prev, [step.id]: { ...prev[step.id], message: e.target.value } }))}
+                                  rows={3}
+                                  className="w-full bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg px-2 py-1 text-xs resize-none focus:outline-none focus:border-[var(--color-primary)]"
+                                />
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => updateStep(step.id, seq.id)}
+                                    className="btn-primary px-3 py-1 text-xs flex items-center gap-1"
+                                  >
+                                    <Check size={11} />保存
+                                  </button>
+                                  <button
+                                    onClick={() => setEditingStep(prev => { const n = { ...prev }; delete n[step.id]; return n })}
+                                    className="btn-ghost px-3 py-1 text-xs"
+                                  >
+                                    キャンセル
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex items-start gap-2">
+                                <span className="text-xs text-[var(--color-text-muted)] w-6 flex-shrink-0 pt-0.5">{idx + 1}.</span>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs text-[var(--color-primary)] font-medium mb-0.5">登録後 {formatDelay(step.delay_minutes)}</p>
+                                  <p className="text-xs text-[var(--color-text)] line-clamp-2">{step.message}</p>
+                                </div>
+                                <div className="flex gap-1 flex-shrink-0">
+                                  <button
+                                    onClick={() => setEditingStep(prev => ({ ...prev, [step.id]: { delayMinutes: String(step.delay_minutes), message: step.message } }))}
+                                    className="p-1 rounded hover:bg-[var(--color-surface-2)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+                                  >
+                                    <Edit2 size={11} />
+                                  </button>
+                                  <button
+                                    onClick={() => deleteStep(step.id, seq.id)}
+                                    className="p-1 rounded hover:bg-red-900/30 text-[var(--color-text-muted)] hover:text-red-400"
+                                  >
+                                    <Trash2 size={11} />
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+
+                        {/* ステップ追加フォーム */}
+                        <div className="space-y-2 pt-1">
+                          <p className="text-xs font-medium text-[var(--color-text-muted)]">ステップを追加</p>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-[var(--color-text-muted)] flex-shrink-0">登録後</span>
+                            <input
+                              type="number"
+                              value={stepForm[seq.id]?.delayMinutes ?? ''}
+                              onChange={e => setStepForm(prev => ({ ...prev, [seq.id]: { ...prev[seq.id], delayMinutes: e.target.value, message: prev[seq.id]?.message ?? '' } }))}
+                              placeholder="30"
+                              min={1}
+                              className="w-20 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-[var(--color-primary)]"
+                            />
+                            <span className="text-xs text-[var(--color-text-muted)] flex-shrink-0">分後</span>
+                          </div>
+                          <textarea
+                            value={stepForm[seq.id]?.message ?? ''}
+                            onChange={e => setStepForm(prev => ({ ...prev, [seq.id]: { ...prev[seq.id], message: e.target.value, delayMinutes: prev[seq.id]?.delayMinutes ?? '' } }))}
+                            rows={3}
+                            placeholder="自動送信するメッセージ..."
+                            className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-2 py-1 text-xs resize-none focus:outline-none focus:border-[var(--color-primary)]"
+                          />
+                          <button
+                            onClick={() => addStep(seq.id)}
+                            disabled={!stepForm[seq.id]?.delayMinutes || !stepForm[seq.id]?.message?.trim()}
+                            className="btn-primary px-3 py-1.5 text-xs flex items-center gap-1 disabled:opacity-60"
+                          >
+                            <Plus size={11} />ステップを追加
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* 新しいシーケンスを追加 */}
+                    <div className="flex gap-2">
+                      <input
+                        value={newSeqName}
+                        onChange={e => setNewSeqName(e.target.value)}
+                        placeholder="シーケンス名（例：登録直後フォロー）"
+                        className="flex-1 bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[var(--color-primary)]"
+                        onKeyDown={e => e.key === 'Enter' && createSequence(char.id)}
+                      />
+                      <button
+                        onClick={() => createSequence(char.id)}
+                        disabled={addingSeq || !newSeqName.trim()}
+                        className="btn-primary px-3 py-2 text-xs flex items-center gap-1 disabled:opacity-60"
+                      >
+                        {addingSeq ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+                        作成
+                      </button>
+                    </div>
+                  </>
                 )}
               </div>
             )}

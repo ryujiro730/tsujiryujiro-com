@@ -27,7 +27,8 @@ export default function RegisterPage() {
     })
 
     if (error) { setError(error.message); setLoading(false); return }
-    setDone(true)
+    // confirm emailがOFFの場合はそのままオンボーディングへ
+    window.location.href = '/onboarding'
   }
 
   if (done) {

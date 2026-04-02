@@ -7,15 +7,20 @@ export default async function UserLayout({ children }: { children: React.ReactNo
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
-  let profile: { display_name: string | null; points: number } | null = null
+  let profile: { display_name: string | null; points: number; age: number | null } | null = null
   try {
     const { data } = await supabase
       .from('profiles')
-      .select('display_name, points')
+      .select('display_name, points, age')
       .eq('id', user.id)
       .single()
     profile = data
   } catch {}
+
+  // オンボーディング未完了（age未設定）ならオンボーディングへ
+  if (profile && profile.age === null) {
+    redirect('/onboarding')
+  }
 
   const tokens = profile?.points ?? 0
 
