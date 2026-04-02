@@ -128,7 +128,7 @@ export default async function AdminConversationsSearchPage({
     if (!noResults && sp.spend_from) {
       const { data } = await supabase.from('point_transactions')
         .select('user_id').eq('type', 'spend').gte('created_at', sp.spend_from).limit(500)
-      spendIncludeIds = [...new Set(data?.map(t => t.user_id) ?? [])]
+      spendIncludeIds = Array.from(new Set(data?.map(t => t.user_id) ?? []))
       if (spendIncludeIds.length === 0) noResults = true
     }
     if (!noResults && sp.spend_to) {
@@ -157,7 +157,7 @@ export default async function AdminConversationsSearchPage({
     if (!noResults && sp.keyword?.trim()) {
       const { data } = await supabase.from('messages')
         .select('conversation_id').ilike('content', `%${sp.keyword.trim()}%`).limit(500)
-      const ids = [...new Set(data?.map(m => m.conversation_id) ?? [])]
+      const ids = Array.from(new Set(data?.map(m => m.conversation_id) ?? []))
       if (ids.length === 0) noResults = true
       else convIncludeSets.push(ids)
     }
@@ -166,7 +166,7 @@ export default async function AdminConversationsSearchPage({
     if (!noResults && sp.user_sent_from) {
       const { data } = await supabase.from('messages')
         .select('conversation_id').eq('sender_role', 'user').gte('created_at', sp.user_sent_from).limit(500)
-      const ids = [...new Set(data?.map(m => m.conversation_id) ?? [])]
+      const ids = Array.from(new Set(data?.map(m => m.conversation_id) ?? []))
       if (ids.length === 0) noResults = true
       else convIncludeSets.push(ids)
     }
@@ -182,7 +182,7 @@ export default async function AdminConversationsSearchPage({
     if (!noResults && sp.op_sent_from) {
       const { data } = await supabase.from('messages')
         .select('conversation_id').eq('sender_role', 'character').gte('created_at', sp.op_sent_from).limit(500)
-      const ids = [...new Set(data?.map(m => m.conversation_id) ?? [])]
+      const ids = Array.from(new Set(data?.map(m => m.conversation_id) ?? []))
       if (ids.length === 0) noResults = true
       else convIncludeSets.push(ids)
     }

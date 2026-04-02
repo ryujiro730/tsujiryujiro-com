@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-import { processBroadcast } from '@/app/api/admin/broadcast/route'
+import { processBroadcast, createAdminSupabase } from '@/lib/broadcast'
 
 export async function GET(req: NextRequest) {
   // CRON_SECRET による認証
@@ -13,10 +12,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const adminClient = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
+  const adminClient = createAdminSupabase()
 
   // pending かつ scheduled_at <= now() のジョブを取得
   const now = new Date().toISOString()
