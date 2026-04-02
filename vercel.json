@@ -3,11 +3,11 @@
   "crons": [
     {
       "path": "/api/cron/broadcast",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 9 * * *"
     },
     {
       "path": "/api/cron/auto-broadcast",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 10 * * *"
     }
   ]
 }
