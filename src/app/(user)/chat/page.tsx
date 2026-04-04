@@ -208,7 +208,7 @@ export default function ChatPage() {
     <div className="flex flex-col h-[calc(100dvh-52px)] -mt-5 -mx-4">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 flex-shrink-0"
-        style={{ background: 'rgba(23,18,13,0.92)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--color-border)' }}>
+        style={{ background: 'rgba(255, 245, 248, 0.92)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--color-border)' }}>
         <Link href="/characters" className="p-1 -ml-1 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors">
           <ChevronLeft size={22} />
         </Link>
@@ -273,7 +273,7 @@ export default function ChatPage() {
 
       {/* Input */}
       <div className="flex-shrink-0 px-4 py-3"
-        style={{ borderTop: '1px solid var(--color-border)', background: 'rgba(23,18,13,0.95)' }}>
+        style={{ borderTop: '1px solid var(--color-border)', background: 'rgba(255, 245, 248, 0.97)' }}>
         {!canSend && (
           <div className="mb-3 rounded-xl p-3 text-center"
             style={{ background: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}>
