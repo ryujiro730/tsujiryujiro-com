@@ -3,10 +3,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Send, ChevronLeft, Images, X } from 'lucide-react'
+import { Send, ChevronLeft, Images, X, Gift } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { ja } from 'date-fns/locale'
-import type { Character, Message, Profile, CharacterPhoto } from '@/types'
+import type { Character, Message, Profile, CharacterPhoto, UserItem } from '@/types'
 import Link from 'next/link'
 import Lightbox from '@/components/Lightbox'
 
@@ -27,6 +27,9 @@ export default function ChatPage() {
   const [showAlbum, setShowAlbum] = useState(false)
   const [lightboxPhotos, setLightboxPhotos] = useState<string[]>([])
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+  const [showGiftPanel, setShowGiftPanel] = useState(false)
+  const [inventory, setInventory] = useState<UserItem[]>([])
+  const [sendingItem, setSendingItem] = useState<string | null>(null)
 
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -68,18 +71,14 @@ export default function ChatPage() {
     setCharacter(charRes.data)
     setPhotos(photosRes.data || [])
 
-    let { data: conv } = await supabase
-      .from('conversations').select('id')
-      .eq('user_id', user.id).eq('character_id', characterId).single()
-
-    if (!conv) {
-      const { data: newConv } = await supabase
-        .from('conversations')
-        .insert({ user_id: user.id, character_id: characterId })
-        .select('id').single()
-      conv = newConv
-    }
-    if (!conv) { setLoading(false); return }
+    const startRes = await fetch('/api/chat/start-conversation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ characterId }),
+    })
+    if (!startRes.ok) { setLoading(false); return }
+    const { conversationId, welcomeMessage } = await startRes.json()
+    const conv = { id: conversationId as string }
 
     setConversationId(conv.id)
     convIdRef.current = conv.id
@@ -88,7 +87,13 @@ export default function ChatPage() {
       .from('messages').select('*')
       .eq('conversation_id', conv.id)
       .order('created_at', { ascending: true })
-    setMessages(msgs || [])
+
+    const allMsgs = msgs || []
+    // RLSでキャラメッセージが読めない場合に備え、ウェルカムメッセージをAPIレスポンスから直接追加
+    if (welcomeMessage && !allMsgs.find((m: Message) => m.id === welcomeMessage.id)) {
+      allMsgs.unshift(welcomeMessage)
+    }
+    setMessages(allMsgs)
 
     // 5秒ごとにポーリング（リアルタイムが来なくても確実に反映）
     pollIntervalRef.current = setInterval(async () => {
@@ -135,29 +140,18 @@ export default function ChatPage() {
     setLoading(false)
   }
 
-  const canSend = (profile?.points ?? 0) > 0
-
   const sendMessage = async () => {
     if (!input.trim() || sending || !conversationId || !profile || !character) return
-    if (!canSend) { router.push('/payment'); return }
 
     setSending(true)
     const content = input.trim()
     setInput('')
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-
-    await supabase.from('profiles').update({ points: profile.points - 1 }).eq('id', user.id)
-    await supabase.from('point_transactions').insert({
-      user_id: user.id, amount: -1, type: 'spend', description: `${character.name}へのメッセージ`,
-    })
-    setProfile(prev => prev ? { ...prev, points: prev.points - 1 } : prev)
-
+    // ユーザーメッセージをDBに保存
     const { data: msg } = await supabase.from('messages').insert({
       conversation_id: conversationId, sender_role: 'user',
-      content, points_used: 1,
+      content, points_used: 0,
     }).select().single()
 
     if (!msg) { setSending(false); return }
@@ -175,12 +169,93 @@ export default function ChatPage() {
     })
 
     setSending(false)
+
+    // AI自動返信を非同期でリクエスト（isTypingで「入力中」表示）
+    setIsTyping(true)
+    try {
+      const res = await fetch('/api/chat/ai-reply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conversationId,
+          characterId: character.id,
+          userMessage: content,
+        }),
+      })
+      if (res.ok) {
+        const { message: aiMsg } = await res.json()
+        if (aiMsg) addMessage(aiMsg)
+      } else {
+        console.error('[chat] AI返信エラー:', await res.text())
+      }
+    } catch (err) {
+      console.error('[chat] AI返信ネットワークエラー:', err)
+    } finally {
+      setIsTyping(false)
+    }
   }
 
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value)
     e.target.style.height = 'auto'
     e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'
+  }
+
+  const openGiftPanel = async () => {
+    if (showGiftPanel) { setShowGiftPanel(false); return }
+    const res = await fetch('/api/items')
+    if (res.ok) {
+      const { inventory: inv } = await res.json()
+      setInventory(inv.filter((i: UserItem) => i.quantity > 0))
+    }
+    setShowGiftPanel(true)
+  }
+
+  const sendItem = async (userItem: UserItem) => {
+    if (!conversationId || sendingItem) return
+    const item = userItem.item
+    if (!item) return
+
+    setSendingItem(userItem.item_id)
+    const res = await fetch('/api/items/use', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ itemId: userItem.item_id, conversationId }),
+    })
+    const data = await res.json()
+
+    if (res.ok && data.message) {
+      addMessage(data.message)
+      channelRef.current?.send({ type: 'broadcast', event: 'new_message', payload: { message: data.message } })
+      setInventory(prev => prev
+        .map(i => i.item_id === userItem.item_id ? { ...i, quantity: data.remainingQuantity } : i)
+        .filter(i => i.quantity > 0)
+      )
+      setShowGiftPanel(false)
+
+      // AI自動返信
+      setIsTyping(true)
+      try {
+        const replyRes = await fetch('/api/chat/ai-reply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            conversationId,
+            characterId: character?.id,
+            userMessage: `${item.name}を贈りました`,
+          }),
+        })
+        if (replyRes.ok) {
+          const { message: aiMsg } = await replyRes.json()
+          if (aiMsg) addMessage(aiMsg)
+        }
+      } finally {
+        setIsTyping(false)
+      }
+    } else {
+      alert(data.error || 'アイテムの使用に失敗しました')
+    }
+    setSendingItem(null)
   }
 
   const openAlbumLightbox = (index: number) => {
@@ -235,9 +310,6 @@ export default function ChatPage() {
             <Images size={19} />
           </button>
         )}
-        <Link href="/payment" className="text-xs text-[var(--color-accent)] px-2.5 py-1 rounded-lg border border-[var(--color-border)]">
-          {profile?.points ?? 0}T
-        </Link>
       </div>
 
       {/* Messages */}
@@ -274,35 +346,28 @@ export default function ChatPage() {
       {/* Input */}
       <div className="flex-shrink-0 px-4 py-3"
         style={{ borderTop: '1px solid var(--color-border)', background: 'rgba(255, 245, 248, 0.97)' }}>
-        {!canSend && (
-          <div className="mb-3 rounded-xl p-3 text-center"
-            style={{ background: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}>
-            <p className="text-[var(--color-text-muted)] text-xs mb-1">トークンがありません</p>
-            <Link href="/payment" className="text-xs font-medium" style={{ color: 'var(--color-primary)' }}>
-              トークンを購入してつづける →
-            </Link>
-          </div>
-        )}
-        {canSend && (
-          <p className="text-[var(--color-text-muted)] text-xs mb-2">
-            1トークン消費（残り{profile?.points ?? 0}T）
-          </p>
-        )}
         <div className="flex gap-2 items-end">
+          <button
+            onClick={openGiftPanel}
+            className={`p-2.5 flex-shrink-0 rounded-[10px] transition-colors ${showGiftPanel ? 'text-white' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}`}
+            style={showGiftPanel ? { background: 'var(--color-primary)' } : {}}
+            title="ギフトを贈る"
+          >
+            <Gift size={17} />
+          </button>
           <textarea
             ref={textareaRef}
             value={input}
             onChange={handleTextareaChange}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() } }}
-            placeholder={canSend ? 'メッセージを送る…' : 'トークンが必要です'}
-            disabled={!canSend}
+            placeholder="メッセージを送る…"
             rows={1}
-            className="flex-1 input-warm px-4 py-2.5 text-sm resize-none disabled:opacity-40"
+            className="flex-1 input-warm px-4 py-2.5 text-sm resize-none"
             style={{ minHeight: '42px', maxHeight: '120px', lineHeight: '1.5' }}
           />
           <button
             onClick={sendMessage}
-            disabled={!input.trim() || sending || !canSend}
+            disabled={!input.trim() || sending}
             className="btn-primary p-2.5 flex-shrink-0 disabled:opacity-40"
             style={{ borderRadius: '10px' }}
           >
@@ -310,6 +375,53 @@ export default function ChatPage() {
           </button>
         </div>
       </div>
+
+      {/* ギフトパネル */}
+      {showGiftPanel && (
+        <div className="flex-shrink-0 px-4 pb-3" style={{ background: 'rgba(255, 245, 248, 0.97)' }}>
+          <div className="rounded-2xl p-3" style={{ background: 'var(--color-surface-2)', border: '1px solid var(--color-border-warm)' }}>
+            <p className="text-xs font-semibold text-[var(--color-text-muted)] mb-2.5 flex items-center gap-1.5">
+              <Gift size={12} />
+              ギフトを選択
+            </p>
+            {inventory.length === 0 ? (
+              <div className="text-center py-3">
+                <p className="text-xs text-[var(--color-text-muted)] mb-2">ギフトがありません</p>
+                <a href="/shop" className="text-xs text-[var(--color-primary)] underline-offset-2 hover:underline">
+                  ショップで購入する →
+                </a>
+              </div>
+            ) : (
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {inventory.map((userItem) => {
+                  const item = userItem.item
+                  if (!item) return null
+                  return (
+                    <button
+                      key={userItem.item_id}
+                      onClick={() => sendItem(userItem)}
+                      disabled={!!sendingItem}
+                      className="flex-shrink-0 flex flex-col items-center gap-1.5 p-2 rounded-xl transition-colors disabled:opacity-50"
+                      style={{ minWidth: '72px', background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+                    >
+                      {item.image_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={item.image_url} alt={item.name} className="w-12 h-12 object-cover rounded-lg" />
+                      ) : (
+                        <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ background: 'var(--color-surface-2)' }}>
+                          <Gift size={20} className="text-[var(--color-text-muted)]" />
+                        </div>
+                      )}
+                      <span className="text-[10px] text-center leading-tight line-clamp-2" style={{ color: 'var(--color-text)' }}>{item.name}</span>
+                      <span className="text-[10px] text-[var(--color-text-muted)]">×{userItem.quantity}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* アルバムオーバーレイ */}
       {showAlbum && (
@@ -369,6 +481,8 @@ function MessageBubble({ message, characterName, characterAvatar }: {
   message: Message; characterName: string; characterAvatar: string
 }) {
   const isUser = message.sender_role === 'user'
+  const isItem = !!message.metadata?.item_id
+
   return (
     <div className={`flex items-end gap-2 animate-fade-up ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
       {!isUser && (
@@ -378,9 +492,32 @@ function MessageBubble({ message, characterName, characterAvatar }: {
         </div>
       )}
       <div className={`max-w-[78%] flex flex-col gap-1 ${isUser ? 'items-end' : 'items-start'}`}>
-        <div className={`px-4 py-2.5 text-sm leading-relaxed ${isUser ? 'bubble-user' : 'bubble-operator'}`}>
-          {message.content}
-        </div>
+        {isItem ? (
+          <div className={`px-3 py-2.5 rounded-2xl flex items-center gap-2.5 ${isUser ? 'bubble-user' : 'bubble-operator'}`}>
+            {message.metadata?.item_image_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={message.metadata.item_image_url}
+                alt={message.metadata.item_name ?? ''}
+                className="w-12 h-12 object-cover rounded-xl flex-shrink-0"
+              />
+            ) : (
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: 'rgba(255,255,255,0.2)' }}>
+                <Gift size={20} />
+              </div>
+            )}
+            <div>
+              <p className="text-[10px] opacity-70 mb-0.5">ギフト</p>
+              <p className="text-sm font-semibold">{message.metadata?.item_name}</p>
+              <p className="text-[11px] opacity-70 mt-0.5">を贈りました</p>
+            </div>
+          </div>
+        ) : (
+          <div className={`px-4 py-2.5 text-sm leading-relaxed ${isUser ? 'bubble-user' : 'bubble-operator'}`}>
+            {message.content}
+          </div>
+        )}
         <div className={`flex items-center gap-1.5 px-1 ${isUser ? 'flex-row-reverse' : ''}`}>
           <span className="text-[var(--color-text-muted)] text-[11px]">
             {formatDistanceToNow(new Date(message.created_at), { addSuffix: true, locale: ja })}

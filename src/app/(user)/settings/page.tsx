@@ -36,7 +36,12 @@ export default function SettingsPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/auth/login'); return }
       const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-      if (data) { setProfile(data); setDisplayName(data.display_name ?? '') }
+      if (data) {
+        setProfile(data)
+        // profile に display_name がなければ auth メタデータからフォールバック
+        const name = data.display_name ?? user.user_metadata?.display_name ?? ''
+        setDisplayName(name)
+      }
       setLoading(false)
     }
     load()
@@ -45,8 +50,18 @@ export default function SettingsPage() {
   const handleSave = async () => {
     if (!profile || !displayName.trim()) return
     setSaving(true)
-    await supabase.from('profiles').update({ display_name: displayName.trim() }).eq('id', profile.id)
+    const res = await fetch('/api/profile', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ display_name: displayName.trim() }),
+    })
     setSaving(false)
+    if (!res.ok) {
+      const data = await res.json()
+      alert('保存に失敗しました: ' + (data.error ?? ''))
+      return
+    }
+    setProfile(prev => prev ? { ...prev, display_name: displayName.trim() } : prev)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
@@ -121,20 +136,6 @@ export default function SettingsPage() {
             {saved ? '保存しました' : '保存'}
           </button>
         </div>
-      </div>
-
-      {/* Balance */}
-      <div className="card p-5 mb-4">
-        <p className="text-xs text-[var(--color-text-muted)] font-medium uppercase tracking-wider mb-4">残高</p>
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-[var(--color-text-muted)]">トークン残高</span>
-            <span style={{ color: 'var(--color-accent)' }}>{profile?.points ?? 0}T</span>
-          </div>
-        </div>
-        <Link href="/payment" className="text-xs mt-3 block" style={{ color: 'var(--color-primary)' }}>
-          トークンを購入する →
-        </Link>
       </div>
 
       {/* パスワード変更 */}

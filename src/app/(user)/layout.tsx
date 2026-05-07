@@ -1,28 +1,30 @@
 import Link from 'next/link'
-import { MessageCircle, Users, Settings } from 'lucide-react'
-import { createClient } from '@/lib/supabase/server'
+import { MessageCircle, Users, Settings, ShoppingBag } from 'lucide-react'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { unstable_noStore as noStore } from 'next/cache'
 export default async function UserLayout({ children }: { children: React.ReactNode }) {
+  noStore()
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
-  let profile: { display_name: string | null; points: number; age: number | null } | null = null
+  // RLSを回避してプロフィールを確実に取得
+  let profile: { display_name: string | null; age: number | null } | null = null
   try {
-    const { data } = await supabase
+    const admin = createAdminClient()
+    const { data } = await admin
       .from('profiles')
-      .select('display_name, points, age')
+      .select('display_name, age')
       .eq('id', user.id)
       .single()
     profile = data
   } catch {}
 
-  // オンボーディング未完了（age未設定）ならオンボーディングへ
+  // age未設定ならオンボーディングへ（profile取得失敗時はループ防止のため通す）
   if (profile && profile.age === null) {
     redirect('/onboarding')
   }
-
-  const tokens = profile?.points ?? 0
 
   return (
     <div className="min-h-screen warm-bg">
@@ -30,7 +32,7 @@ export default async function UserLayout({ children }: { children: React.ReactNo
       <header className="fixed top-0 w-full z-50 glass">
         <div className="max-w-2xl mx-auto px-4 h-13 flex items-center justify-between" style={{ height: '52px' }}>
           <Link href="/characters" className="text-sm font-medium text-[var(--color-text-warm)]">
-            HumanChat
+            LoveChat
           </Link>
           <nav className="flex items-center gap-0.5">
             <Link href="/characters" className="p-2.5 rounded-lg hover:bg-[var(--color-surface-2)] transition-colors">
@@ -39,14 +41,11 @@ export default async function UserLayout({ children }: { children: React.ReactNo
             <Link href="/conversations" className="p-2.5 rounded-lg hover:bg-[var(--color-surface-2)] transition-colors">
               <MessageCircle size={17} className="text-[var(--color-text-muted)]" />
             </Link>
+            <Link href="/shop" className="p-2.5 rounded-lg hover:bg-[var(--color-surface-2)] transition-colors">
+              <ShoppingBag size={17} className="text-[var(--color-text-muted)]" />
+            </Link>
             <Link href="/settings" className="p-2.5 rounded-lg hover:bg-[var(--color-surface-2)] transition-colors">
               <Settings size={17} className="text-[var(--color-text-muted)]" />
-            </Link>
-            <Link
-              href="/payment"
-              className="ml-1 px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] text-xs text-[var(--color-accent)] font-medium"
-            >
-              {tokens}T
             </Link>
           </nav>
         </div>

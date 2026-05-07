@@ -8,7 +8,6 @@ import { Loader2 } from 'lucide-react'
 export default function RegisterPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [displayName, setDisplayName] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [done, setDone] = useState(false)
@@ -18,17 +17,20 @@ export default function RegisterPage() {
     setLoading(true)
     setError('')
     const supabase = createClient()
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email, password,
       options: {
-        data: { display_name: displayName },
         emailRedirectTo: `${location.origin}/auth/callback`,
       },
     })
 
     if (error) { setError(error.message); setLoading(false); return }
-    // confirm emailがOFFの場合はそのままオンボーディングへ
-    window.location.href = '/onboarding'
+
+    if (data.session) {
+      window.location.href = '/onboarding'
+    } else {
+      setDone(true)
+    }
   }
 
   if (done) {
@@ -51,15 +53,6 @@ export default function RegisterPage() {
       </p>
 
       <form onSubmit={handleRegister} className="space-y-4">
-        <div>
-          <label className="text-xs text-[var(--color-text-muted)] mb-1.5 block">ニックネーム</label>
-          <input
-            type="text" value={displayName} onChange={e => setDisplayName(e.target.value)} required
-            className="input-warm w-full px-4 py-3 text-sm"
-            placeholder="なんでもOKです"
-          />
-        </div>
-
         <div>
           <label className="text-xs text-[var(--color-text-muted)] mb-1.5 block">メールアドレス</label>
           <input

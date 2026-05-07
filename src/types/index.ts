@@ -26,6 +26,8 @@ export interface Character {
   age: number
   description: string
   personality: string
+  system_prompt: string | null // AI返信用の追加指示
+  welcome_message: string | null // 初回会話開始時に自動送信
   avatar_url: string
   cover_url: string | null
   is_active: boolean
@@ -61,6 +63,36 @@ export interface Message {
   points_used: number
   is_read: boolean
   created_at: string
+  metadata?: { item_id?: string; item_name?: string; item_image_url?: string } | null
+}
+
+export interface ItemCategory {
+  id: string
+  name: string
+  sort_order: number
+  created_at: string
+}
+
+export interface Item {
+  id: string
+  name: string
+  description: string | null
+  image_url: string | null
+  price_points: number
+  is_active: boolean
+  sort_order: number
+  category_id: string | null
+  category?: ItemCategory | null
+  created_at: string
+}
+
+export interface UserItem {
+  id: string
+  user_id: string
+  item_id: string
+  quantity: number
+  created_at: string
+  item?: Item
 }
 
 export interface PointTransaction {

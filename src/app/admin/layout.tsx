@@ -1,10 +1,12 @@
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import RealtimeRefresher from './conversations/RealtimeRefresher'
+import { unstable_noStore as noStore } from 'next/cache'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const supabase = createClient()
+  noStore()
+  const supabase = createClient() // 認証チェックはanonクライアントで
 
   // getUser() makes a network call — fall back to getSession() (cookie-only) if unreachable
   let user
@@ -36,7 +38,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     redirect('/characters')
   }
 
-  const { count: unread } = await supabase
+  // unreadカウントはservice roleで（RLSオーバーヘッドなし）
+  const adminDb = createAdminClient()
+  const { count: unread } = await adminDb
     .from('conversations').select('id', { count: 'exact', head: true }).eq('is_unread_staff', true)
 
   const navItems = [
@@ -45,14 +49,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     { href: '/admin/conversations/search', label: 'やり取り検索' },
     { href: '/admin/users', label: 'ユーザー' },
     { href: '/admin/characters', label: 'キャラ管理' },
+    { href: '/admin/items', label: 'アイテム' },
     { href: '/admin/analytics', label: '集計' },
+    { href: '/admin/training', label: 'AI学習データ' },
   ]
 
   return (
     <div className="min-h-screen warm-bg admin-layout">
       <header className="glass px-5" style={{ position: 'sticky', top: 0, zIndex: 50 }}>
         <div className="w-full px-5 flex items-center gap-6 h-12">
-          <span className="text-sm font-medium text-[var(--color-text-warm)]">HumanChat</span>
+          <span className="text-sm font-medium text-[var(--color-text-warm)]">LoveChat</span>
           <span className="text-[var(--color-border-warm)] text-xs">|</span>
           <nav className="flex items-center gap-1">
             {navItems.map(item => (

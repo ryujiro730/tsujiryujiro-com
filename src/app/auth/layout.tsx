@@ -3,7 +3,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     <div className="min-h-screen warm-bg flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-8">
-          <a href="/" className="text-sm font-medium text-[var(--color-text-warm)]">← HumanChat</a>
+          <a href="/" className="text-sm font-medium text-[var(--color-text-warm)]">← LoveChat</a>
         </div>
         {children}
       </div>

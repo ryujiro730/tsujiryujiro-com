@@ -92,6 +92,10 @@ export default function OnboardingPage() {
 
   const goToStep3 = async () => {
     if (!age || !gender) return
+    if (parseInt(age) < 18) {
+      alert('ご利用は18歳以上の方に限られます。')
+      return
+    }
     setSaving(true)
     const res = await fetch('/api/onboarding/complete', {
       method: 'POST',

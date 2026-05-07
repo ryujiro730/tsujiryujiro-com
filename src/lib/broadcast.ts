@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import { resolveVariables } from './message-variables'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AdminSupabase = SupabaseClient<any, any, any>
@@ -16,7 +17,7 @@ export interface BroadcastFilters {
 
 function buildUserQuery(adminClient: AdminSupabase, filters: BroadcastFilters) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let query: any = adminClient.from('admin_users_view').select('id, display_name')
+  let query: any = adminClient.from('admin_users_view').select('id, display_name, age, gender')
   if (filters.registeredFrom) query = query.gte('created_at', filters.registeredFrom)
   if (filters.registeredTo) {
     const to = new Date(filters.registeredTo)
@@ -31,15 +32,22 @@ function buildUserQuery(adminClient: AdminSupabase, filters: BroadcastFilters) {
   return query
 }
 
-export async function getTargetUserIds(
+export interface TargetUser {
+  id: string
+  display_name?: string | null
+  age?: number | null
+  gender?: string | null
+}
+
+export async function getTargetUsers(
   adminClient: AdminSupabase,
   characterId: string,
   filters: BroadcastFilters
-): Promise<string[]> {
+): Promise<TargetUser[]> {
   const { data: users, error } = await buildUserQuery(adminClient, filters)
   if (error || !users) return []
 
-  let targetUsers: Array<{ id: string }> = users
+  let targetUsers: TargetUser[] = users
 
   if (filters.excludeWithConv && targetUsers.length > 0) {
     const userIds = targetUsers.map(u => u.id)
@@ -50,7 +58,15 @@ export async function getTargetUserIds(
     targetUsers = targetUsers.filter(u => !existingSet.has(u.id))
   }
 
-  return targetUsers.map(u => u.id)
+  return targetUsers
+}
+
+export async function getTargetUserIds(
+  adminClient: AdminSupabase,
+  characterId: string,
+  filters: BroadcastFilters
+): Promise<string[]> {
+  return (await getTargetUsers(adminClient, characterId, filters)).map(u => u.id)
 }
 
 export function createAdminSupabase(): AdminSupabase {
@@ -83,15 +99,16 @@ export async function processBroadcast(jobId: string): Promise<void> {
   }
 
   try {
-    const targetUserIds = await getTargetUserIds(adminClient, job.character_id, filters)
+    const targetUsers = await getTargetUsers(adminClient, job.character_id, filters)
 
     await adminClient.from('broadcast_jobs')
-      .update({ target_count: targetUserIds.length, status: 'processing' }).eq('id', jobId)
+      .update({ target_count: targetUsers.length, status: 'processing' }).eq('id', jobId)
 
     let sentCount = 0
     const now = new Date().toISOString()
 
-    for (const userId of targetUserIds) {
+    for (const targetUser of targetUsers) {
+      const userId = targetUser.id
       try {
         const { data: existingConv } = await adminClient
           .from('conversations').select('id')
@@ -110,10 +127,11 @@ export async function processBroadcast(jobId: string): Promise<void> {
           conversationId = newConv.id
         }
 
+        const resolvedMessage = resolveVariables(job.message, targetUser)
         const { error: msgError } = await adminClient.from('messages').insert({
           conversation_id: conversationId,
           sender_role: 'character',
-          content: job.message,
+          content: resolvedMessage,
           points_used: 0,
           is_read: false,
         })

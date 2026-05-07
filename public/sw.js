@@ -85,7 +85,7 @@ self.addEventListener('push', (event) => {
   try {
     data = event.data.json()
   } catch {
-    data = { title: 'HumanChat', body: event.data.text() }
+    data = { title: 'LoveChat', body: event.data.text() }
   }
 
   const options = {
@@ -101,7 +101,7 @@ self.addEventListener('push', (event) => {
   }
 
   event.waitUntil(
-    self.registration.showNotification(data.title || 'HumanChat', options)
+    self.registration.showNotification(data.title || 'LoveChat', options)
   )
 })
 

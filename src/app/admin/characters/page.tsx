@@ -2,8 +2,31 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Edit2, Trash2, Loader2, Check, X, Upload, Images, Megaphone, Calendar, Users, Send, Timer, ChevronDown, ChevronUp, Power } from 'lucide-react'
+import { Plus, Edit2, Trash2, Loader2, Check, X, Upload, Images, Megaphone, Calendar, Users, Send, Timer, ChevronDown, ChevronUp, Power, BookOpen } from 'lucide-react'
 import type { Character, CharacterPhoto } from '@/types'
+
+type Template = { id: string; title: string; content: string; sort_order: number }
+
+async function compressImage(file: File, maxSize = 1200, quality = 0.8): Promise<Blob> {
+  return new Promise((resolve) => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      let { width, height } = img
+      if (width > maxSize || height > maxSize) {
+        if (width > height) { height = Math.round(height * maxSize / width); width = maxSize }
+        else { width = Math.round(width * maxSize / height); height = maxSize }
+      }
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      canvas.getContext('2d')!.drawImage(img, 0, 0, width, height)
+      canvas.toBlob((blob) => resolve(blob ?? file), 'image/webp', quality)
+    }
+    img.src = url
+  })
+}
 
 const STATUS_LABEL: Record<string, string> = {
   pending: '待機中',
@@ -30,9 +53,19 @@ export default function AdminCharactersPage() {
     age: 25,
     description: '',
     personality: '',
+    system_prompt: '',
+    welcome_message: '',
     avatar_url: '',
     is_active: true,
   })
+  // テンプレート管理
+  const [tmplCharId, setTmplCharId] = useState<string | null>(null)
+  const [templates, setTemplates] = useState<Template[]>([])
+  const [tmplLoading, setTmplLoading] = useState(false)
+  const [tmplForm, setTmplForm] = useState({ title: '', content: '' })
+  const [tmplAdding, setTmplAdding] = useState(false)
+  const [editingTmpl, setEditingTmpl] = useState<Record<string, { title: string; content: string }>>({})
+
   // フォト管理
   const [selectedCharId, setSelectedCharId] = useState<string | null>(null)
   const [photos, setPhotos] = useState<CharacterPhoto[]>([])
@@ -90,12 +123,12 @@ export default function AdminCharactersPage() {
     if (!file) return
 
     setUploading(true)
-    const ext = file.name.split('.').pop()
-    const fileName = `${Date.now()}.${ext}`
+    const compressed = await compressImage(file)
+    const fileName = `${Date.now()}.webp`
 
     const { error } = await supabase.storage
       .from('avatars')
-      .upload(fileName, file, { upsert: true })
+      .upload(fileName, compressed, { upsert: true, contentType: 'image/webp' })
 
     if (error) {
       alert('アップロード失敗: ' + error.message)
@@ -120,12 +153,12 @@ export default function AdminCharactersPage() {
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i]
-      const ext = file.name.split('.').pop()
-      const fileName = `${Date.now()}-${i}.${ext}`
+      const compressed = await compressImage(file)
+      const fileName = `${Date.now()}-${i}.webp`
 
       const { error } = await supabase.storage
         .from('avatars')
-        .upload(fileName, file, { upsert: true })
+        .upload(fileName, compressed, { upsert: true, contentType: 'image/webp' })
 
       if (error) {
         alert(`${file.name} のアップロード失敗: ` + error.message)
@@ -153,6 +186,43 @@ export default function AdminCharactersPage() {
   const deletePhoto = async (photoId: string) => {
     await supabase.from('character_photos').delete().eq('id', photoId)
     setPhotos(prev => prev.filter(p => p.id !== photoId))
+  }
+
+  const openTemplates = async (charId: string) => {
+    if (tmplCharId === charId) { setTmplCharId(null); setTemplates([]); return }
+    setTmplCharId(charId)
+    setTmplLoading(true)
+    const { data } = await supabase.from('reply_templates').select('*').eq('character_id', charId).order('sort_order').order('created_at')
+    setTemplates(data ?? [])
+    setTmplLoading(false)
+  }
+
+  const addTemplate = async (charId: string) => {
+    if (!tmplForm.title.trim() || !tmplForm.content.trim()) return
+    setTmplAdding(true)
+    const { data } = await supabase.from('reply_templates').insert({
+      character_id: charId,
+      title: tmplForm.title.trim(),
+      content: tmplForm.content.trim(),
+      sort_order: templates.length,
+    }).select().single()
+    if (data) setTemplates(prev => [...prev, data])
+    setTmplForm({ title: '', content: '' })
+    setTmplAdding(false)
+  }
+
+  const updateTemplate = async (tmplId: string) => {
+    const f = editingTmpl[tmplId]
+    if (!f?.title.trim() || !f?.content.trim()) return
+    const { data } = await supabase.from('reply_templates').update({ title: f.title.trim(), content: f.content.trim() }).eq('id', tmplId).select().single()
+    if (data) setTemplates(prev => prev.map(t => t.id === tmplId ? data : t))
+    setEditingTmpl(prev => { const n = { ...prev }; delete n[tmplId]; return n })
+  }
+
+  const deleteTemplate = async (tmplId: string) => {
+    if (!confirm('このテンプレートを削除しますか？')) return
+    await supabase.from('reply_templates').delete().eq('id', tmplId)
+    setTemplates(prev => prev.filter(t => t.id !== tmplId))
   }
 
   const openPhotos = async (charId: string) => {
@@ -351,6 +421,8 @@ export default function AdminCharactersPage() {
       age: char.age,
       description: char.description,
       personality: char.personality,
+      system_prompt: char.system_prompt ?? '',
+      welcome_message: char.welcome_message ?? '',
       avatar_url: char.avatar_url,
       is_active: char.is_active,
     })
@@ -361,7 +433,7 @@ export default function AdminCharactersPage() {
     setIsNew(true)
     setSelectedCharId(null)
     setPhotos([])
-    setForm({ name: '', age: 25, description: '', personality: '', avatar_url: '', is_active: true })
+    setForm({ name: '', age: 25, description: '', personality: '', system_prompt: '', welcome_message: '', avatar_url: '', is_active: true })
   }
 
   const cancel = () => {
@@ -372,16 +444,18 @@ export default function AdminCharactersPage() {
   const save = async () => {
     setSaving(true)
     if (isNew) {
-      const { data } = await supabase.from('characters').insert({
+      const { data, error } = await supabase.from('characters').insert({
         ...form,
         reply_cost_points: 1,
       }).select().single()
+      if (error) { alert('保存失敗: ' + error.message); setSaving(false); return }
       if (data) setCharacters(prev => [...prev, data])
     } else if (editing) {
-      const { data } = await supabase.from('characters')
+      const { data, error } = await supabase.from('characters')
         .update(form)
         .eq('id', editing.id)
         .select().single()
+      if (error) { alert('保存失敗: ' + error.message); setSaving(false); return }
       if (data) setCharacters(prev => prev.map(c => c.id === data.id ? data : c))
     }
     setEditing(null)
@@ -494,6 +568,28 @@ export default function AdminCharactersPage() {
                 placeholder="例：聞き上手 / 明るい / 共感力高め"
               />
             </div>
+            <div>
+              <label className="text-xs text-[var(--color-text-muted)] mb-1 block">AIシステムプロンプト（追加指示）</label>
+              <textarea
+                value={form.system_prompt}
+                onChange={e => setForm(f => ({ ...f, system_prompt: e.target.value }))}
+                rows={4}
+                className="w-full bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl px-4 py-2.5 text-sm resize-none focus:outline-none focus:border-[var(--color-primary)]"
+                placeholder="例：語尾に「〜だよ」を使ってください。絵文字を積極的に使ってください。"
+              />
+              <p className="text-xs text-[var(--color-text-muted)] mt-1">キャラクター名・年齢・プロフィール・性格は自動でAIに伝えられます。ここには追加の行動指示を書いてください。</p>
+            </div>
+            <div>
+              <label className="text-xs text-[var(--color-text-muted)] mb-1 block">ウェルカムメッセージ（初回会話時に自動送信）</label>
+              <textarea
+                value={form.welcome_message}
+                onChange={e => setForm(f => ({ ...f, welcome_message: e.target.value }))}
+                rows={3}
+                className="w-full bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl px-4 py-2.5 text-sm resize-none focus:outline-none focus:border-[var(--color-primary)]"
+                placeholder="例：はじめまして！さくらだよ〜♪ 気軽に話しかけてね！"
+              />
+              <p className="text-xs text-[var(--color-text-muted)] mt-1">ユーザーがこのキャラを選んで会話を開始した直後に自動で送られます。空欄の場合は送信されません。</p>
+            </div>
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
@@ -542,6 +638,13 @@ export default function AdminCharactersPage() {
                 <p className="text-[var(--color-text-muted)] text-xs truncate">{char.description}</p>
               </div>
               <div className="flex gap-2 flex-shrink-0">
+                <button
+                  onClick={() => openTemplates(char.id)}
+                  className={`p-2 rounded-lg transition-colors ${tmplCharId === char.id ? 'bg-[var(--color-primary)] text-white' : 'hover:bg-[var(--color-surface-2)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}`}
+                  title="返信テンプレート"
+                >
+                  <BookOpen size={16} />
+                </button>
                 <button
                   onClick={() => openPhotos(char.id)}
                   className={`p-2 rounded-lg transition-colors ${selectedCharId === char.id ? 'bg-[var(--color-primary)] text-white' : 'hover:bg-[var(--color-surface-2)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}`}
@@ -633,6 +736,94 @@ export default function AdminCharactersPage() {
                       </div>
                     ))}
                   </div>
+                )}
+              </div>
+            )}
+
+            {/* テンプレートパネル */}
+            {tmplCharId === char.id && (
+              <div className="mt-1 glass rounded-2xl p-5 space-y-4">
+                <h3 className="text-sm font-semibold flex items-center gap-1.5">
+                  <BookOpen size={14} />
+                  {char.name}の返信テンプレート
+                </h3>
+
+                {tmplLoading ? (
+                  <div className="flex justify-center py-4"><Loader2 size={20} className="animate-spin text-[var(--color-text-muted)]" /></div>
+                ) : (
+                  <>
+                    {templates.length === 0 && (
+                      <p className="text-xs text-[var(--color-text-muted)] text-center py-2">テンプレートがまだありません</p>
+                    )}
+
+                    {templates.map((tmpl) => (
+                      <div key={tmpl.id} className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl p-3 space-y-2">
+                        {editingTmpl[tmpl.id] ? (
+                          <div className="space-y-2">
+                            <input
+                              value={editingTmpl[tmpl.id].title}
+                              onChange={e => setEditingTmpl(prev => ({ ...prev, [tmpl.id]: { ...prev[tmpl.id], title: e.target.value } }))}
+                              placeholder="タイトル（例：1通目）"
+                              className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-[var(--color-primary)]"
+                            />
+                            <textarea
+                              value={editingTmpl[tmpl.id].content}
+                              onChange={e => setEditingTmpl(prev => ({ ...prev, [tmpl.id]: { ...prev[tmpl.id], content: e.target.value } }))}
+                              rows={4}
+                              className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-3 py-1.5 text-xs resize-none focus:outline-none focus:border-[var(--color-primary)]"
+                            />
+                            <div className="flex gap-2">
+                              <button onClick={() => updateTemplate(tmpl.id)} className="btn-primary px-3 py-1 text-xs flex items-center gap-1"><Check size={11} />保存</button>
+                              <button onClick={() => setEditingTmpl(prev => { const n = { ...prev }; delete n[tmpl.id]; return n })} className="btn-ghost px-3 py-1 text-xs">キャンセル</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-start gap-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-semibold mb-1" style={{ color: 'var(--color-primary)' }}>{tmpl.title}</p>
+                              <p className="text-xs text-[var(--color-text)] whitespace-pre-wrap line-clamp-3">{tmpl.content}</p>
+                            </div>
+                            <div className="flex gap-1 flex-shrink-0">
+                              <button
+                                onClick={() => setEditingTmpl(prev => ({ ...prev, [tmpl.id]: { title: tmpl.title, content: tmpl.content } }))}
+                                className="p-1 rounded hover:bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+                              ><Edit2 size={11} /></button>
+                              <button
+                                onClick={() => deleteTemplate(tmpl.id)}
+                                className="p-1 rounded hover:bg-red-900/30 text-[var(--color-text-muted)] hover:text-red-400"
+                              ><Trash2 size={11} /></button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+
+                    {/* 追加フォーム */}
+                    <div className="space-y-2 pt-1">
+                      <p className="text-xs font-medium text-[var(--color-text-muted)]">テンプレートを追加</p>
+                      <input
+                        value={tmplForm.title}
+                        onChange={e => setTmplForm(f => ({ ...f, title: e.target.value }))}
+                        placeholder="タイトル（例：1通目、フォローアップ）"
+                        className="w-full bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[var(--color-primary)]"
+                      />
+                      <textarea
+                        value={tmplForm.content}
+                        onChange={e => setTmplForm(f => ({ ...f, content: e.target.value }))}
+                        rows={4}
+                        placeholder="テンプレート本文…"
+                        className="w-full bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-xs resize-none focus:outline-none focus:border-[var(--color-primary)]"
+                      />
+                      <button
+                        onClick={() => addTemplate(char.id)}
+                        disabled={tmplAdding || !tmplForm.title.trim() || !tmplForm.content.trim()}
+                        className="btn-primary px-3 py-1.5 text-xs flex items-center gap-1 disabled:opacity-60"
+                      >
+                        {tmplAdding ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+                        追加
+                      </button>
+                    </div>
+                  </>
                 )}
               </div>
             )}

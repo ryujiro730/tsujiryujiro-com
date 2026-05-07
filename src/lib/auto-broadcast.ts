@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import { resolveVariables } from './message-variables'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AdminSupabase = SupabaseClient<any, any, any>
@@ -24,7 +25,7 @@ export async function processAutoBroadcast(): Promise<{ scheduled: number; sent:
     // 一般ユーザー全員を取得
     const { data: users } = await adminClient
       .from('profiles')
-      .select('id, created_at')
+      .select('id, created_at, display_name, age, gender')
       .not('role', 'in', '(admin,staff)')
 
     if (users && users.length > 0) {
@@ -76,8 +77,11 @@ export async function processAutoBroadcast(): Promise<{ scheduled: number; sent:
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const step = (log as any).auto_broadcast_steps
         const characterId = step.auto_broadcast_sequences.character_id
-        const message = step.message
         const msgTime = new Date().toISOString()
+
+        const { data: userProfile } = await adminClient
+          .from('profiles').select('display_name, age, gender').eq('id', log.user_id).single()
+        const message = resolveVariables(step.message, userProfile ?? {})
 
         const { data: existingConv } = await adminClient
           .from('conversations').select('id')
