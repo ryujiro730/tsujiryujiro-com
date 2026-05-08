@@ -12,6 +12,7 @@ import { createClient as createServerClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { getAuthUser } from '@/lib/supabase/get-auth-user'
 import { resolveVariables } from '@/lib/message-variables'
+import { sendNotificationEmail } from '@/lib/send-notification-email'
 
 function adminSupabase() {
   return createAdminClient(
@@ -52,7 +53,7 @@ export async function POST(req: NextRequest) {
 
   // 変数置換のためユーザープロフィールを取得
   const { data: conv } = await admin
-    .from('conversations').select('user_id').eq('id', conversationId).single()
+    .from('conversations').select('user_id, character_id').eq('id', conversationId).single()
   let resolvedContent = content.trim()
   if (conv?.user_id) {
     const { data: userProfile } = await admin
@@ -92,6 +93,24 @@ export async function POST(req: NextRequest) {
     .eq('conversation_id', conversationId)
     .eq('sender_role', 'user')
     .eq('is_read', false)
+
+  // メール通知（非同期・非クリティカル）
+  if (conv?.user_id && conv?.character_id) {
+    Promise.all([
+      admin.auth.admin.getUserById(conv.user_id),
+      admin.from('characters').select('name').eq('id', conv.character_id).single(),
+    ]).then(([{ data: authData }, { data: charData }]) => {
+      const email = authData?.user?.email
+      if (email && charData?.name) {
+        sendNotificationEmail({
+          toEmail: email,
+          characterName: charData.name,
+          messageContent: resolvedContent,
+          conversationId,
+        })
+      }
+    }).catch(() => {/* 通知失敗は無視 */})
+  }
 
   // 学習データを保存（人間スタッフ返信のみ）
   try {

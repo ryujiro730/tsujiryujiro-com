@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "concurrently -n next,cron -c cyan,magenta \"next dev\" \"node scripts/dev-cron.js\"",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
@@ -19,6 +19,7 @@
     "next": "14.2.0",
     "react": "^18",
     "react-dom": "^18",
+    "resend": "^6.12.3",
     "stripe": "^20.4.1"
   },
   "devDependencies": {
@@ -26,6 +27,7 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "autoprefixer": "^10.0.1",
+    "concurrently": "^9.2.1",
     "eslint": "^8",
     "eslint-config-next": "14.2.0",
     "postcss": "^8",

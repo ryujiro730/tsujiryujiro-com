@@ -3,8 +3,10 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { formatDistanceToNow } from 'date-fns'
 import { ja } from 'date-fns/locale'
+import { unstable_noStore as noStore } from 'next/cache'
 
 export default async function ConversationsPage() {
+  noStore()
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
@@ -18,7 +20,6 @@ export default async function ConversationsPage() {
 
   const convIds = (conversations ?? []).map(c => c.id)
 
-  // 各会話の最新メッセージと未読数だけ取得
   const { data: lastMessages } = convIds.length > 0
     ? await supabase
         .from('messages')
@@ -49,7 +50,7 @@ export default async function ConversationsPage() {
 
       {conversations && conversations.length > 0 ? (
         <div className="space-y-2">
-          {conversations.map((conv: any) => {
+          {(conversations as any[]).map((conv) => {
             const lastMsg = lastMsgMap.get(conv.id)
             const unread = unreadMap.get(conv.id) ?? 0
 
@@ -57,34 +58,76 @@ export default async function ConversationsPage() {
               <Link
                 key={conv.id}
                 href={`/chat?character=${conv.characters?.id}`}
-                className="card flex items-center gap-3 p-4 block hover:border-[var(--color-border-warm)] transition-colors"
+                className="block"
               >
-                <div className="relative flex-shrink-0">
-                  <div className="w-12 h-12 rounded-full overflow-hidden border border-[var(--color-border-warm)]">
-                    <Image src={conv.characters?.avatar_url} alt={conv.characters?.name ?? ''} width={48} height={48} className="w-full h-full object-cover" />
+                <div
+                  className="flex items-center gap-3 p-4 rounded-2xl transition-all duration-200"
+                  style={unread > 0 ? {
+                    background: 'linear-gradient(135deg, rgba(249,168,184,0.18) 0%, rgba(232,121,160,0.10) 100%)',
+                    border: '1.5px solid var(--color-primary)',
+                    boxShadow: '0 2px 16px rgba(232,121,160,0.15)',
+                  } : {
+                    background: 'var(--color-surface)',
+                    border: '1px solid var(--color-border)',
+                  }}
+                >
+                  {/* アバター */}
+                  <div className="relative flex-shrink-0">
+                    <div
+                      className="w-13 h-13 rounded-full overflow-hidden"
+                      style={{
+                        width: '52px', height: '52px',
+                        border: unread > 0 ? '2px solid var(--color-primary)' : '1px solid var(--color-border-warm)',
+                        boxShadow: unread > 0 ? '0 0 12px var(--color-primary-glow)' : 'none',
+                      }}
+                    >
+                      <Image
+                        src={conv.characters?.avatar_url}
+                        alt={conv.characters?.name ?? ''}
+                        width={52} height={52}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    {unread > 0 && (
+                      <span
+                        className="absolute -top-1 -right-1 min-w-[20px] h-5 rounded-full flex items-center justify-center text-[11px] text-white font-bold px-1"
+                        style={{ background: 'var(--color-primary)', boxShadow: '0 1px 6px rgba(232,121,160,0.5)' }}
+                      >
+                        {unread > 99 ? '99+' : unread}
+                      </span>
+                    )}
                   </div>
-                  {unread > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full flex items-center justify-center text-[10px] text-white font-bold" style={{ background: 'var(--color-primary)' }}>
-                      {unread}
-                    </span>
-                  )}
-                </div>
 
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-0.5">
-                    <span className={`text-sm font-medium ${unread > 0 ? '' : 'text-[var(--color-text)]'}`}>
-                      {conv.characters?.name}
-                    </span>
-                    <span className="text-[var(--color-text-muted)] text-[11px] flex-shrink-0">
-                      {formatDistanceToNow(new Date(conv.last_message_at), { addSuffix: true, locale: ja })}
-                    </span>
+                  {/* テキスト */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className="text-sm font-semibold">
+                        {conv.characters?.name}
+                      </span>
+                      <span className="text-[11px] flex-shrink-0 ml-2"
+                        style={{ color: unread > 0 ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>
+                        {formatDistanceToNow(new Date(conv.last_message_at), { addSuffix: true, locale: ja })}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {unread > 0 && (
+                        <span
+                          className="flex-shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                          style={{ background: 'var(--color-primary)', color: '#fff' }}
+                        >
+                          新着
+                        </span>
+                      )}
+                      {lastMsg && (
+                        <p className="text-xs truncate"
+                          style={{ color: unread > 0 ? 'var(--color-text)' : 'var(--color-text-muted)', fontWeight: unread > 0 ? 500 : 400 }}>
+                          {lastMsg.sender_role === 'character' ? `${conv.characters?.name}: ` : 'あなた: '}
+                          {lastMsg.content}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  {lastMsg && (
-                    <p className={`text-xs truncate ${unread > 0 ? 'text-[var(--color-text)]' : 'text-[var(--color-text-muted)]'}`}>
-                      {lastMsg.sender_role === 'character' ? `${conv.characters?.name}: ` : 'あなた: '}
-                      {lastMsg.content}
-                    </p>
-                  )}
                 </div>
               </Link>
             )

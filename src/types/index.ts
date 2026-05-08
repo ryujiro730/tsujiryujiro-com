@@ -63,7 +63,7 @@ export interface Message {
   points_used: number
   is_read: boolean
   created_at: string
-  metadata?: { item_id?: string; item_name?: string; item_image_url?: string } | null
+  metadata?: { item_id?: string; item_name?: string; item_image_url?: string; image_url?: string } | null
 }
 
 export interface ItemCategory {
@@ -109,13 +109,17 @@ export interface TokenPackage {
   name: string
   tokens: number
   price_yen: number
+  bonus_points: number
   is_popular: boolean
   stripe_price_id: string
 }
 
 export const TOKEN_PACKAGES: TokenPackage[] = [
-  { id: 'pack_10', name: '10トークン', tokens: 10, price_yen: 400, is_popular: false, stripe_price_id: 'price_10tokens' },
-  { id: 'pack_30', name: '30トークン', tokens: 30, price_yen: 1000, is_popular: true, stripe_price_id: 'price_30tokens' },
-  { id: 'pack_100', name: '100トークン', tokens: 100, price_yen: 2500, is_popular: false, stripe_price_id: 'price_100tokens' },
+  { id: 'pack_1000',  name: '1,000ポイント',  tokens: 1000,  price_yen: 1000,  bonus_points: 0,     is_popular: false, stripe_price_id: '' },
+  { id: 'pack_3000',  name: '3,300ポイント',  tokens: 3300,  price_yen: 3000,  bonus_points: 300,   is_popular: false, stripe_price_id: '' },
+  { id: 'pack_5000',  name: '5,500ポイント',  tokens: 5500,  price_yen: 5000,  bonus_points: 500,   is_popular: false, stripe_price_id: '' },
+  { id: 'pack_10000', name: '11,500ポイント', tokens: 11500, price_yen: 10000, bonus_points: 1500,  is_popular: true,  stripe_price_id: '' },
+  { id: 'pack_30000', name: '36,000ポイント', tokens: 36000, price_yen: 30000, bonus_points: 6000,  is_popular: false, stripe_price_id: '' },
+  { id: 'pack_50000', name: '65,000ポイント', tokens: 65000, price_yen: 50000, bonus_points: 15000, is_popular: false, stripe_price_id: '' },
 ]
 

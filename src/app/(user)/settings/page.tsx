@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { Loader2, Check, LogOut, KeyRound, Trash2 } from 'lucide-react'
+import { Loader2, Check, LogOut, KeyRound, Trash2, MessageSquare } from 'lucide-react'
 import type { Profile } from '@/types'
 import Link from 'next/link'
 
@@ -225,6 +225,15 @@ export default function SettingsPage() {
             </button>
           </div>
         )}
+      </div>
+
+      {/* お問い合わせ */}
+      <div className="card p-5 mb-4">
+        <p className="text-xs text-[var(--color-text-muted)] font-medium uppercase tracking-wider mb-4">サポート</p>
+        <Link href="/support" className="flex items-center gap-2 text-sm text-[var(--color-text)] hover:text-[var(--color-primary)] transition-colors">
+          <MessageSquare size={15} />
+          お問い合わせ・サポート
+        </Link>
       </div>
 
       {/* Sign out */}

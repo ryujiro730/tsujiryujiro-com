@@ -17,7 +17,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const user = await checkAuth(req)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { delay_minutes, message } = await req.json()
+  const { delay_minutes, message, image_url } = await req.json()
   if (delay_minutes == null || !message?.trim())
     return NextResponse.json({ error: 'delay_minutes and message required' }, { status: 400 })
 
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const { data, error } = await adminClient
     .from('auto_broadcast_steps')
-    .insert({ sequence_id: params.id, step_number: nextStep, delay_minutes, message: message.trim() })
+    .insert({ sequence_id: params.id, step_number: nextStep, delay_minutes, message: message.trim(), image_url: image_url ?? null })
     .select().single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { resolveVariables } from './message-variables'
+import { sendNotificationEmail } from './send-notification-email'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AdminSupabase = SupabaseClient<any, any, any>
@@ -11,7 +12,7 @@ export function createAdminSupabase(): AdminSupabase {
   )
 }
 
-export async function processAutoBroadcast(): Promise<{ scheduled: number; sent: number; failed: number }> {
+export async function processAutoBroadcast(): Promise<{ scheduled: number; sent: number; skipped: number; cancelled: number; failed: number }> {
   const adminClient = createAdminSupabase()
   let scheduled = 0
 
@@ -32,17 +33,19 @@ export async function processAutoBroadcast(): Promise<{ scheduled: number; sent:
       for (const step of activeSteps) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const seq = (step as any).auto_broadcast_sequences
-        // シーケンス作成後に登録したユーザーのみ対象
-        const eligibleUsers = users.filter(u => u.created_at >= seq.created_at)
+        const seqCreatedAt = new Date(seq.created_at).getTime()
 
-        const inserts = eligibleUsers.map(user => ({
-          user_id: user.id,
-          step_id: step.id,
-          scheduled_at: new Date(new Date(user.created_at).getTime() + step.delay_minutes * 60 * 1000).toISOString(),
-          status: 'pending',
-        }))
-
-        if (inserts.length === 0) continue
+        // 全ユーザー対象。ユーザー登録がシーケンス作成より前の場合は
+        // シーケンス作成時点を起算にする（既存ユーザーも漏れなく受信できる）
+        const inserts = users.map(user => {
+          const baseTime = Math.max(new Date(user.created_at).getTime(), seqCreatedAt)
+          return {
+            user_id: user.id,
+            step_id: step.id,
+            scheduled_at: new Date(baseTime + step.delay_minutes * 60 * 1000).toISOString(),
+            status: 'pending',
+          }
+        })
 
         // ON CONFLICT DO NOTHING で重複スキップ
         const { error } = await adminClient
@@ -54,79 +57,159 @@ export async function processAutoBroadcast(): Promise<{ scheduled: number; sent:
     }
   }
 
-  // pending かつ scheduled_at <= now() のログを送信
+  // pending → processing にアトミック更新（同時実行で同じログを二重送信しない）
   const now = new Date().toISOString()
   const { data: pendingLogs } = await adminClient
     .from('auto_broadcast_logs')
+    .update({ status: 'processing' })
+    .eq('status', 'pending')
+    .lte('scheduled_at', now)
     .select(`
       id, user_id,
       auto_broadcast_steps!inner(
-        message,
+        message, image_url, step_number,
         auto_broadcast_sequences!inner(character_id)
       )
     `)
-    .eq('status', 'pending')
-    .lte('scheduled_at', now)
 
   let sent = 0
+  let skipped = 0
+  let cancelled = 0
   let failed = 0
 
-  if (pendingLogs) {
-    for (const log of pendingLogs) {
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const step = (log as any).auto_broadcast_steps
-        const characterId = step.auto_broadcast_sequences.character_id
-        const msgTime = new Date().toISOString()
+  if (!pendingLogs || pendingLogs.length === 0) {
+    return { scheduled, sent, skipped, cancelled, failed }
+  }
 
-        const { data: userProfile } = await adminClient
-          .from('profiles').select('display_name, age, gender').eq('id', log.user_id).single()
-        const message = resolveVariables(step.message, userProfile ?? {})
+  // ── バッチ判定：pending なユーザーの会話・メッセージをまとめて取得 ──────────
+  const pendingUserIds = Array.from(new Set(pendingLogs.map(l => l.user_id)))
 
-        const { data: existingConv } = await adminClient
-          .from('conversations').select('id')
-          .eq('user_id', log.user_id).eq('character_id', characterId).single()
+  // 該当ユーザーの全会話
+  const { data: conversations } = await adminClient
+    .from('conversations')
+    .select('id, user_id, character_id')
+    .in('user_id', pendingUserIds)
 
-        let conversationId: string
+  const convIds = (conversations ?? []).map(c => c.id)
 
-        if (existingConv) {
-          conversationId = existingConv.id
-        } else {
-          const { data: newConv, error: convError } = await adminClient
-            .from('conversations')
-            .insert({ user_id: log.user_id, character_id: characterId, last_message_at: msgTime, is_unread_staff: false })
-            .select('id').single()
-          if (convError || !newConv) throw new Error('conv create failed: ' + convError?.message)
-          conversationId = newConv.id
-        }
+  // 全会話のメッセージ（sender_role だけ取得）
+  const { data: allMessages } = convIds.length > 0
+    ? await adminClient
+        .from('messages')
+        .select('conversation_id, sender_role')
+        .in('conversation_id', convIds)
+    : { data: [] as { conversation_id: string; sender_role: string }[] }
 
-        const { error: msgError } = await adminClient.from('messages').insert({
-          conversation_id: conversationId,
-          sender_role: 'character',
-          content: message,
-          points_used: 0,
-          is_read: false,
-        })
-        if (msgError) throw new Error('msg insert failed: ' + msgError.message)
+  // ルックアップマップを構築
+  // userRepliedToChar: `${userId}:${characterId}` → そのキャラに返信済み
+  const userRepliedToChar = new Set<string>()
+  // charSentToUser: `${userId}:${characterId}` → キャラがすでにメッセージを送っているペア
+  const charSentToUser = new Set<string>()
 
-        await adminClient.from('conversations')
-          .update({ last_message_at: msgTime, is_unread_staff: false }).eq('id', conversationId)
+  for (const msg of allMessages ?? []) {
+    const conv = (conversations ?? []).find(c => c.id === msg.conversation_id)
+    if (!conv) continue
+    const key = `${conv.user_id}:${conv.character_id}`
+    if (msg.sender_role === 'user') {
+      userRepliedToChar.add(key)
+    }
+    if (msg.sender_role === 'character') {
+      charSentToUser.add(key)
+    }
+  }
+  // ──────────────────────────────────────────────────────────────────────────
 
+  for (const log of pendingLogs) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const step = (log as any).auto_broadcast_steps
+      const characterId: string = step.auto_broadcast_sequences.character_id
+      const stepNumber: number = step.step_number
+
+      // ① ユーザーがこのキャラに返信済み → このキャラの自動同報をキャンセル
+      if (userRepliedToChar.has(`${log.user_id}:${characterId}`)) {
         await adminClient.from('auto_broadcast_logs')
-          .update({ status: 'sent', sent_at: msgTime, conversation_id: conversationId })
-          .eq('id', log.id)
-
-        sent++
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err)
-        await adminClient.from('auto_broadcast_logs')
-          .update({ status: 'failed', error_message: msg })
-          .eq('id', log.id)
-        failed++
-        console.error('auto broadcast send error:', msg)
+          .update({ status: 'cancelled' }).eq('id', log.id)
+        cancelled++
+        continue
       }
+
+      // ② step_number=1 かつ このキャラからウェルカムメッセージ送信済み → スキップ
+      if (stepNumber === 1 && charSentToUser.has(`${log.user_id}:${characterId}`)) {
+        await adminClient.from('auto_broadcast_logs')
+          .update({ status: 'skipped' }).eq('id', log.id)
+        skipped++
+        continue
+      }
+
+      // ③ 通常送信
+      const msgTime = new Date().toISOString()
+
+      const { data: userProfile } = await adminClient
+        .from('profiles').select('display_name, age, gender').eq('id', log.user_id).single()
+      const message = resolveVariables(step.message, userProfile ?? {})
+
+      const existingConv = (conversations ?? []).find(
+        c => c.user_id === log.user_id && c.character_id === characterId
+      )
+
+      let conversationId: string
+
+      if (existingConv) {
+        conversationId = existingConv.id
+      } else {
+        const { data: newConv, error: convError } = await adminClient
+          .from('conversations')
+          .insert({ user_id: log.user_id, character_id: characterId, last_message_at: msgTime, is_unread_staff: false })
+          .select('id').single()
+        if (convError || !newConv) throw new Error('conv create failed: ' + convError?.message)
+        conversationId = newConv.id
+      }
+
+      const imageUrl: string | null = step.image_url ?? null
+      const { error: msgError } = await adminClient.from('messages').insert({
+        conversation_id: conversationId,
+        sender_role: 'character',
+        content: message,
+        points_used: 0,
+        is_read: false,
+        metadata: imageUrl ? { image_url: imageUrl } : null,
+      })
+      if (msgError) throw new Error('msg insert failed: ' + msgError.message)
+
+      await adminClient.from('conversations')
+        .update({ last_message_at: msgTime, is_unread_staff: false }).eq('id', conversationId)
+
+      await adminClient.from('auto_broadcast_logs')
+        .update({ status: 'sent', sent_at: msgTime, conversation_id: conversationId })
+        .eq('id', log.id)
+
+      // メール通知（非クリティカル）
+      Promise.all([
+        adminClient.from('characters').select('name').eq('id', characterId).single(),
+        adminClient.auth.admin.getUserById(log.user_id),
+      ]).then(([{ data: charData }, { data: authData }]) => {
+        const toEmail = authData?.user?.email
+        if (toEmail && charData?.name) {
+          sendNotificationEmail({
+            toEmail,
+            characterName: charData.name,
+            messageContent: message,
+            conversationId,
+          })
+        }
+      }).catch(() => {/* 無視 */})
+
+      sent++
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      await adminClient.from('auto_broadcast_logs')
+        .update({ status: 'failed', error_message: msg })
+        .eq('id', log.id)
+      failed++
+      console.error('auto broadcast send error:', msg)
     }
   }
 
-  return { scheduled, sent, failed }
+  return { scheduled, sent, skipped, cancelled, failed }
 }

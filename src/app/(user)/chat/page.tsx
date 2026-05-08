@@ -62,58 +62,95 @@ export default function ChatPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push('/auth/login'); return }
 
-    const [profRes, charRes, photosRes] = await Promise.all([
-      supabase.from('profiles').select('*').eq('id', user.id).single(),
-      supabase.from('characters').select('*').eq('id', characterId).single(),
-      supabase.from('character_photos').select('*').eq('character_id', characterId).order('order_index'),
-    ])
-    setProfile(profRes.data)
-    setCharacter(charRes.data)
-    setPhotos(photosRes.data || [])
+    const cacheKey = `conv:${user.id}:${characterId}`
+    const cachedConvId = localStorage.getItem(cacheKey)
 
-    const startRes = await fetch('/api/chat/start-conversation', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ characterId }),
-    })
-    if (!startRes.ok) { setLoading(false); return }
-    const { conversationId, welcomeMessage } = await startRes.json()
-    const conv = { id: conversationId as string }
+    let convId: string
 
-    setConversationId(conv.id)
-    convIdRef.current = conv.id
+    if (cachedConvId) {
+      // キャッシュあり：全データを並列取得（start-conversion APIをスキップ）
+      const [profRes, charRes, photosRes, msgsRes] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', user.id).single(),
+        supabase.from('characters').select('*').eq('id', characterId).single(),
+        supabase.from('character_photos').select('*').eq('character_id', characterId).order('order_index'),
+        supabase.from('messages').select('*').eq('conversation_id', cachedConvId).order('created_at', { ascending: true }),
+      ])
+      setProfile(profRes.data)
+      setCharacter(charRes.data)
+      setPhotos(photosRes.data || [])
+      setMessages(msgsRes.data || [])
+      convId = cachedConvId
+    } else {
+      // 初回：start-conversationで会話を作成＆ウェルカムメッセージ
+      const [profRes, charRes, photosRes, startRes] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', user.id).single(),
+        supabase.from('characters').select('*').eq('id', characterId).single(),
+        supabase.from('character_photos').select('*').eq('character_id', characterId).order('order_index'),
+        fetch('/api/chat/start-conversation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ characterId }),
+        }),
+      ])
+      setProfile(profRes.data)
+      setCharacter(charRes.data)
+      setPhotos(photosRes.data || [])
 
-    const { data: msgs } = await supabase
-      .from('messages').select('*')
-      .eq('conversation_id', conv.id)
-      .order('created_at', { ascending: true })
+      if (!startRes.ok) { setLoading(false); return }
+      const { conversationId: newConvId, welcomeMessage } = await startRes.json()
+      convId = newConvId as string
+      localStorage.setItem(cacheKey, convId)
 
-    const allMsgs = msgs || []
-    // RLSでキャラメッセージが読めない場合に備え、ウェルカムメッセージをAPIレスポンスから直接追加
-    if (welcomeMessage && !allMsgs.find((m: Message) => m.id === welcomeMessage.id)) {
-      allMsgs.unshift(welcomeMessage)
+      const { data: msgs } = await supabase
+        .from('messages').select('*')
+        .eq('conversation_id', convId)
+        .order('created_at', { ascending: true })
+
+      const allMsgs = msgs || []
+      if (welcomeMessage && !allMsgs.find((m: Message) => m.id === welcomeMessage.id)) {
+        allMsgs.unshift(welcomeMessage)
+      }
+      setMessages(allMsgs)
     }
-    setMessages(allMsgs)
 
-    // 5秒ごとにポーリング（リアルタイムが来なくても確実に反映）
+    setConversationId(convId)
+    convIdRef.current = convId
+
+    // 30秒ごとにフォールバックポーリング（最新メッセージ以降のみ取得）
     pollIntervalRef.current = setInterval(async () => {
       const cid = convIdRef.current
       if (!cid) return
-      const { data } = await supabase
-        .from('messages').select('*')
-        .eq('conversation_id', cid)
-        .order('created_at', { ascending: true })
-      if (data) data.forEach(m => addMessage(m))
-    }, 5000)
+      setMessages(prev => {
+        const lastCreatedAt = prev.length > 0 ? prev[prev.length - 1].created_at : new Date(0).toISOString()
+        supabase
+          .from('messages').select('*')
+          .eq('conversation_id', cid)
+          .gt('created_at', lastCreatedAt)
+          .order('created_at', { ascending: true })
+          .then(({ data }) => { if (data) data.forEach(m => addMessage(m)) })
+        return prev
+      })
+    }, 30000)
 
-    const channel = supabase.channel(`chat:${conv.id}`)
+    // 開封時に未読メッセージを一括既読（admin経由でRLS回避）
+    fetch('/api/chat/mark-read', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ conversationId: convId }),
+    }).then(() => router.refresh()).catch(() => {})
+
+    const channel = supabase.channel(`chat:${convId}`)
 
     channel.on('broadcast', { event: 'new_message' }, ({ payload }) => {
       const msg = payload.message as Message
       addMessage(msg)
       if (msg.sender_role === 'character') {
         setIsTyping(false)
-        supabase.from('messages').update({ is_read: true }).eq('id', msg.id).then(() => {})
+        fetch('/api/chat/mark-read', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ conversationId: convIdRef.current }),
+        }).catch(() => {})
       }
     })
 
@@ -128,7 +165,7 @@ export default function ChatPage() {
 
     channel.on('postgres_changes', {
       event: 'INSERT', schema: 'public', table: 'messages',
-      filter: `conversation_id=eq.${conv.id}`,
+      filter: `conversation_id=eq.${convId}`,
     }, (payload) => {
       const msg = payload.new as Message
       addMessage(msg)
@@ -157,6 +194,13 @@ export default function ChatPage() {
     if (!msg) { setSending(false); return }
 
     addMessage(msg)
+
+    // 返信した → このキャラへの自動同報を即時キャンセル（fire-and-forget）
+    fetch('/api/chat/cancel-broadcasts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ characterId: character.id }),
+    }).catch(() => {})
 
     await supabase.from('conversations').update({
       last_message_at: new Date().toISOString(), is_unread_staff: true,
@@ -482,6 +526,7 @@ function MessageBubble({ message, characterName, characterAvatar }: {
 }) {
   const isUser = message.sender_role === 'user'
   const isItem = !!message.metadata?.item_id
+  const hasBroadcastImage = !isItem && !!message.metadata?.image_url
 
   return (
     <div className={`flex items-end gap-2 animate-fade-up ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
@@ -512,6 +557,14 @@ function MessageBubble({ message, characterName, characterAvatar }: {
               <p className="text-sm font-semibold">{message.metadata?.item_name}</p>
               <p className="text-[11px] opacity-70 mt-0.5">を贈りました</p>
             </div>
+          </div>
+        ) : hasBroadcastImage ? (
+          <div className={`rounded-2xl overflow-hidden ${isUser ? 'bubble-user' : 'bubble-operator'}`}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={message.metadata!.image_url!} alt="" className="w-full max-w-[240px] object-cover block" />
+            {message.content && (
+              <p className="px-4 py-2.5 text-sm leading-relaxed">{message.content}</p>
+            )}
           </div>
         ) : (
           <div className={`px-4 py-2.5 text-sm leading-relaxed ${isUser ? 'bubble-user' : 'bubble-operator'}`}>

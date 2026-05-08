@@ -15,8 +15,8 @@ export async function POST(request: Request) {
           price_data: {
             currency: 'jpy',
             product_data: {
-              name: `HumanChat ${tokens}トークン`,
-              description: `1トークン = 1通のメッセージ送信`,
+              name: `LoveChat ${tokens}ポイント`,
+              description: `1ポイント = 1円相当`,
             },
             unit_amount: priceYen,
           },
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
         },
       ],
       mode: 'payment',
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/payment?success=true&tokens=${tokens}`,
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/payment?success=true&points=${tokens}`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/payment?canceled=true`,
       metadata: {
         userId,
