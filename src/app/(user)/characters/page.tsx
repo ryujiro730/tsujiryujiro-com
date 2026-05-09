@@ -8,61 +8,56 @@ export default async function CharactersPage() {
   const supabase = createClient()
   const admin = createAdminClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
+  // Use getSession (no network) for userId
+  const { data: { session } } = await supabase.auth.getSession()
+  const userId = session?.user?.id
 
-  const { data: characters } = await supabase
-    .from('characters')
-    .select('id, name, age, description, personality, avatar_url')
-    .eq('is_active', true)
-    .order('sort_order', { ascending: true })
+  // Fetch characters and conversations in parallel
+  const [{ data: characters }, { data: convData }] = await Promise.all([
+    supabase.from('characters').select('id, name, age, description, personality, avatar_url').eq('is_active', true).order('sort_order', { ascending: true }),
+    userId ? admin.from('conversations').select('id, character_id').eq('user_id', userId) : Promise.resolve({ data: [] }),
+  ])
 
   // ユーザーがいれば未読カウントをキャラごとに取得
   const unreadByChar = new Map<string, number>()
-  if (user) {
-    const { data: convData } = await admin
-      .from('conversations')
-      .select('id, character_id')
-      .eq('user_id', user.id)
+  if (userId && convData && convData.length > 0) {
+    const convIds = convData.map((c: { id: string }) => c.id)
 
-    if (convData && convData.length > 0) {
-      const convIds = convData.map((c: { id: string }) => c.id)
+    // 未読キャラメッセージがある会話IDを取得
+    const { data: unreadMsgs } = await admin
+      .from('messages')
+      .select('conversation_id')
+      .in('conversation_id', convIds)
+      .eq('sender_role', 'character')
+      .eq('is_read', false)
 
-      // 未読キャラメッセージがある会話IDを取得
-      const { data: unreadMsgs } = await admin
+    const unreadConvIds = Array.from(new Set((unreadMsgs ?? []).map((m: { conversation_id: string }) => m.conversation_id)))
+
+    if (unreadConvIds.length > 0) {
+      // その会話の最新メッセージを取得（ユーザーが返信済みか確認）
+      const { data: latestMsgs } = await admin
         .from('messages')
-        .select('conversation_id')
-        .in('conversation_id', convIds)
-        .eq('sender_role', 'character')
-        .eq('is_read', false)
+        .select('conversation_id, sender_role')
+        .in('conversation_id', unreadConvIds)
+        .order('created_at', { ascending: false })
 
-      const unreadConvIds = Array.from(new Set((unreadMsgs ?? []).map((m: { conversation_id: string }) => m.conversation_id)))
+      const latestByConv = new Map<string, string>()
+      for (const msg of latestMsgs ?? []) {
+        const m = msg as { conversation_id: string; sender_role: string }
+        if (!latestByConv.has(m.conversation_id)) {
+          latestByConv.set(m.conversation_id, m.sender_role)
+        }
+      }
 
-      if (unreadConvIds.length > 0) {
-        // その会話の最新メッセージを取得（ユーザーが返信済みか確認）
-        const { data: latestMsgs } = await admin
-          .from('messages')
-          .select('conversation_id, sender_role')
-          .in('conversation_id', unreadConvIds)
-          .order('created_at', { ascending: false })
-
-        const latestByConv = new Map<string, string>()
-        for (const msg of latestMsgs ?? []) {
-          const m = msg as { conversation_id: string; sender_role: string }
-          if (!latestByConv.has(m.conversation_id)) {
-            latestByConv.set(m.conversation_id, m.sender_role)
+      // 最新メッセージがキャラ（未返信）の会話だけキャラ別にカウント
+      latestByConv.forEach((role, convId) => {
+        if (role === 'character') {
+          const conv = (convData as { id: string; character_id: string }[]).find(c => c.id === convId)
+          if (conv) {
+            unreadByChar.set(conv.character_id, (unreadByChar.get(conv.character_id) ?? 0) + 1)
           }
         }
-
-        // 最新メッセージがキャラ（未返信）の会話だけキャラ別にカウント
-        latestByConv.forEach((role, convId) => {
-          if (role === 'character') {
-            const conv = (convData as { id: string; character_id: string }[]).find(c => c.id === convId)
-            if (conv) {
-              unreadByChar.set(conv.character_id, (unreadByChar.get(conv.character_id) ?? 0) + 1)
-            }
-          }
-        })
-      }
+      })
     }
   }
 

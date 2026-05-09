@@ -8,13 +8,14 @@ import { unstable_noStore as noStore } from 'next/cache'
 export default async function ConversationsPage() {
   noStore()
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) return null
+  const userId = session.user.id
 
   const { data: conversations } = await supabase
     .from('conversations')
     .select(`id, last_message_at, characters(id, name, avatar_url)`)
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .not('last_message_at', 'is', null)
     .order('last_message_at', { ascending: false })
 

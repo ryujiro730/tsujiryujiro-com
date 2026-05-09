@@ -10,6 +10,15 @@ import type { Character, Message, Profile, CharacterPhoto, UserItem } from '@/ty
 import Link from 'next/link'
 import Lightbox from '@/components/Lightbox'
 
+const MAX_CACHED_MSGS = 60
+
+function readCache<T>(key: string): T | null {
+  try { return JSON.parse(localStorage.getItem(key) ?? 'null') } catch { return null }
+}
+function writeCache(key: string, value: unknown) {
+  try { localStorage.setItem(key, JSON.stringify(value)) } catch {}
+}
+
 export default function ChatPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -41,7 +50,15 @@ export default function ChatPage() {
   const supabase = supabaseRef.current
 
   const addMessage = useCallback((msg: Message) => {
-    setMessages(prev => prev.find(m => m.id === msg.id) ? prev : [...prev, msg])
+    setMessages(prev => {
+      if (prev.find(m => m.id === msg.id)) return prev
+      const next = [...prev, msg]
+      // Update cache with latest messages
+      if (convIdRef.current) {
+        writeCache(`msgs:${convIdRef.current}`, next.slice(-MAX_CACHED_MSGS))
+      }
+      return next
+    })
   }, [])
 
   useEffect(() => {
@@ -58,65 +75,9 @@ export default function ChatPage() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, isTyping])
 
-  const loadData = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { router.push('/auth/login'); return }
-
-    const cacheKey = `conv:${user.id}:${characterId}`
-    const cachedConvId = localStorage.getItem(cacheKey)
-
-    let convId: string
-
-    if (cachedConvId) {
-      // キャッシュあり：全データを並列取得（start-conversion APIをスキップ）
-      const [profRes, charRes, photosRes, msgsRes] = await Promise.all([
-        supabase.from('profiles').select('*').eq('id', user.id).single(),
-        supabase.from('characters').select('*').eq('id', characterId).single(),
-        supabase.from('character_photos').select('*').eq('character_id', characterId).order('order_index'),
-        supabase.from('messages').select('*').eq('conversation_id', cachedConvId).order('created_at', { ascending: true }),
-      ])
-      setProfile(profRes.data)
-      setCharacter(charRes.data)
-      setPhotos(photosRes.data || [])
-      setMessages(msgsRes.data || [])
-      convId = cachedConvId
-    } else {
-      // 初回：start-conversationで会話を作成＆ウェルカムメッセージ
-      const [profRes, charRes, photosRes, startRes] = await Promise.all([
-        supabase.from('profiles').select('*').eq('id', user.id).single(),
-        supabase.from('characters').select('*').eq('id', characterId).single(),
-        supabase.from('character_photos').select('*').eq('character_id', characterId).order('order_index'),
-        fetch('/api/chat/start-conversation', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ characterId }),
-        }),
-      ])
-      setProfile(profRes.data)
-      setCharacter(charRes.data)
-      setPhotos(photosRes.data || [])
-
-      if (!startRes.ok) { setLoading(false); return }
-      const { conversationId: newConvId, welcomeMessage } = await startRes.json()
-      convId = newConvId as string
-      localStorage.setItem(cacheKey, convId)
-
-      const { data: msgs } = await supabase
-        .from('messages').select('*')
-        .eq('conversation_id', convId)
-        .order('created_at', { ascending: true })
-
-      const allMsgs = msgs || []
-      if (welcomeMessage && !allMsgs.find((m: Message) => m.id === welcomeMessage.id)) {
-        allMsgs.unshift(welcomeMessage)
-      }
-      setMessages(allMsgs)
-    }
-
-    setConversationId(convId)
-    convIdRef.current = convId
-
+  const setupRealtimeAndPolling = useCallback((convId: string, _userId: string) => {
     // 30秒ごとにフォールバックポーリング（最新メッセージ以降のみ取得）
+    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
     pollIntervalRef.current = setInterval(async () => {
       const cid = convIdRef.current
       if (!cid) return
@@ -132,13 +93,7 @@ export default function ChatPage() {
       })
     }, 30000)
 
-    // 開封時に未読メッセージを一括既読（admin経由でRLS回避）
-    fetch('/api/chat/mark-read', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ conversationId: convId }),
-    }).catch(() => {})
-
+    if (channelRef.current) supabase.removeChannel(channelRef.current)
     const channel = supabase.channel(`chat:${convId}`)
 
     channel.on('broadcast', { event: 'new_message' }, ({ payload }) => {
@@ -174,7 +129,92 @@ export default function ChatPage() {
 
     channelRef.current = channel
     channel.subscribe()
-    setLoading(false)
+  }, [supabase, addMessage])
+
+  const loadData = async () => {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.user) { router.push('/auth/login'); return }
+    const userId = session.user.id
+
+    const charCache = readCache<Character>(`charData:${characterId}`)
+    const cachedConvId = localStorage.getItem(`conv:${userId}:${characterId}`)
+
+    if (charCache && cachedConvId) {
+      // INSTANT: show cached UI immediately
+      const cachedMsgs = readCache<Message[]>(`msgs:${cachedConvId}`) ?? []
+      setCharacter(charCache)
+      setMessages(cachedMsgs)
+      setConversationId(cachedConvId)
+      convIdRef.current = cachedConvId
+      setLoading(false)
+
+      // Background refresh
+      const [profRes, charRes, photosRes, msgsRes] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', userId).single(),
+        supabase.from('characters').select('*').eq('id', characterId).single(),
+        supabase.from('character_photos').select('*').eq('character_id', characterId).order('order_index'),
+        supabase.from('messages').select('*').eq('conversation_id', cachedConvId).order('created_at', { ascending: true }),
+      ])
+      if (profRes.data) setProfile(profRes.data)
+      if (charRes.data) {
+        setCharacter(charRes.data)
+        writeCache(`charData:${characterId}`, charRes.data)
+      }
+      if (photosRes.data) setPhotos(photosRes.data)
+      if (msgsRes.data) {
+        setMessages(msgsRes.data)
+        writeCache(`msgs:${cachedConvId}`, msgsRes.data.slice(-MAX_CACHED_MSGS))
+      }
+      setupRealtimeAndPolling(cachedConvId, userId)
+    } else {
+      // 初回：start-conversationで会話を作成＆ウェルカムメッセージ
+      const [profRes, charRes, photosRes, startRes] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', userId).single(),
+        supabase.from('characters').select('*').eq('id', characterId).single(),
+        supabase.from('character_photos').select('*').eq('character_id', characterId).order('order_index'),
+        fetch('/api/chat/start-conversation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ characterId }),
+        }),
+      ])
+      setProfile(profRes.data)
+      if (charRes.data) {
+        setCharacter(charRes.data)
+        writeCache(`charData:${characterId}`, charRes.data)
+      }
+      setPhotos(photosRes.data || [])
+
+      if (!startRes.ok) { setLoading(false); return }
+      const { conversationId: newConvId, welcomeMessage } = await startRes.json()
+      localStorage.setItem(`conv:${userId}:${characterId}`, newConvId)
+
+      const { data: msgs } = await supabase
+        .from('messages').select('*')
+        .eq('conversation_id', newConvId)
+        .order('created_at', { ascending: true })
+
+      const allMsgs = msgs || []
+      if (welcomeMessage && !allMsgs.find((m: Message) => m.id === welcomeMessage.id)) {
+        allMsgs.unshift(welcomeMessage)
+      }
+      setMessages(allMsgs)
+      writeCache(`msgs:${newConvId}`, allMsgs.slice(-MAX_CACHED_MSGS))
+      setConversationId(newConvId)
+      convIdRef.current = newConvId
+      setupRealtimeAndPolling(newConvId, userId)
+      setLoading(false)
+    }
+
+    // mark as read (fire and forget)
+    const cid = convIdRef.current
+    if (cid) {
+      fetch('/api/chat/mark-read', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversationId: cid }),
+      }).catch(() => {})
+    }
   }
 
   const sendMessage = async () => {
