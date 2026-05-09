@@ -137,7 +137,7 @@ export default function ChatPage() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ conversationId: convId }),
-    }).then(() => router.refresh()).catch(() => {})
+    }).catch(() => {})
 
     const channel = supabase.channel(`chat:${convId}`)
 
@@ -601,11 +601,11 @@ function MessageBubble({ message, characterName, characterAvatar }: {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={message.metadata!.image_url!} alt="" className="w-full max-w-[240px] object-cover block" />
             {message.content && (
-              <p className="px-4 py-2.5 text-sm leading-relaxed">{message.content}</p>
+              <p className="px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
             )}
           </div>
         ) : (
-          <div className={`px-4 py-2.5 text-sm leading-relaxed ${isUser ? 'bubble-user' : 'bubble-operator'}`}>
+          <div className={`px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${isUser ? 'bubble-user' : 'bubble-operator'}`}>
             {message.content}
           </div>
         )}
