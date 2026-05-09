@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
   const user = await getAuthUser(authClient)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { name, age, gender } = await req.json()
+  const { name, age, gender, referralSource } = await req.json()
   if (!name?.trim() || !age || !gender)
     return NextResponse.json({ error: 'name, age, gender are required' }, { status: 400 })
   if (parseInt(age) < 18)
@@ -25,17 +25,28 @@ export async function POST(req: NextRequest) {
 
   if (!existing) {
     // 行がない場合は新規作成
+    const INITIAL_POINTS = 500
     const { error: insertError } = await adminClient.from('profiles').insert({
       id: user.id,
       email: user.email ?? '',
       user_code: Math.random().toString(36).substring(2, 10).toUpperCase(),
       role: 'user',
-      points: 0,
+      points: INITIAL_POINTS,
       display_name: name.trim(),
       age: parseInt(age),
       gender,
+      ...(referralSource ? { referral_source: referralSource } : {}),
     })
     if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 })
+
+    // 初回ポイント付与の履歴を記録
+    await adminClient.from('point_transactions').insert({
+      user_id: user.id,
+      amount: INITIAL_POINTS,
+      type: 'purchase',
+      description: '新規登録ボーナス',
+    })
+
     return NextResponse.json({ ok: true })
   }
 

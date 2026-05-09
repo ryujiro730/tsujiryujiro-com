@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Edit2, Trash2, Loader2, Check, X, Upload, Images, Megaphone, Calendar, Users, Send, Timer, ChevronDown, ChevronUp, Power, BookOpen } from 'lucide-react'
+import { Plus, Edit2, Trash2, Loader2, Check, X, Upload, Images, Megaphone, Calendar, Users, Send, Timer, ChevronDown, ChevronUp, Power, BookOpen, ArrowUp, ArrowDown } from 'lucide-react'
 import type { Character, CharacterPhoto } from '@/types'
 
 type Template = { id: string; title: string; content: string; sort_order: number }
@@ -113,9 +113,29 @@ export default function AdminCharactersPage() {
     const { data } = await supabase
       .from('characters')
       .select('*')
-      .order('created_at', { ascending: true })
+      .order('sort_order', { ascending: true })
     setCharacters(data || [])
     setLoading(false)
+  }
+
+  const moveChar = async (index: number, direction: 'up' | 'down') => {
+    const swapIndex = direction === 'up' ? index - 1 : index + 1
+    if (swapIndex < 0 || swapIndex >= characters.length) return
+
+    const updated = [...characters]
+    const aOrder = updated[index].sort_order
+    const bOrder = updated[swapIndex].sort_order
+
+    // swap sort_order values
+    await Promise.all([
+      supabase.from('characters').update({ sort_order: bOrder }).eq('id', updated[index].id),
+      supabase.from('characters').update({ sort_order: aOrder }).eq('id', updated[swapIndex].id),
+    ])
+
+    updated[index] = { ...updated[index], sort_order: bOrder }
+    updated[swapIndex] = { ...updated[swapIndex], sort_order: aOrder }
+    const sorted = [...updated].sort((a, b) => a.sort_order - b.sort_order)
+    setCharacters(sorted)
   }
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -620,9 +640,26 @@ export default function AdminCharactersPage() {
 
       {/* キャラクター一覧 */}
       <div className="space-y-3">
-        {characters.map((char) => (
+        {characters.map((char, index) => (
           <div key={char.id}>
             <div className="glass rounded-2xl px-5 py-4 flex items-center gap-4">
+              {/* 並び替えボタン */}
+              <div className="flex flex-col gap-0.5 flex-shrink-0">
+                <button
+                  onClick={() => moveChar(index, 'up')}
+                  disabled={index === 0}
+                  className="p-1 rounded hover:bg-[var(--color-surface-2)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ArrowUp size={13} />
+                </button>
+                <button
+                  onClick={() => moveChar(index, 'down')}
+                  disabled={index === characters.length - 1}
+                  className="p-1 rounded hover:bg-[var(--color-surface-2)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ArrowDown size={13} />
+                </button>
+              </div>
               <div className="w-12 h-12 rounded-full overflow-hidden border border-[var(--color-border)] flex-shrink-0">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={char.avatar_url} alt={char.name} className="w-full h-full object-cover" />

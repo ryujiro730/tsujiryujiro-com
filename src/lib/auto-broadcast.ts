@@ -103,20 +103,26 @@ export async function processAutoBroadcast(): Promise<{ scheduled: number; sent:
   // ルックアップマップを構築
   // userRepliedToChar: `${userId}:${characterId}` → そのキャラに返信済み
   const userRepliedToChar = new Set<string>()
-  // charSentToUser: `${userId}:${characterId}` → キャラがすでにメッセージを送っているペア
-  const charSentToUser = new Set<string>()
 
   for (const msg of allMessages ?? []) {
     const conv = (conversations ?? []).find(c => c.id === msg.conversation_id)
     if (!conv) continue
-    const key = `${conv.user_id}:${conv.character_id}`
     if (msg.sender_role === 'user') {
-      userRepliedToChar.add(key)
-    }
-    if (msg.sender_role === 'character') {
-      charSentToUser.add(key)
+      userRepliedToChar.add(`${conv.user_id}:${conv.character_id}`)
     }
   }
+
+  // ユーザー起点の会話（ウェルカム送信済み = source='user'）を取得
+  // → step1 はスキップするが step2 以降は送信する
+  const { data: userInitConvs } = await adminClient
+    .from('conversations')
+    .select('user_id, character_id')
+    .eq('source', 'user')
+    .in('user_id', pendingUserIds)
+
+  const userInitiatedKeys = new Set(
+    (userInitConvs ?? []).map(c => `${c.user_id}:${c.character_id}`)
+  )
   // ──────────────────────────────────────────────────────────────────────────
 
   for (const log of pendingLogs) {
@@ -126,7 +132,7 @@ export async function processAutoBroadcast(): Promise<{ scheduled: number; sent:
       const characterId: string = step.auto_broadcast_sequences.character_id
       const stepNumber: number = step.step_number
 
-      // ① ユーザーがこのキャラに返信済み → このキャラの自動同報をキャンセル
+      // ① ユーザーがこのキャラに返信済み → 全ステップキャンセル
       if (userRepliedToChar.has(`${log.user_id}:${characterId}`)) {
         await adminClient.from('auto_broadcast_logs')
           .update({ status: 'cancelled' }).eq('id', log.id)
@@ -134,8 +140,9 @@ export async function processAutoBroadcast(): Promise<{ scheduled: number; sent:
         continue
       }
 
-      // ② step_number=1 かつ このキャラからウェルカムメッセージ送信済み → スキップ
-      if (stepNumber === 1 && charSentToUser.has(`${log.user_id}:${characterId}`)) {
+      // ② ウェルカムメッセージ送信済み（source='user'）かつ step1 → スキップ
+      //    step2 以降はウェルカムの「フォロー」として送信する
+      if (stepNumber === 1 && userInitiatedKeys.has(`${log.user_id}:${characterId}`)) {
         await adminClient.from('auto_broadcast_logs')
           .update({ status: 'skipped' }).eq('id', log.id)
         skipped++
@@ -160,7 +167,7 @@ export async function processAutoBroadcast(): Promise<{ scheduled: number; sent:
       } else {
         const { data: newConv, error: convError } = await adminClient
           .from('conversations')
-          .insert({ user_id: log.user_id, character_id: characterId, last_message_at: msgTime, is_unread_staff: false })
+          .insert({ user_id: log.user_id, character_id: characterId, last_message_at: msgTime, is_unread_staff: false, source: 'auto_broadcast' })
           .select('id').single()
         if (convError || !newConv) throw new Error('conv create failed: ' + convError?.message)
         conversationId = newConv.id

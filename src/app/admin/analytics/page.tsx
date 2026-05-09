@@ -69,8 +69,8 @@ export default async function AdminAnalyticsPage({ searchParams }: { searchParam
   const { from, to } = getPeriodRange(period)
   const fromISO = from.toISOString()
 
-  // Fetch all data for the period
-  const [txRes, profilesRes, loginRes] = await Promise.all([
+  // Fetch all data for the period + all-time paying user IDs
+  const [txRes, profilesRes, loginRes, allPayersRes] = await Promise.all([
     supabase
       .from('point_transactions')
       .select('user_id, amount, type, price_yen, created_at')
@@ -85,16 +85,18 @@ export default async function AdminAnalyticsPage({ searchParams }: { searchParam
       .select('last_login_at')
       .gte('last_login_at', fromISO)
       .not('last_login_at', 'is', null),
+    supabase
+      .from('point_transactions')
+      .select('user_id')
+      .eq('type', 'purchase'),
   ])
 
   const transactions = txRes.data ?? []
   const newProfiles = profilesRes.data ?? []
   const logins = loginRes.data ?? []
 
-  // Find paying user IDs (users who have ever made a purchase)
-  const payingUserIds = new Set(
-    transactions.filter(t => t.type === 'purchase').map(t => t.user_id)
-  )
+  // All-time paying user IDs (regardless of current period)
+  const payingUserIds = new Set((allPayersRes.data ?? []).map(t => t.user_id))
 
   // Build bucket maps
   const buckets = generateBuckets(period)
@@ -102,11 +104,12 @@ export default async function AdminAnalyticsPage({ searchParams }: { searchParam
     revenue: number
     allPointsSpent: number
     payingPointsSpent: number
+    freePointsSpent: number
     registrations: number
     logins: number
   }
   const bucketMap = new Map<string, BucketData>()
-  buckets.forEach(b => bucketMap.set(b, { revenue: 0, allPointsSpent: 0, payingPointsSpent: 0, registrations: 0, logins: 0 }))
+  buckets.forEach(b => bucketMap.set(b, { revenue: 0, allPointsSpent: 0, payingPointsSpent: 0, freePointsSpent: 0, registrations: 0, logins: 0 }))
 
   // Aggregate transactions
   for (const tx of transactions) {
@@ -120,6 +123,8 @@ export default async function AdminAnalyticsPage({ searchParams }: { searchParam
       bucket.allPointsSpent += Math.abs(tx.amount)
       if (payingUserIds.has(tx.user_id)) {
         bucket.payingPointsSpent += Math.abs(tx.amount)
+      } else {
+        bucket.freePointsSpent += Math.abs(tx.amount)
       }
     }
   }
@@ -146,15 +151,17 @@ export default async function AdminAnalyticsPage({ searchParams }: { searchParam
       revenue: acc.revenue + d.revenue,
       allPointsSpent: acc.allPointsSpent + d.allPointsSpent,
       payingPointsSpent: acc.payingPointsSpent + d.payingPointsSpent,
+      freePointsSpent: acc.freePointsSpent + d.freePointsSpent,
       registrations: acc.registrations + d.registrations,
       logins: acc.logins + d.logins,
     }
-  }, { revenue: 0, allPointsSpent: 0, payingPointsSpent: 0, registrations: 0, logins: 0 })
+  }, { revenue: 0, allPointsSpent: 0, payingPointsSpent: 0, freePointsSpent: 0, registrations: 0, logins: 0 })
 
   // Max values for bar scaling
   const maxRevenue = Math.max(...buckets.map(b => bucketMap.get(b)!.revenue), 1)
   const maxAllSpent = Math.max(...buckets.map(b => bucketMap.get(b)!.allPointsSpent), 1)
   const maxPayingSpent = Math.max(...buckets.map(b => bucketMap.get(b)!.payingPointsSpent), 1)
+  const maxFreeSpent = Math.max(...buckets.map(b => bucketMap.get(b)!.freePointsSpent), 1)
   const maxReg = Math.max(...buckets.map(b => bucketMap.get(b)!.registrations), 1)
   const maxLogins = Math.max(...buckets.map(b => bucketMap.get(b)!.logins), 1)
 
@@ -193,6 +200,7 @@ export default async function AdminAnalyticsPage({ searchParams }: { searchParam
           { label: '課金額', value: `¥${totals.revenue.toLocaleString()}`, color: '#10b981' },
           { label: 'ポイント消費（全体）', value: `${totals.allPointsSpent.toLocaleString()}T`, color: '#6366f1' },
           { label: 'ポイント消費（課金ユーザー）', value: `${totals.payingPointsSpent.toLocaleString()}T`, color: '#8b5cf6' },
+          { label: 'ポイント消費（無料ユーザー）', value: `${totals.freePointsSpent.toLocaleString()}T`, color: '#ec4899' },
           { label: '新規登録', value: `${totals.registrations}人`, color: '#f59e0b' },
           { label: 'ログイン', value: `${totals.logins}人`, color: '#3b82f6' },
         ].map(card => (
@@ -208,6 +216,7 @@ export default async function AdminAnalyticsPage({ searchParams }: { searchParam
         { label: '課金額（円）', key: 'revenue' as const, max: maxRevenue, color: '#10b981', fmt: (v: number) => `¥${v.toLocaleString()}` },
         { label: 'ポイント消費・全ユーザー', key: 'allPointsSpent' as const, max: maxAllSpent, color: '#6366f1', fmt: (v: number) => `${v}T` },
         { label: 'ポイント消費・課金ユーザー', key: 'payingPointsSpent' as const, max: maxPayingSpent, color: '#8b5cf6', fmt: (v: number) => `${v}T` },
+        { label: 'ポイント消費・無料ユーザー', key: 'freePointsSpent' as const, max: maxFreeSpent, color: '#ec4899', fmt: (v: number) => `${v}T` },
         { label: '新規登録者数', key: 'registrations' as const, max: maxReg, color: '#f59e0b', fmt: (v: number) => `${v}人` },
         { label: 'ログイン数', key: 'logins' as const, max: maxLogins, color: '#3b82f6', fmt: (v: number) => `${v}人` },
       ].map(chart => (
@@ -263,6 +272,7 @@ export default async function AdminAnalyticsPage({ searchParams }: { searchParam
                 <th className="text-right pb-2 px-4">課金額</th>
                 <th className="text-right pb-2 px-4">消費(全体)</th>
                 <th className="text-right pb-2 px-4">消費(課金)</th>
+                <th className="text-right pb-2 px-4">消費(無料)</th>
                 <th className="text-right pb-2 px-4">登録</th>
                 <th className="text-right pb-2 pl-4">ログイン</th>
               </tr>
@@ -277,6 +287,7 @@ export default async function AdminAnalyticsPage({ searchParams }: { searchParam
                     <td className="py-1.5 px-4 text-right text-green-400 font-medium">{d.revenue > 0 ? `¥${d.revenue.toLocaleString()}` : '—'}</td>
                     <td className="py-1.5 px-4 text-right">{d.allPointsSpent > 0 ? `${d.allPointsSpent}T` : '—'}</td>
                     <td className="py-1.5 px-4 text-right">{d.payingPointsSpent > 0 ? `${d.payingPointsSpent}T` : '—'}</td>
+                    <td className="py-1.5 px-4 text-right" style={{ color: '#ec4899' }}>{d.freePointsSpent > 0 ? `${d.freePointsSpent}T` : '—'}</td>
                     <td className="py-1.5 px-4 text-right">{d.registrations > 0 ? `${d.registrations}人` : '—'}</td>
                     <td className="py-1.5 pl-4 text-right">{d.logins > 0 ? `${d.logins}人` : '—'}</td>
                   </tr>

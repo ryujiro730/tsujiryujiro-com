@@ -14,7 +14,7 @@ export default async function CharactersPage() {
     .from('characters')
     .select('id, name, age, description, personality, avatar_url')
     .eq('is_active', true)
-    .order('created_at', { ascending: true })
+    .order('sort_order', { ascending: true })
 
   // ユーザーがいれば未読カウントをキャラごとに取得
   const unreadByChar = new Map<string, number>()

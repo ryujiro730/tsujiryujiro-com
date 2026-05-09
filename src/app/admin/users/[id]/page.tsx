@@ -19,6 +19,7 @@ type UserDetail = {
   admin_note: string | null
   last_login_at: string | null
   created_at: string
+  referral_source: string | null
 }
 
 type Label = {
@@ -61,6 +62,7 @@ export default function AdminUserDetailPage() {
   const [noteLoading, setNoteLoading] = useState(false)
   const [noteSaved, setNoteSaved] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [newLabelName, setNewLabelName] = useState('')
   const [creatingLabel, setCreatingLabel] = useState(false)
 
@@ -78,8 +80,8 @@ export default function AdminUserDetailPage() {
       fetch(`/api/admin/profile-note?userId=${id}`).then(r => r.json()),
     ])
 
-    if (userRes.error) { console.error('user fetch error:', userRes.error.message); setLoading(false); return }
-    if (!userRes.data) { router.push('/admin/users'); return }
+    if (userRes.error) { setLoadError(userRes.error.message); setLoading(false); return }
+    if (!userRes.data) { setLoadError('ユーザーが見つかりません'); setLoading(false); return }
 
     setUser(userRes.data as UserDetail)
     setAdminNote(noteRes.admin_note ?? '')
@@ -137,6 +139,15 @@ export default function AdminUserDetailPage() {
     )
   }
 
+  if (loadError) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-3">
+        <p className="text-red-400 text-sm">エラー: {loadError}</p>
+        <button onClick={() => { setLoading(true); setLoadError(null); loadAll() }} className="btn-primary px-4 py-2 text-sm">再試行</button>
+      </div>
+    )
+  }
+
   if (!user) return null
 
   const totalCharged = transactions.filter(t => t.type === 'purchase').reduce((sum, t) => sum + (t.price_yen ?? 0), 0)
@@ -164,6 +175,7 @@ export default function AdminUserDetailPage() {
           <div><span className="text-[var(--color-text-muted)] text-xs">累計課金</span><p className="font-semibold">{totalCharged > 0 ? `¥${totalCharged.toLocaleString()}` : '—'}</p></div>
           <div><span className="text-[var(--color-text-muted)] text-xs">登録日</span><p>{new Date(user.created_at).toLocaleDateString('ja-JP')}</p></div>
           <div><span className="text-[var(--color-text-muted)] text-xs">最終ログイン</span><p>{user.last_login_at ? formatDistanceToNow(new Date(user.last_login_at), { addSuffix: true, locale: ja }) : '—'}</p></div>
+          <div className="col-span-2"><span className="text-[var(--color-text-muted)] text-xs">流入元</span><p>{user.referral_source ?? '—'}</p></div>
         </div>
       </div>
 

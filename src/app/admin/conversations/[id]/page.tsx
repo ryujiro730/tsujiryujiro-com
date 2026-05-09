@@ -77,10 +77,12 @@ export default function AdminConversationDetailPage() {
     if (!conv) { router.push('/admin/conversations'); return }
 
     const char = (conv as any).characters as Character
+    const profile = (conv as any).profiles
     setCharacter(char)
-    setUserProfile((conv as any).profiles)
+    setUserProfile(profile)
 
-    const userId = (conv as any).profiles?.id
+    const userId = profile?.id
+    const DEFAULT_STAFF_NOTE = `★★★★★★$nickname$★★★★★★\n\n\n\n\n★★★★★★★★キャラ★★★★★★★`
     const msgsPromise = supabase.from('messages').select('*').eq('conversation_id', id).order('created_at', { ascending: true })
     const tmplPromise = char?.id
       ? supabase.from('reply_templates').select('id, title, content, sort_order').eq('character_id', char.id).order('sort_order').order('created_at')
@@ -94,7 +96,7 @@ export default function AdminConversationDetailPage() {
     ])
 
     setMessages((msgsRes as any).data || [])
-    setStaffNote((conv as any).staff_note ?? '')
+    setStaffNote((conv as any).staff_note ?? DEFAULT_STAFF_NOTE)
     setTemplates((tmplRes as any).data ?? [])
 
     if (userId) {
@@ -300,6 +302,10 @@ export default function AdminConversationDetailPage() {
                   <p className="text-xs text-[var(--color-text-muted)]">性別</p>
                   <p>{userProfile.gender ?? '未設定'}</p>
                 </div>
+              </div>
+              <div>
+                <p className="text-xs text-[var(--color-text-muted)]">流入元</p>
+                <p>{(userProfile as any).referral_source ?? '—'}</p>
               </div>
               {labels.length > 0 && (
                 <div>

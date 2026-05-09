@@ -32,6 +32,7 @@ export interface Character {
   cover_url: string | null
   is_active: boolean
   reply_cost_points: number // always 1 for humanchat
+  sort_order: number
   created_at: string
 }
 

@@ -180,15 +180,34 @@ export default function ChatPage() {
   const sendMessage = async () => {
     if (!input.trim() || sending || !conversationId || !profile || !character) return
 
+    const SEND_COST = 100
+    if (profile.points < SEND_COST) {
+      alert(`メッセージ送信には${SEND_COST}ポイント必要です。ポイントを購入してください。`)
+      return
+    }
+
     setSending(true)
     const content = input.trim()
     setInput('')
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
 
+    // ポイント消費
+    const newPoints = profile.points - SEND_COST
+    await Promise.all([
+      supabase.from('profiles').update({ points: newPoints }).eq('id', profile.id),
+      supabase.from('point_transactions').insert({
+        user_id: profile.id,
+        amount: -SEND_COST,
+        type: 'spend',
+        description: 'メッセージ送信',
+      }),
+    ])
+    setProfile(prev => prev ? { ...prev, points: newPoints } : prev)
+
     // ユーザーメッセージをDBに保存
     const { data: msg } = await supabase.from('messages').insert({
       conversation_id: conversationId, sender_role: 'user',
-      content, points_used: 0,
+      content, points_used: SEND_COST,
     }).select().single()
 
     if (!msg) { setSending(false); return }
@@ -302,8 +321,27 @@ export default function ChatPage() {
     setSendingItem(null)
   }
 
-  const openAlbumLightbox = (index: number) => {
-    if (!character) return
+  const openAlbumLightbox = async (index: number) => {
+    if (!character || !profile) return
+
+    const VIEW_COST = 300
+    if (profile.points < VIEW_COST) {
+      alert(`画像閲覧には${VIEW_COST}ポイント必要です。ポイントを購入してください。`)
+      return
+    }
+
+    const newPoints = profile.points - VIEW_COST
+    await Promise.all([
+      supabase.from('profiles').update({ points: newPoints }).eq('id', profile.id),
+      supabase.from('point_transactions').insert({
+        user_id: profile.id,
+        amount: -VIEW_COST,
+        type: 'spend',
+        description: '画像閲覧',
+      }),
+    ])
+    setProfile(prev => prev ? { ...prev, points: newPoints } : prev)
+
     const all = [character.avatar_url, ...photos.map(p => p.url)]
     setLightboxPhotos(all)
     setLightboxIndex(index)

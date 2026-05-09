@@ -64,7 +64,7 @@ export default function OnboardingPage() {
       .from('characters')
       .select('id, name, age, description, personality, avatar_url')
       .eq('is_active', true)
-      .order('created_at', { ascending: true })
+      .order('sort_order', { ascending: true })
 
     if (!chars || chars.length === 0) { setCharLoading(false); return }
 
@@ -97,10 +97,11 @@ export default function OnboardingPage() {
       return
     }
     setSaving(true)
+    const referralSource = sessionStorage.getItem('referral_source') ?? undefined
     const res = await fetch('/api/onboarding/complete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, age, gender }),
+      body: JSON.stringify({ name, age, gender, referralSource }),
     })
     setSaving(false)
     if (!res.ok) {
@@ -108,6 +109,7 @@ export default function OnboardingPage() {
       alert('保存に失敗しました: ' + (data.error ?? ''))
       return
     }
+    sessionStorage.removeItem('referral_source')
     setStep(3)
     loadCharacters()
   }

@@ -67,10 +67,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ conversationId: existing.id, welcomeMessage: null })
   }
 
-  // 新規会話作成
+  // 新規会話作成（source='user' = ユーザー起点）
   const { data: newConv, error: convError } = await admin
     .from('conversations')
-    .insert({ user_id: user.id, character_id: characterId })
+    .insert({ user_id: user.id, character_id: characterId, source: 'user' })
     .select('id').single()
 
   if (convError || !newConv) {
@@ -78,5 +78,24 @@ export async function POST(req: NextRequest) {
   }
 
   const welcomeMessage = await sendWelcomeMessage(admin, newConv.id, characterId, user.id)
+
+  // ウェルカムメッセージ送信後、このキャラへの自動同報をすべてキャンセル
+  // （ログがまだ未作成の場合はスケジューリングフェーズ側で除外される）
+  // step_number=1 のみキャンセル。step2 以降はユーザーが返信しない限り送信する
+  const { data: step1s } = await admin
+    .from('auto_broadcast_steps')
+    .select('id, auto_broadcast_sequences!inner(character_id)')
+    .eq('auto_broadcast_sequences.character_id', characterId)
+    .eq('step_number', 1)
+  const step1Ids = (step1s ?? []).map((s: any) => s.id)
+  if (step1Ids.length > 0) {
+    await admin
+      .from('auto_broadcast_logs')
+      .update({ status: 'cancelled' })
+      .eq('user_id', user.id)
+      .in('step_id', step1Ids)
+      .eq('status', 'pending')
+  }
+
   return NextResponse.json({ conversationId: newConv.id, welcomeMessage })
 }
