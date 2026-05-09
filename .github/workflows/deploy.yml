@@ -60,4 +60,4 @@ jobs:
       - name: Setup crontab on VPS
         run: |
           ssh ${{ secrets.VULTR_USER }}@${{ secrets.VULTR_HOST }} \
-            "(crontab -l 2>/dev/null | grep -v 'auto-broadcast'; echo '*/5 * * * * curl -s http://localhost:3001/api/cron/auto-broadcast -H \"Authorization: Bearer ${{ secrets.CRON_SECRET }}\" >> /var/log/humanchat-cron.log 2>&1') | crontab -"
+            "(crontab -l 2>/dev/null | grep -v 'auto-broadcast'; echo '* * * * * curl -s http://localhost:3001/api/cron/auto-broadcast -H \"Authorization: Bearer ${{ secrets.CRON_SECRET }}\" >> /var/log/humanchat-cron.log 2>&1') | crontab -"
