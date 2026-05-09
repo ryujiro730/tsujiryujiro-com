@@ -3,6 +3,17 @@ import { createClient as createServerClient } from '@/lib/supabase/server'
 import { createClient } from '@supabase/supabase-js'
 import { getAuthUser } from '@/lib/supabase/get-auth-user'
 
+const BONUS_POINTS = 500
+const IP_WINDOW_DAYS = 30  // 同一IPの既存アカウント確認期間
+
+function getClientIp(req: NextRequest): string {
+  return (
+    req.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
+    req.headers.get('x-real-ip') ||
+    'unknown'
+  )
+}
+
 export async function POST(req: NextRequest) {
   const authClient = createServerClient()
   const user = await getAuthUser(authClient)
@@ -24,33 +35,50 @@ export async function POST(req: NextRequest) {
     .from('profiles').select('id').eq('id', user.id).single()
 
   if (!existing) {
-    // 行がない場合は新規作成
-    const INITIAL_POINTS = 500
+    const ip = getClientIp(req)
+    const ua = req.headers.get('user-agent') ?? ''
+
+    // 同IPで既存アカウントがあればボーナスなし
+    let giveBonus = true
+    if (ip !== 'unknown') {
+      const since = new Date(Date.now() - IP_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString()
+      const { count } = await adminClient
+        .from('profiles')
+        .select('id', { count: 'exact', head: true })
+        .eq('registration_ip', ip)
+        .gte('created_at', since)
+      if ((count ?? 0) > 0) giveBonus = false
+    }
+
+    const points = giveBonus ? BONUS_POINTS : 0
     const { error: insertError } = await adminClient.from('profiles').insert({
       id: user.id,
       email: user.email ?? '',
       user_code: Math.random().toString(36).substring(2, 10).toUpperCase(),
       role: 'user',
-      points: INITIAL_POINTS,
+      points,
       display_name: name.trim(),
       age: parseInt(age),
       gender,
+      registration_ip: ip,
+      registration_ua: ua,
       ...(referralSource ? { referral_source: referralSource } : {}),
     })
     if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 })
 
-    // 初回ポイント付与の履歴を記録
-    await adminClient.from('point_transactions').insert({
-      user_id: user.id,
-      amount: INITIAL_POINTS,
-      type: 'purchase',
-      description: '新規登録ボーナス',
-    })
+    if (giveBonus) {
+      await adminClient.from('point_transactions').insert({
+        user_id: user.id,
+        amount: BONUS_POINTS,
+        type: 'purchase',
+        description: '新規登録ボーナス',
+      })
+    }
 
     return NextResponse.json({ ok: true })
   }
 
-  // 行がある場合は onboarding フィールドのみ更新
+  // 既存行がある場合は onboarding フィールドのみ更新
   const { error } = await adminClient
     .from('profiles')
     .update({ display_name: name.trim(), age: parseInt(age), gender })

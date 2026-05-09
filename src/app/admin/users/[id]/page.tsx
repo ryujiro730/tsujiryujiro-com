@@ -20,6 +20,8 @@ type UserDetail = {
   last_login_at: string | null
   created_at: string
   referral_source: string | null
+  registration_ip: string | null
+  registration_ua: string | null
 }
 
 type Label = {
@@ -72,7 +74,7 @@ export default function AdminUserDetailPage() {
 
   const loadAll = async () => {
     const [userRes, labelsRes, assignRes, convRes, txRes, noteRes] = await Promise.all([
-      supabase.from('profiles').select('id, user_code, email, display_name, age, gender, points, last_login_at, created_at').eq('id', id).single(),
+      supabase.from('profiles').select('id, user_code, email, display_name, age, gender, points, last_login_at, created_at, referral_source, registration_ip, registration_ua').eq('id', id).single(),
       supabase.from('admin_labels').select('*').order('name'),
       supabase.from('user_label_assignments').select('label_id').eq('user_id', id),
       supabase.from('conversations').select('id, last_message_at, is_unread_staff, characters(name, avatar_url)').eq('user_id', id).order('last_message_at', { ascending: false }).limit(10),
@@ -176,6 +178,8 @@ export default function AdminUserDetailPage() {
           <div><span className="text-[var(--color-text-muted)] text-xs">登録日</span><p>{new Date(user.created_at).toLocaleDateString('ja-JP')}</p></div>
           <div><span className="text-[var(--color-text-muted)] text-xs">最終ログイン</span><p>{user.last_login_at ? formatDistanceToNow(new Date(user.last_login_at), { addSuffix: true, locale: ja }) : '—'}</p></div>
           <div className="col-span-2"><span className="text-[var(--color-text-muted)] text-xs">流入元</span><p>{user.referral_source ?? '—'}</p></div>
+          <div className="col-span-2"><span className="text-[var(--color-text-muted)] text-xs">登録IP</span><p className="font-mono text-xs">{user.registration_ip ?? '—'}</p></div>
+          <div className="col-span-2"><span className="text-[var(--color-text-muted)] text-xs">登録UA</span><p className="text-xs break-all text-[var(--color-text-muted)]">{user.registration_ua ?? '—'}</p></div>
         </div>
       </div>
 
