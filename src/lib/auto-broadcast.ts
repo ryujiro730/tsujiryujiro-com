@@ -171,6 +171,12 @@ export async function processAutoBroadcast(): Promise<{ scheduled: number; sent:
           .select('id').single()
         if (convError || !newConv) throw new Error('conv create failed: ' + convError?.message)
         conversationId = newConv.id
+        // 同バッチ内の後続ステップが同じ会話を再利用できるようにキャッシュに追加
+        ;(conversations as { id: string; user_id: string; character_id: string }[]).push({
+          id: conversationId,
+          user_id: log.user_id,
+          character_id: characterId,
+        })
       }
 
       const imageUrl: string | null = step.image_url ?? null
