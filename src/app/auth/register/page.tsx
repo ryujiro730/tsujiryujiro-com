@@ -16,6 +16,8 @@ export default function RegisterPage() {
     const params = new URLSearchParams(window.location.search)
     const ref = params.get('ref') || params.get('source')
     if (ref) sessionStorage.setItem('referral_source', ref)
+    const refBy = params.get('ref_by')
+    if (refBy) sessionStorage.setItem('referral_by_code', refBy)
   }, [])
 
   const handleRegister = async (e: React.FormEvent) => {

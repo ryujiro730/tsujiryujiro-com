@@ -98,10 +98,11 @@ export default function OnboardingPage() {
     }
     setSaving(true)
     const referralSource = sessionStorage.getItem('referral_source') ?? undefined
+    const referralByCode = sessionStorage.getItem('referral_by_code') ?? undefined
     const res = await fetch('/api/onboarding/complete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, age, gender, referralSource }),
+      body: JSON.stringify({ name, age, gender, referralSource, referralByCode }),
     })
     setSaving(false)
     if (!res.ok) {
@@ -110,6 +111,7 @@ export default function OnboardingPage() {
       return
     }
     sessionStorage.removeItem('referral_source')
+    sessionStorage.removeItem('referral_by_code')
     setStep(3)
     loadCharacters()
   }

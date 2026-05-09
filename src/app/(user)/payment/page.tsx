@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Loader2, Sparkles, History } from 'lucide-react'
+import { Loader2, Sparkles, History, Gift, Copy, Check } from 'lucide-react'
 import { TOKEN_PACKAGES } from '@/types'
 import type { Profile, PointTransaction } from '@/types'
 import { format } from 'date-fns'
@@ -19,6 +19,7 @@ export default function PaymentPage() {
   const [transactions, setTransactions] = useState<PointTransaction[]>([])
   const [loading, setLoading] = useState(true)
   const [purchasing, setPurchasing] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -149,6 +150,41 @@ export default function PaymentPage() {
           )
         })}
       </div>
+
+      {/* 紹介プログラム */}
+      {profile?.user_code && (() => {
+        const referralUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/register?ref_by=${profile.user_code}`
+        const handleCopy = () => {
+          navigator.clipboard.writeText(referralUrl)
+          setCopied(true)
+          setTimeout(() => setCopied(false), 2000)
+        }
+        return (
+          <div className="card p-5 mb-8" style={{ border: '1px solid var(--color-border-warm)', background: 'linear-gradient(135deg, rgba(249,168,184,0.08), rgba(232,121,160,0.05))' }}>
+            <div className="flex items-center gap-2 mb-2">
+              <Gift size={16} style={{ color: 'var(--color-primary)' }} />
+              <p className="font-bold text-sm">友達紹介プログラム</p>
+            </div>
+            <p className="text-xs text-[var(--color-text-muted)] mb-4 leading-relaxed">
+              あなたの紹介URLから友達が登録すると、<br />
+              <span className="font-semibold" style={{ color: 'var(--color-primary)' }}>あなたも友達も1,000ポイント</span>もらえます！
+            </p>
+            <div className="flex gap-2">
+              <div className="flex-1 px-3 py-2 rounded-xl text-xs font-mono truncate"
+                style={{ background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }}>
+                {referralUrl}
+              </div>
+              <button
+                onClick={handleCopy}
+                className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-colors"
+                style={{ background: copied ? 'rgba(125,186,132,0.15)' : 'var(--color-primary)', color: copied ? '#7ec850' : '#fff' }}
+              >
+                {copied ? <><Check size={13} />コピー済み</> : <><Copy size={13} />URLをコピー</>}
+              </button>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* 注意書き */}
       <div className="text-xs text-[var(--color-text-muted)] space-y-1 mb-8 leading-relaxed">
