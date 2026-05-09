@@ -243,6 +243,7 @@ export default function ChatPage() {
       }),
     ])
     setProfile(prev => prev ? { ...prev, points: newPoints } : prev)
+    window.dispatchEvent(new CustomEvent('pointsUpdated', { detail: { points: newPoints } }))
 
     // ユーザーメッセージをDBに保存
     const { data: msg } = await supabase.from('messages').insert({
@@ -381,6 +382,7 @@ export default function ChatPage() {
       }),
     ])
     setProfile(prev => prev ? { ...prev, points: newPoints } : prev)
+    window.dispatchEvent(new CustomEvent('pointsUpdated', { detail: { points: newPoints } }))
 
     const all = [character.avatar_url, ...photos.map(p => p.url)]
     setLightboxPhotos(all)

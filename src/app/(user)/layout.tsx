@@ -1,9 +1,10 @@
 import Link from 'next/link'
-import { MessageCircle, Users, Settings, ShoppingBag, Plus } from 'lucide-react'
+import { MessageCircle, Users, Settings, ShoppingBag } from 'lucide-react'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { unstable_noStore as noStore } from 'next/cache'
 import { Suspense } from 'react'
+import { PointsDisplay } from '@/components/PointsDisplay'
 
 // Separate async component for unread count (non-blocking)
 async function UnreadBadge({ userId }: { userId: string }) {
@@ -93,20 +94,7 @@ export default async function UserLayout({ children }: { children: React.ReactNo
           <Link href="/characters" className="text-sm font-medium text-[var(--color-text-warm)]">
             LoveChat
           </Link>
-          <Link
-            href="/payment"
-            className="flex items-center gap-1 rounded-full px-2.5 py-1 transition-colors hover:opacity-80"
-            style={{ background: 'var(--color-surface-2)', border: '1px solid var(--color-border-warm)' }}
-          >
-            <span className="text-xs font-bold" style={{ color: 'var(--color-primary)' }}>
-              {(profile?.points ?? 0).toLocaleString()}
-            </span>
-            <span className="text-[10px] text-[var(--color-text-muted)]">pt</span>
-            <div className="w-3.5 h-3.5 rounded-full flex items-center justify-center ml-0.5"
-              style={{ background: 'var(--color-primary)' }}>
-              <Plus size={9} color="#fff" strokeWidth={3} />
-            </div>
-          </Link>
+          <PointsDisplay initialPoints={profile?.points ?? 0} />
           <nav className="flex items-center gap-0.5">
             <Link href="/characters" className="p-2.5 rounded-lg hover:bg-[var(--color-surface-2)] transition-colors">
               <Users size={17} className="text-[var(--color-text-muted)]" />
