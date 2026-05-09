@@ -15,7 +15,7 @@ export async function POST(request: Request) {
           price_data: {
             currency: 'jpy',
             product_data: {
-              name: `LoveChat ${tokens}ポイント`,
+              name: `AiKano ${tokens}ポイント`,
               description: `1ポイント = 1円相当`,
             },
             unit_amount: priceYen,

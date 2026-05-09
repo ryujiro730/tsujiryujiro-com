@@ -38,7 +38,7 @@ export default async function AdminDashboard() {
     <div>
       <div className="mb-8">
         <h1 className="text-2xl font-bold mb-1">ダッシュボード</h1>
-        <p className="text-[var(--color-text-muted)] text-sm">LoveChat 管理画面</p>
+        <p className="text-[var(--color-text-muted)] text-sm">AiKano 管理画面</p>
       </div>
 
       {/* Stats */}

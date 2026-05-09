@@ -1,6 +1,6 @@
 {
-  "name": "LoveChat",
-  "short_name": "LoveChat",
+  "name": "AiKano",
+  "short_name": "AiKano",
   "description": "超高性能AIがあなただけに返信します",
   "start_url": "/",
   "display": "standalone",

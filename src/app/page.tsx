@@ -57,7 +57,7 @@ export default async function HomePage() {
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       }}>
         <span style={{ fontWeight: 800, fontSize: '18px', background: 'linear-gradient(90deg, #e8438f, #a060e0)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-          LoveChat
+          AiKano
         </span>
         <div style={{ display: 'flex', gap: '10px' }}>
           {user ? (
@@ -423,7 +423,7 @@ export default async function HomePage() {
 
       {/* ── Footer ── */}
       <footer style={{ borderTop: '1px solid rgba(220,80,140,0.1)', padding: '24px 20px', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-        <span style={{ fontWeight: 800, fontSize: '14px', background: 'linear-gradient(90deg, #e8438f, #a060e0)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>LoveChat</span>
+        <span style={{ fontWeight: 800, fontSize: '14px', background: 'linear-gradient(90deg, #e8438f, #a060e0)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>AiKano</span>
         <div style={{ display: 'flex', gap: '20px' }}>
           {[
             { label: '特定商取引法', href: '/legal/tokusho' },
@@ -433,7 +433,7 @@ export default async function HomePage() {
             <Link key={l.label} href={l.href} style={{ color: 'var(--color-text-muted)', fontSize: '12px', textDecoration: 'none' }}>{l.label}</Link>
           ))}
         </div>
-        <span style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>© 2025 LoveChat</span>
+        <span style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>© 2025 AiKano</span>
       </footer>
 
     </main>

@@ -60,7 +60,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <div className="min-h-screen warm-bg admin-layout">
       <header className="glass px-5" style={{ position: 'sticky', top: 0, zIndex: 50 }}>
         <div className="w-full px-5 flex items-center gap-6 h-12">
-          <span className="text-sm font-medium text-[var(--color-text-warm)]">LoveChat</span>
+          <span className="text-sm font-medium text-[var(--color-text-warm)]">AiKano</span>
           <span className="text-[var(--color-border-warm)] text-xs">|</span>
           <nav className="flex items-center gap-1">
             {navItems.map(item => (

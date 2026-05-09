@@ -3,13 +3,13 @@
  *
  * 環境変数:
  *   RESEND_API_KEY   — Resendのシークレットキー
- *   EMAIL_FROM       — 送信元アドレス (例: LoveChat <noreply@yourdomain.com>)
+ *   EMAIL_FROM       — 送信元アドレス (例: AiKano <noreply@yourdomain.com>)
  */
 
 import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
-const FROM = process.env.EMAIL_FROM ?? 'LoveChat <noreply@example.com>'
+const FROM = process.env.EMAIL_FROM ?? 'AiKano <noreply@example.com>'
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://example.com'
 
 export interface NotificationEmailOptions {
@@ -52,7 +52,7 @@ export async function sendNotificationEmail(opts: NotificationEmailOptions): Pro
           <!-- ヘッダー -->
           <tr>
             <td style="background:linear-gradient(135deg,#f9a8b8,#e879a0);padding:24px 32px;">
-              <p style="margin:0;color:#fff;font-size:20px;font-weight:700;letter-spacing:.04em;">LoveChat</p>
+              <p style="margin:0;color:#fff;font-size:20px;font-weight:700;letter-spacing:.04em;">AiKano</p>
             </td>
           </tr>
           <!-- 本文 -->
@@ -79,7 +79,7 @@ export async function sendNotificationEmail(opts: NotificationEmailOptions): Pro
           <tr>
             <td style="padding:16px 32px 24px;border-top:1px solid #f0dde5;">
               <p style="margin:0;font-size:11px;color:#c8a0a8;text-align:center;line-height:1.6;">
-                このメールはLoveChatから自動送信されています。<br>
+                このメールはAiKanoから自動送信されています。<br>
                 心当たりのない場合は無視してください。
               </p>
             </td>

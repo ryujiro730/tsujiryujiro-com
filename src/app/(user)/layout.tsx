@@ -92,7 +92,7 @@ export default async function UserLayout({ children }: { children: React.ReactNo
       <header className="fixed top-0 w-full z-50 glass">
         <div className="max-w-2xl mx-auto px-4 h-13 flex items-center justify-between" style={{ height: '52px' }}>
           <Link href="/characters" className="text-sm font-medium text-[var(--color-text-warm)]">
-            LoveChat
+            AiKano
           </Link>
           <PointsDisplay initialPoints={profile?.points ?? 0} />
           <nav className="flex items-center gap-0.5">
