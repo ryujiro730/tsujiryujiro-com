@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { processAutoBroadcast } from '@/lib/auto-broadcast'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(req: NextRequest) {
   const cronSecret = process.env.CRON_SECRET
   if (cronSecret) {

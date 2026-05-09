@@ -30,22 +30,10 @@ export async function middleware(request: NextRequest) {
   const isAuthPage = path.startsWith('/auth')
   const isAdminPath = path.startsWith('/admin')
 
-  // セッションクッキーの存在確認（ネットワーク不要）
+  // セッションクッキーのみで判定（getUser()のネットワーク通信を省略）
+  // 実際の認証検証はAPI routeのgetAuthUser()が行う
   const { data: { session } } = await supabase.auth.getSession()
-
-  // getUser()はgetSession()でセッションがある場合のみ呼ぶ（不要なネットワーク接続を避ける）
-  // ネットワークエラーが起きてもセッションクッキーがあればログアウトさせない
-  let isAuthenticated = !!session
-
-  if (session) {
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      // getUser()が成功した場合のみ結果を使う。失敗してもisAuthenticated=trueを維持
-      if (user === null) isAuthenticated = false
-    } catch {
-      // ECONNRESET等のネットワークエラー: セッションクッキーを信頼してisAuthenticated=trueのまま
-    }
-  }
+  const isAuthenticated = !!session
 
   if (!isAuthenticated && isProtected && !isAdminPath) {
     return NextResponse.redirect(new URL('/auth/login', request.url))

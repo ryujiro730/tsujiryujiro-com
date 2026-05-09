@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { processBroadcast, createAdminSupabase } from '@/lib/broadcast'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(req: NextRequest) {
   // CRON_SECRET による認証
   const cronSecret = process.env.CRON_SECRET

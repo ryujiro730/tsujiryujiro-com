@@ -20,21 +20,14 @@ export default function ShopPage() {
   useEffect(() => { loadData() }, [])
 
   const loadData = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-
-    const [shopRes, profileRes] = await Promise.all([
-      fetch('/api/items'),
-      supabase.from('profiles').select('points').eq('id', user.id).single(),
-    ])
-
-    if (shopRes.ok) {
-      const { items: shopItems, categories: cats, inventory: inv } = await shopRes.json()
+    const res = await fetch('/api/items')
+    if (res.ok) {
+      const { items: shopItems, categories: cats, inventory: inv, points: pts } = await res.json()
       setItems(shopItems)
       setCategories(cats)
       setInventory(inv)
+      setPoints(pts)
     }
-    if (profileRes.data) setPoints(profileRes.data.points)
     setLoading(false)
   }
 

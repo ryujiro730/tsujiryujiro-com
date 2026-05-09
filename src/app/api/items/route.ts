@@ -7,11 +7,12 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const [{ data: items }, { data: categories }, { data: inventory }] = await Promise.all([
+  const [{ data: items }, { data: categories }, { data: inventory }, { data: profile }] = await Promise.all([
     supabase.from('items').select('*, category:item_categories(*)').eq('is_active', true).order('sort_order').order('created_at'),
     supabase.from('item_categories').select('*').order('sort_order').order('created_at'),
     supabase.from('user_items').select('*, item:items(*, category:item_categories(*))').eq('user_id', user.id),
+    supabase.from('profiles').select('points').eq('id', user.id).single(),
   ])
 
-  return NextResponse.json({ items: items ?? [], categories: categories ?? [], inventory: inventory ?? [] })
+  return NextResponse.json({ items: items ?? [], categories: categories ?? [], inventory: inventory ?? [], points: profile?.points ?? 0 })
 }
