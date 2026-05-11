@@ -9,6 +9,7 @@ import { ChevronLeft, ChevronRight, Clock, Calendar } from 'lucide-react'
 import { AuthorSig } from '@/components/blog/AuthorSig'
 import { BlogCta } from '@/components/blog/BlogCta'
 import BlogToc from '@/components/blog/BlogToc'
+import { BlogBreadcrumb } from '@/components/blog/BlogBreadcrumb'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://aikano.chat'
 
@@ -75,6 +76,12 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
       </div>
 
       <div className="max-w-3xl mx-auto px-4 py-10">
+        <BlogBreadcrumb crumbs={[
+          { label: 'ホーム', href: '/' },
+          { label: 'ブログ', href: '/blog' },
+          { label: post.title },
+        ]} />
+
         {/* Post header */}
         <div className="mb-8">
           <div className="mb-3">
