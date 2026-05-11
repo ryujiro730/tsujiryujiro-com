@@ -31,6 +31,13 @@ export type Post = PostMeta & {
   content: string
 }
 
+// gray-matter parses YAML dates as JS Date objects automatically
+function parseDate(raw: unknown): string {
+  if (!raw) return ''
+  if (raw instanceof Date) return raw.toISOString().slice(0, 10)
+  return String(raw).slice(0, 10)
+}
+
 function parseTags(raw: unknown): string[] {
   if (!raw) return []
   if (Array.isArray(raw)) return raw.map(String)
@@ -53,7 +60,7 @@ export function getAllPosts(): PostMeta[] {
       slug,
       title: data.title ?? '',
       description: data.description ?? '',
-      date: data.date ? String(data.date).slice(0, 10) : '',
+      date: parseDate(data.date),
       category: (data.category ?? 'column') as BlogCategory,
       tags: parseTags(data.tags),
       ogImage: data.ogImage,
@@ -77,7 +84,7 @@ export function getPostBySlug(slug: string): Post | null {
     slug,
     title: data.title ?? '',
     description: data.description ?? '',
-    date: data.date ? String(data.date).slice(0, 10) : '',
+    date: parseDate(data.date),
     category: (data.category ?? 'column') as BlogCategory,
     tags: parseTags(data.tags),
     ogImage: data.ogImage,
