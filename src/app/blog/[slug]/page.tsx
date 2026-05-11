@@ -7,6 +7,7 @@ import remarkGfm from 'remark-gfm'
 import remarkBreaks from 'remark-breaks'
 import { ChevronLeft, ChevronRight, Clock, Calendar } from 'lucide-react'
 import { AuthorSig } from '@/components/blog/AuthorSig'
+import BlogToc from '@/components/blog/BlogToc'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://aikano.chat'
 
@@ -99,6 +100,11 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
             </p>
           )}
         </div>
+
+        {/* Author */}
+        <AuthorSig />
+
+        <BlogToc />
 
         {/* Article body */}
         <article className="prose prose-sm sm:prose max-w-none blog-prose">
