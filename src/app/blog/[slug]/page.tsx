@@ -10,6 +10,10 @@ import { AuthorSig } from '@/components/blog/AuthorSig'
 import { BlogCta } from '@/components/blog/BlogCta'
 import BlogToc from '@/components/blog/BlogToc'
 import { BlogBreadcrumb } from '@/components/blog/BlogBreadcrumb'
+import { InlineLink } from '@/components/blog/InlineLink'
+import { NextLink } from '@/components/blog/NextLink'
+import { RelatedPosts } from '@/components/blog/RelatedPosts'
+import { TwitterEmbed } from '@/components/blog/TwitterEmbed'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://aikano.chat'
 
@@ -118,7 +122,7 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
         <article className="prose prose-sm sm:prose max-w-none blog-prose">
           <MDXRemote
             source={post.content}
-            components={{ BlogCta }}
+            components={{ BlogCta, InlineLink, NextLink, RelatedPosts: () => <RelatedPosts currentSlug={post.slug} />, TwitterEmbed }}
             options={{
               mdxOptions: {
                 remarkPlugins: [remarkGfm, remarkBreaks],
