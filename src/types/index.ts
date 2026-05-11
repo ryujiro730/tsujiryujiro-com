@@ -64,6 +64,8 @@ export interface Message {
   points_used: number
   is_read: boolean
   created_at: string
+  is_deleted: boolean
+  edited_at?: string | null
   metadata?: { item_id?: string; item_name?: string; item_image_url?: string; image_url?: string } | null
 }
 

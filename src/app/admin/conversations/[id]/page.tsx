@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { Send, ChevronLeft, Loader2, FileText, Save, Tag } from 'lucide-react'
+import { Send, ChevronLeft, Loader2, FileText, Save, Tag, Pencil, Trash2, Check, X } from 'lucide-react'
 import { formatDistanceToNow, format } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import type { Message, Character, Profile } from '@/types'
@@ -32,6 +32,8 @@ export default function AdminConversationDetailPage() {
   const [adminNoteSaved, setAdminNoteSaved] = useState(false)
   const [queueInfo, setQueueInfo] = useState<{ pos: number; total: number } | null>(null)
   const [templates, setTemplates] = useState<Template[]>([])
+  const [editingMsgId, setEditingMsgId] = useState<string | null>(null)
+  const [editingContent, setEditingContent] = useState('')
 
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -221,6 +223,34 @@ export default function AdminConversationDetailPage() {
     setNoteLoading(false)
     setNoteSaved(true)
     setTimeout(() => setNoteSaved(false), 2000)
+  }
+
+  const deleteMessage = async (msgId: string) => {
+    if (!confirm('このメッセージを削除しますか？ユーザーからも見えなくなります。')) return
+    const { error } = await supabase.from('messages').update({ is_deleted: true }).eq('id', msgId)
+    if (error) { alert('削除に失敗しました'); return }
+    setMessages(prev => prev.filter(m => m.id !== msgId))
+  }
+
+  const startEdit = (msg: Message) => {
+    setEditingMsgId(msg.id)
+    setEditingContent(msg.content)
+  }
+
+  const cancelEdit = () => {
+    setEditingMsgId(null)
+    setEditingContent('')
+  }
+
+  const saveEdit = async (msgId: string) => {
+    if (!editingContent.trim()) return
+    const { error } = await supabase.from('messages')
+      .update({ content: editingContent.trim(), edited_at: new Date().toISOString() })
+      .eq('id', msgId)
+    if (error) { alert('編集に失敗しました'); return }
+    setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: editingContent.trim(), edited_at: new Date().toISOString() } : m))
+    setEditingMsgId(null)
+    setEditingContent('')
   }
 
   const sendReply = async () => {
@@ -444,6 +474,7 @@ export default function AdminConversationDetailPage() {
           {messages.map((msg, i) => {
             const isOp = msg.sender_role === 'character'
             const showDate = i === 0 || new Date(msg.created_at).toDateString() !== new Date(messages[i - 1].created_at).toDateString()
+            const isEditing = editingMsgId === msg.id
             return (
               <div key={msg.id}>
                 {showDate && (
@@ -453,16 +484,49 @@ export default function AdminConversationDetailPage() {
                     </span>
                   </div>
                 )}
-                <div className={`flex items-end gap-2 ${isOp ? 'flex-row-reverse' : ''}`}>
+                <div className={`flex items-end gap-2 group ${isOp ? 'flex-row-reverse' : ''}`}>
                   <div className={`max-w-[72%] flex flex-col gap-1 ${isOp ? 'items-end' : 'items-start'}`}>
-                    <div className={`px-4 py-2.5 text-sm leading-relaxed ${isOp ? 'bubble-user' : 'bubble-operator'}`}>
-                      {msg.content}
+                    {isEditing ? (
+                      <div className="flex flex-col gap-1.5 w-72">
+                        <textarea
+                          value={editingContent}
+                          onChange={e => setEditingContent(e.target.value)}
+                          rows={3}
+                          className="w-full text-sm px-3 py-2 rounded-xl border border-[var(--color-primary)] bg-[var(--color-surface-2)] resize-none focus:outline-none"
+                          autoFocus
+                        />
+                        <div className="flex gap-1.5">
+                          <button onClick={() => saveEdit(msg.id)} className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-white" style={{ background: 'var(--color-primary)' }}>
+                            <Check size={11} />保存
+                          </button>
+                          <button onClick={cancelEdit} className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium" style={{ background: 'var(--color-surface-2)', color: 'var(--color-text-muted)' }}>
+                            <X size={11} />キャンセル
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className={`px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${isOp ? 'bubble-user' : 'bubble-operator'}`}>
+                        {msg.content}
+                        {msg.edited_at && <span className="ml-1.5 text-[10px] opacity-60">(編集済み)</span>}
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2 px-1">
+                      <span className="text-[var(--color-text-muted)] text-[11px]">
+                        {isOp ? character?.name : userProfile?.display_name || userProfile?.email || '匿名'}
+                        {' · '}
+                        {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true, locale: ja })}
+                      </span>
+                      {isOp && !isEditing && (
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => startEdit(msg)} title="編集" className="p-1 rounded hover:bg-[var(--color-surface-2)] transition-colors">
+                            <Pencil size={11} className="text-[var(--color-text-muted)]" />
+                          </button>
+                          <button onClick={() => deleteMessage(msg.id)} title="削除" className="p-1 rounded hover:bg-red-500/10 transition-colors">
+                            <Trash2 size={11} className="text-red-400" />
+                          </button>
+                        </div>
+                      )}
                     </div>
-                    <span className="text-[var(--color-text-muted)] text-[11px] px-1">
-                      {isOp ? character?.name : userProfile?.display_name || userProfile?.email || '匿名'}
-                      {' · '}
-                      {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true, locale: ja })}
-                    </span>
                   </div>
                 </div>
               </div>

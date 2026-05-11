@@ -154,7 +154,7 @@ export default function ChatPage() {
         supabase.from('profiles').select('*').eq('id', userId).single(),
         supabase.from('characters').select('*').eq('id', characterId).single(),
         supabase.from('character_photos').select('*').eq('character_id', characterId).order('order_index'),
-        supabase.from('messages').select('*').eq('conversation_id', cachedConvId).order('created_at', { ascending: true }),
+        supabase.from('messages').select('*').eq('conversation_id', cachedConvId).eq('is_deleted', false).order('created_at', { ascending: true }),
       ])
       if (profRes.data) setProfile(profRes.data)
       if (charRes.data) {
@@ -193,6 +193,7 @@ export default function ChatPage() {
       const { data: msgs } = await supabase
         .from('messages').select('*')
         .eq('conversation_id', newConvId)
+        .eq('is_deleted', false)
         .order('created_at', { ascending: true })
 
       const allMsgs = msgs || []
@@ -405,7 +406,7 @@ export default function ChatPage() {
   const hasPhotos = photos.length > 0
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-52px)] -mt-5 -mx-4">
+    <div className="flex flex-col h-[calc(100dvh-52px)] -mx-4">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 flex-shrink-0"
         style={{ background: 'rgba(255, 245, 248, 0.92)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--color-border)' }}>
