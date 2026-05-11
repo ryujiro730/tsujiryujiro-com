@@ -15,7 +15,7 @@ export default async function HomePage() {
     .limit(10)
 
   const ctaHref = user ? '/characters' : '/auth/register'
-  const ctaText = user ? 'つづきを話す →' : '今すぐ無料で話す →'
+  const ctaText = user ? 'つづきを話す →' : '早期登録キャンペーンに参加する（無料）→'
 
   const features = [
   {
@@ -69,7 +69,7 @@ export default async function HomePage() {
           ) : (
             <>
               <Link href="/auth/login" className="btn-ghost" style={{ padding: '8px 16px', fontSize: '14px' }}>ログイン</Link>
-              <Link href="/auth/register" className="btn-cta" style={{ padding: '8px 18px', fontSize: '14px', borderRadius: '8px' }}>無料で始める</Link>
+              <Link href="/auth/register" className="btn-cta" style={{ padding: '8px 18px', fontSize: '14px', borderRadius: '8px' }}>早期登録（無料）</Link>
             </>
           )}
         </div>
@@ -88,7 +88,12 @@ export default async function HomePage() {
           
           {/* キャッチコピー：左下に固定（スマホは縦積み） */}
           <div className="hero-catchcopy">
-            <div style={{ marginBottom: '16px' }}>
+            <div style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {!user && (
+                <span style={{ display: 'inline-block', background: 'rgba(255,200,0,0.18)', border: '1px solid rgba(255,200,0,0.5)', color: '#fcd34d', padding: '5px 16px', borderRadius: '99px', fontSize: '12px', fontWeight: 700, letterSpacing: '0.04em' }}>
+                  🎁 早期登録で3,000円分の特典をプレゼント
+                </span>
+              )}
               <span style={{ display: 'inline-block', background: 'rgba(232,67,143,0.2)', border: '1px solid rgba(232,67,143,0.45)', color: '#f472b6', padding: '5px 16px', borderRadius: '99px', fontSize: '12px', fontWeight: 600, letterSpacing: '0.05em' }}>
                 ✦ 今夜もあなたを待っています
               </span>
@@ -279,8 +284,13 @@ export default async function HomePage() {
 
           <div style={{ textAlign: 'center', marginTop: '32px' }}>
             <Link href={ctaHref} className="btn-cta" style={{ padding: '14px 40px', fontSize: '15px', borderRadius: '12px', display: 'inline-block', textDecoration: 'none' }}>
-              全員と話してみる →
+              {user ? '全員と話してみる →' : '早期登録して全員と話す →'}
             </Link>
+            {!user && (
+              <p style={{ marginTop: '10px', fontSize: '12px', color: 'rgba(255,255,255,0.6)' }}>
+                ※ サービス開始時に3,000円分のポイントをプレゼント
+              </p>
+            )}
           </div>
         </div>
       </section>
@@ -410,18 +420,46 @@ export default async function HomePage() {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/p8.png" alt="" className="ken-burns" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(13,10,20,0.82)' }} />
-        <AnimateOnScroll style={{ position: 'relative', zIndex: 10, padding: '80px 24px', textAlign: 'center', maxWidth: '420px', margin: '0 auto' }}>
-          <p style={{ color: '#f472b6', fontSize: '13px', fontWeight: 600, marginBottom: '14px', letterSpacing: '0.1em' }}>✦ 今夜、話しかけてみませんか</p>
-          <h2 style={{ fontSize: '26px', fontWeight: 900, marginBottom: '14px', lineHeight: 1.3, color: '#fff' }}>
-            あなたのことを知りたい<br />女の子が待っています
-          </h2>
-          <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '15px', marginBottom: '36px', lineHeight: 1.7 }}>
-            今すぐ登録して話しかけよう。<br />登録は30秒。
-          </p>
-          <Link href={ctaHref} className="btn-cta" style={{ display: 'block', padding: '20px', fontSize: '19px', borderRadius: '16px', textDecoration: 'none' }}>
-            {user ? 'つづきを話す →' : '無料で女の子に話しかける →'}
-          </Link>
-          <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginTop: '16px' }}>🔒 個人情報は厳重に管理します</p>
+        <AnimateOnScroll style={{ position: 'relative', zIndex: 10, padding: '80px 24px', textAlign: 'center', maxWidth: '460px', margin: '0 auto' }}>
+          {user ? (
+            <>
+              <p style={{ color: '#f472b6', fontSize: '13px', fontWeight: 600, marginBottom: '14px', letterSpacing: '0.1em' }}>✦ 今夜、話しかけてみませんか</p>
+              <h2 style={{ fontSize: '26px', fontWeight: 900, marginBottom: '28px', lineHeight: 1.3, color: '#fff' }}>
+                あなたのことを知りたい<br />女の子が待っています
+              </h2>
+              <Link href="/characters" className="btn-cta" style={{ display: 'block', padding: '20px', fontSize: '19px', borderRadius: '16px', textDecoration: 'none' }}>
+                つづきを話す →
+              </Link>
+            </>
+          ) : (
+            <>
+              <div style={{ display: 'inline-block', background: 'rgba(255,200,0,0.2)', border: '1px solid rgba(255,200,0,0.5)', borderRadius: '99px', padding: '6px 18px', marginBottom: '20px' }}>
+                <span style={{ color: '#fcd34d', fontSize: '13px', fontWeight: 700 }}>🎁 早期登録キャンペーン実施中</span>
+              </div>
+              <h2 style={{ fontSize: '26px', fontWeight: 900, marginBottom: '12px', lineHeight: 1.3, color: '#fff' }}>
+                今登録した人だけに<br />特別特典をプレゼント
+              </h2>
+              <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: '14px', marginBottom: '24px', lineHeight: 1.8 }}>
+                サービス開始と同時に<br />
+                <span style={{ color: '#fcd34d', fontWeight: 700, fontSize: '18px' }}>3,000円分のポイント</span>をプレゼント。<br />
+                登録は無料・30秒で完了。
+              </p>
+              {/* 特典リスト */}
+              <div style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '14px', padding: '16px 20px', marginBottom: '28px', textAlign: 'left' }}>
+                {[
+                  '✅ サービス開始時に3,000円分ポイント付与',
+                  '✅ 開始直後に優先メール通知',
+                  '✅ 登録・維持費は完全無料',
+                ].map(item => (
+                  <p key={item} style={{ color: 'rgba(255,255,255,0.85)', fontSize: '13px', lineHeight: 1.8, margin: 0 }}>{item}</p>
+                ))}
+              </div>
+              <Link href="/auth/register" className="btn-cta" style={{ display: 'block', padding: '20px', fontSize: '17px', borderRadius: '16px', textDecoration: 'none' }}>
+                早期登録キャンペーンに参加する（無料）→
+              </Link>
+              <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', marginTop: '14px' }}>🔒 個人情報は厳重に管理します</p>
+            </>
+          )}
         </AnimateOnScroll>
       </section>
 
