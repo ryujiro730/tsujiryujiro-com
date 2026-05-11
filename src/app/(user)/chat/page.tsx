@@ -11,6 +11,7 @@ import Link from 'next/link'
 import Lightbox from '@/components/Lightbox'
 
 const MAX_CACHED_MSGS = 60
+const CHAT_ENABLED = process.env.NEXT_PUBLIC_CHAT_ENABLED !== 'false'
 
 function readCache<T>(key: string): T | null {
   try { return JSON.parse(localStorage.getItem(key) ?? 'null') } catch { return null }
@@ -470,34 +471,42 @@ export default function ChatPage() {
       {/* Input */}
       <div className="flex-shrink-0 px-4 py-3"
         style={{ borderTop: '1px solid var(--color-border)', background: 'rgba(255, 245, 248, 0.97)' }}>
-        <div className="flex gap-2 items-end">
-          <button
-            onClick={openGiftPanel}
-            className={`p-2.5 flex-shrink-0 rounded-[10px] transition-colors ${showGiftPanel ? 'text-white' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}`}
-            style={showGiftPanel ? { background: 'var(--color-primary)' } : {}}
-            title="ギフトを贈る"
-          >
-            <Gift size={17} />
-          </button>
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={handleTextareaChange}
-            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() } }}
-            placeholder="メッセージを送る…"
-            rows={1}
-            className="flex-1 input-warm px-4 py-2.5 text-sm resize-none"
-            style={{ minHeight: '42px', maxHeight: '120px', lineHeight: '1.5' }}
-          />
-          <button
-            onClick={sendMessage}
-            disabled={!input.trim() || sending}
-            className="btn-primary p-2.5 flex-shrink-0 disabled:opacity-40"
-            style={{ borderRadius: '10px' }}
-          >
-            <Send size={17} />
-          </button>
-        </div>
+        {CHAT_ENABLED ? (
+          <div className="flex gap-2 items-end">
+            <button
+              onClick={openGiftPanel}
+              className={`p-2.5 flex-shrink-0 rounded-[10px] transition-colors ${showGiftPanel ? 'text-white' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}`}
+              style={showGiftPanel ? { background: 'var(--color-primary)' } : {}}
+              title="ギフトを贈る"
+            >
+              <Gift size={17} />
+            </button>
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={handleTextareaChange}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() } }}
+              placeholder="メッセージを送る…"
+              rows={1}
+              className="flex-1 input-warm px-4 py-2.5 text-sm resize-none"
+              style={{ minHeight: '42px', maxHeight: '120px', lineHeight: '1.5' }}
+            />
+            <button
+              onClick={sendMessage}
+              disabled={!input.trim() || sending}
+              className="btn-primary p-2.5 flex-shrink-0 disabled:opacity-40"
+              style={{ borderRadius: '10px' }}
+            >
+              <Send size={17} />
+            </button>
+          </div>
+        ) : (
+          <div className="rounded-2xl px-4 py-3 text-center"
+            style={{ background: 'linear-gradient(135deg, rgba(249,168,184,0.15), rgba(232,121,160,0.08))', border: '1px solid var(--color-border-warm)' }}>
+            <p className="text-sm font-bold mb-0.5">🎀 早期登録キャンペーン受付中</p>
+            <p className="text-xs text-[var(--color-text-muted)]">サービス開始時にいち早くご連絡します。もうしばらくお待ちください！</p>
+          </div>
+        )}
       </div>
 
       {/* ギフトパネル */}
