@@ -6,6 +6,7 @@ import { MDXRemote } from 'next-mdx-remote/rsc'
 import remarkGfm from 'remark-gfm'
 import remarkBreaks from 'remark-breaks'
 import { ChevronLeft, ChevronRight, Clock, Calendar } from 'lucide-react'
+import { AuthorSig } from '@/components/blog/AuthorSig'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://aikano.chat'
 
@@ -122,6 +123,9 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
             ))}
           </div>
         )}
+
+        {/* Author */}
+        <AuthorSig />
 
         {/* CTA */}
         <div className="mt-10 p-6 rounded-2xl text-center"
