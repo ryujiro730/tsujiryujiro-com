@@ -118,6 +118,7 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
         <article className="prose prose-sm sm:prose max-w-none blog-prose">
           <MDXRemote
             source={post.content}
+            components={{ BlogCta }}
             options={{
               mdxOptions: {
                 remarkPlugins: [remarkGfm, remarkBreaks],
