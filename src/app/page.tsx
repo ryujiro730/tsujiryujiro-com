@@ -59,7 +59,11 @@ export default async function HomePage() {
         <span style={{ fontWeight: 800, fontSize: '18px', background: 'linear-gradient(90deg, #e8438f, #a060e0)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
           AiKano
         </span>
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <Link href="/blog" style={{ fontSize: '13px', color: 'var(--color-text-muted)', fontWeight: 500 }}
+            className="hover:text-[var(--color-primary)] transition-colors hidden sm:block">
+            ブログ
+          </Link>
           {user ? (
             <Link href="/characters" className="btn-cta" style={{ padding: '8px 20px', fontSize: '14px', borderRadius: '8px' }}>つづける</Link>
           ) : (
