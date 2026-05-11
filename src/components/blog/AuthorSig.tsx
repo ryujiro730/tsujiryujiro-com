@@ -1,17 +1,16 @@
-import Image from 'next/image'
-
 export function AuthorSig() {
   return (
     <aside className="mt-12 py-8" style={{ borderTop: '1px solid var(--color-border)', borderBottom: '1px solid var(--color-border)' }}>
       <div className="flex items-start gap-5">
         <div className="shrink-0">
-          <Image
-            src="/author.png"
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/author.jpg"
             alt="著者アイコン"
             width={120}
             height={120}
             className="rounded-full object-cover"
-            style={{ border: '2px solid var(--color-border-warm)' }}
+            style={{ border: '2px solid var(--color-border-warm)', width: '80px', height: '80px' }}
           />
         </div>
         <div className="flex-1">
