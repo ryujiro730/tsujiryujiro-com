@@ -11,7 +11,7 @@ type TocItem = {
 
 export default function BlogToc() {
   const [toc, setToc] = useState<TocItem[]>([]);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
 
   useEffect(() => {
     const headings = Array.from(
