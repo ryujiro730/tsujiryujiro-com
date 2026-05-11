@@ -6,6 +6,9 @@ export const metadata: Metadata = {
   title: 'AiKano - 超高性能AIがあなただけに返信します',
   description: '自社開発の超高性能AIが、あなたのメッセージにリアルタイムで返信します。アダルトOK・画像送り合いOK。',
   manifest: '/manifest.json',
+  verification: {
+    google: 'jQx46xWa8bl0-EM46wH1sZTCm1pA-m6DDdzLdcybgm8',
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
