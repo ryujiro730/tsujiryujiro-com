@@ -1,8 +1,15 @@
 'use client'
 
 import Link from 'next/link'
-import { PostMeta, CATEGORY_LABELS } from '@/lib/blog'
+import type { PostMeta } from '@/lib/blog'
 import { Clock, Calendar } from 'lucide-react'
+
+const CATEGORY_LABELS: Record<string, string> = {
+  news: 'お知らせ',
+  howto: '使い方',
+  column: 'コラム',
+  update: 'アップデート',
+}
 
 export function BlogCard({ post }: { post: PostMeta }) {
   const label = CATEGORY_LABELS[post.category] ?? post.category
