@@ -8,7 +8,10 @@ tags: [コラム, おすすめ記事, AiKano,アイカノ,CandyAI,AI彼女,ai,Ch
 
 ## 一目でわかるおすすめAI彼女チャット
 
-export const hikakuServices = [
+<ComparisonTable
+  title="一目で分かるおすすめAI彼女チャット比較表"
+  rowLabels={['料金形態', '可愛さ', '会話のリアルさ', 'アダルト対応', '特徴']}
+  services={[
   {
     rank: 1,
     name: 'アイカノ',
@@ -82,10 +85,5 @@ export const hikakuServices = [
       '特徴': 'マッチングアプリ形式。返信が遅いなどあえてリアルな不便さを追求した異色作。',
     },
   },
-]
-
-<ComparisonTable
-  title="一目で分かるおすすめAI彼女チャット比較表"
-  rowLabels={['料金形態', '可愛さ', '会話のリアルさ', 'アダルト対応', '特徴']}
-  services={hikakuServices}
+  ]}
 />
