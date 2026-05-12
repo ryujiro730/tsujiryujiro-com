@@ -14,6 +14,8 @@ import { InlineLink } from '@/components/blog/InlineLink'
 import { NextLink } from '@/components/blog/NextLink'
 import { RelatedPosts } from '@/components/blog/RelatedPosts'
 import { TwitterEmbed } from '@/components/blog/TwitterEmbed'
+import { ComparisonTable } from '@/components/blog/ComparisonTable'
+import type { ComparisonService } from '@/components/blog/ComparisonTable'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://aikano.chat'
 
@@ -122,7 +124,7 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
         <article className="prose prose-sm sm:prose max-w-none blog-prose">
           <MDXRemote
             source={post.content}
-            components={{ BlogCta, InlineLink, NextLink, RelatedPosts: () => <RelatedPosts currentSlug={post.slug} />, TwitterEmbed }}
+            components={{ BlogCta, InlineLink, NextLink, RelatedPosts: () => <RelatedPosts currentSlug={post.slug} />, TwitterEmbed, ComparisonTable }}
             options={{
               mdxOptions: {
                 remarkPlugins: [remarkGfm, remarkBreaks],
