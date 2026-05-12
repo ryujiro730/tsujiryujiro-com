@@ -1,0 +1,19 @@
+User-agent: *
+Disallow: /api/
+Disallow: /admin/
+Disallow: /staff/
+Disallow: /auth/
+Disallow: /onboarding
+Disallow: /chat
+Disallow: /conversations
+Disallow: /settings
+Disallow: /payment
+Disallow: /shop
+Disallow: /points
+Disallow: /support
+
+Allow: /
+Allow: /blog/
+Allow: /legal/
+
+Sitemap: https://aikano.chat/sitemap.xml

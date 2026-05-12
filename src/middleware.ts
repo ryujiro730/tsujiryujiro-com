@@ -43,6 +43,12 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/characters', request.url))
   }
 
+  // noindex: 認証・管理・スタッフ・オンボーディングページ
+  const noindexPaths = ['/auth', '/admin', '/staff', '/onboarding']
+  if (noindexPaths.some(p => path.startsWith(p))) {
+    response.headers.set('X-Robots-Tag', 'noindex, nofollow')
+  }
+
   return response
 }
 

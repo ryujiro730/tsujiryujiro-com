@@ -1,4 +1,9 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+}
 import { MessageCircle, Users, Settings, ShoppingBag } from 'lucide-react'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
