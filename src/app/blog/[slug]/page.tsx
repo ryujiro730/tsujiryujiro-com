@@ -17,6 +17,9 @@ import { TwitterEmbed } from '@/components/blog/TwitterEmbed'
 import { ComparisonTable } from '@/components/blog/ComparisonTable'
 import type { ComparisonService } from '@/components/blog/ComparisonTable'
 import { AiKanoHikakuTable } from '@/components/blog/AiKanoHikakuTable'
+import { AiKanoCard, ChatGPTCard, GeminiCard, CandyAICard, CloverCard } from '@/components/blog/AiKanoRadarChart'
+import { Box } from '@/components/blog/Box'
+import { Review } from '@/components/blog/Review'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://aikano.chat'
 
@@ -69,20 +72,21 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
   const categoryLabel = CATEGORY_LABELS[post.category] ?? post.category
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--color-bg)' }}>
+    <div className="blog-layout min-h-screen" style={{ background: '#fff' }}>
       {/* Header */}
-      <div style={{ background: 'rgba(255,245,248,0.95)', borderBottom: '1px solid var(--color-border)', backdropFilter: 'blur(12px)' }}
+      <div style={{ background: '#fff', borderBottom: '1px solid #e8e8e8' }}
         className="sticky top-0 z-10">
-        <div className="max-w-3xl mx-auto px-4 h-14 flex items-center gap-3">
-          <Link href="/blog" className="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors flex items-center gap-1">
-            <ChevronLeft size={15} />ブログ
+        <div className="max-w-3xl mx-auto px-6 h-14 flex items-center gap-3">
+          <Link href="/blog" style={{ fontSize: '13px', color: '#888', display: 'flex', alignItems: 'center', gap: '4px', textDecoration: 'none' }}
+            className="hover:text-[#1a1a1a] transition-colors">
+            <ChevronLeft size={14} />ブログ
           </Link>
-          <span className="text-[var(--color-border)]">/</span>
-          <span className="text-sm truncate text-[var(--color-text-muted)]">{post.title}</span>
+          <span style={{ color: '#ddd' }}>/</span>
+          <span style={{ fontSize: '13px', color: '#bbb', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{post.title}</span>
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto px-4 py-10">
+      <div className="max-w-3xl mx-auto px-6 py-12">
         <BlogBreadcrumb crumbs={[
           { label: 'ホーム', href: '/' },
           { label: 'ブログ', href: '/blog' },
@@ -90,27 +94,27 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
         ]} />
 
         {/* Post header */}
-        <div className="mb-8">
-          <div className="mb-3">
-            <span className="text-xs font-bold px-2.5 py-1 rounded-full"
-              style={{ background: 'rgba(232,121,160,0.12)', color: 'var(--color-primary)' }}>
+        <div style={{ marginBottom: '40px' }}>
+          <div style={{ marginBottom: '16px' }}>
+            <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 12px', borderRadius: '99px', background: '#fff0f6', color: '#e8438f', letterSpacing: '0.03em' }}>
               {categoryLabel}
             </span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold leading-snug mb-4">{post.title}</h1>
-          <div className="flex items-center gap-4 text-xs text-[var(--color-text-muted)]">
-            <span className="flex items-center gap-1">
+          <h1 className="blog-title" style={{ fontSize: 'clamp(1.5rem, 4vw, 2rem)', marginBottom: '16px', color: '#1a1a1a' }}>
+            {post.title}
+          </h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', fontSize: '12px', color: '#aaa' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
               <Calendar size={12} />
               {new Date(post.date).toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' })}
             </span>
-            <span className="flex items-center gap-1">
+            <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
               <Clock size={12} />
               約{post.readingMinutes}分で読めます
             </span>
           </div>
           {post.description && (
-            <p className="mt-5 text-sm leading-relaxed px-4 py-3 rounded-xl"
-              style={{ background: 'var(--color-surface-2)', borderLeft: '3px solid var(--color-primary)', color: 'var(--color-text-muted)' }}>
+            <p style={{ marginTop: '20px', fontSize: '14px', lineHeight: 1.75, padding: '16px 20px', borderRadius: '10px', background: '#fafafa', borderLeft: '3px solid #e8438f', color: '#666' }}>
               {post.description}
             </p>
           )}
@@ -122,10 +126,10 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
         <BlogToc />
 
         {/* Article body */}
-        <article className="prose prose-sm sm:prose max-w-none blog-prose">
+        <article className="prose prose-sm sm:prose max-w-none blog-prose" style={{ maxWidth: 'none' }}>
           <MDXRemote
             source={post.content}
-            components={{ BlogCta, InlineLink, NextLink, RelatedPosts: () => <RelatedPosts currentSlug={post.slug} />, TwitterEmbed, ComparisonTable, AiKanoHikakuTable }}
+            components={{ BlogCta, InlineLink, NextLink, RelatedPosts: () => <RelatedPosts currentSlug={post.slug} />, TwitterEmbed, ComparisonTable, AiKanoHikakuTable, AiKanoCard, ChatGPTCard, GeminiCard, CandyAICard, CloverCard, Box, Review }}
             options={{
               mdxOptions: {
                 remarkPlugins: [remarkGfm, remarkBreaks],
@@ -136,10 +140,9 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
 
         {/* Tags */}
         {post.tags.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-8 pt-6" style={{ borderTop: '1px solid var(--color-border)' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '32px', paddingTop: '24px', borderTop: '1px solid #ececec' }}>
             {post.tags.map(tag => (
-              <span key={tag} className="text-xs px-2.5 py-1 rounded-full"
-                style={{ background: 'var(--color-surface-2)', color: 'var(--color-text-muted)', border: '1px solid var(--color-border)' }}>
+              <span key={tag} style={{ fontSize: '11px', padding: '4px 12px', borderRadius: '99px', background: '#f5f5f5', color: '#888', border: '1px solid #e8e8e8' }}>
                 #{tag}
               </span>
             ))}
@@ -154,25 +157,29 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
 
         {/* Prev / Next */}
         {(prev || next) && (
-          <div className="grid gap-3 mt-8" style={{ gridTemplateColumns: prev && next ? '1fr 1fr' : '1fr' }}>
+          <div style={{ display: 'grid', gap: '12px', marginTop: '32px', gridTemplateColumns: prev && next ? '1fr 1fr' : '1fr' }}>
             {prev && (
               <Link href={`/blog/${prev.slug}`}
-                className="card p-4 hover:border-[var(--color-primary)] transition-colors group">
-                <p className="text-xs text-[var(--color-text-muted)] mb-1 flex items-center gap-1">
+                style={{ display: 'block', padding: '16px', borderRadius: '10px', border: '1px solid #ececec', textDecoration: 'none', transition: 'border-color 0.2s' }}
+                className="group hover:border-[#e8438f]">
+                <p style={{ fontSize: '11px', color: '#bbb', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                   <ChevronLeft size={12} />新しい記事
                 </p>
-                <p className="text-sm font-medium line-clamp-2 group-hover:text-[var(--color-primary)] transition-colors">
+                <p style={{ fontSize: '13px', fontWeight: 600, color: '#333', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
+                  className="group-hover:text-[#e8438f] transition-colors">
                   {prev.title}
                 </p>
               </Link>
             )}
             {next && (
               <Link href={`/blog/${next.slug}`}
-                className="card p-4 hover:border-[var(--color-primary)] transition-colors group text-right ml-auto w-full">
-                <p className="text-xs text-[var(--color-text-muted)] mb-1 flex items-center gap-1 justify-end">
+                style={{ display: 'block', padding: '16px', borderRadius: '10px', border: '1px solid #ececec', textDecoration: 'none', textAlign: 'right', marginLeft: 'auto', width: '100%', transition: 'border-color 0.2s' }}
+                className="group hover:border-[#e8438f]">
+                <p style={{ fontSize: '11px', color: '#bbb', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end' }}>
                   古い記事<ChevronRight size={12} />
                 </p>
-                <p className="text-sm font-medium line-clamp-2 group-hover:text-[var(--color-primary)] transition-colors">
+                <p style={{ fontSize: '13px', fontWeight: 600, color: '#333', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
+                  className="group-hover:text-[#e8438f] transition-colors">
                   {next.title}
                 </p>
               </Link>

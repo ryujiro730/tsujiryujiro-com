@@ -40,40 +40,47 @@ export default function BlogPage({
     : allPosts.filter(p => p.category === category)
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--color-bg)' }}>
+    <div className="blog-layout min-h-screen" style={{ background: '#fff' }}>
       {/* Header */}
-      <div style={{ background: 'rgba(255,245,248,0.95)', borderBottom: '1px solid var(--color-border)', backdropFilter: 'blur(12px)' }}
+      <div style={{ background: '#fff', borderBottom: '1px solid #e8e8e8' }}
         className="sticky top-0 z-10">
-        <div className="max-w-3xl mx-auto px-4 h-14 flex items-center justify-between">
-          <Link href="/" className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>
+        <div className="max-w-4xl mx-auto px-6 h-14 flex items-center justify-between">
+          <Link href="/" className="text-sm font-medium" style={{ color: '#e8438f' }}>
             ← AiKano
           </Link>
-          <span className="text-sm font-bold">ブログ</span>
+          <span className="text-sm font-semibold" style={{ color: '#1a1a1a', fontFamily: "'Noto Serif JP', serif" }}>
+            ブログ
+          </span>
           <div className="w-16" />
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto px-4 py-10">
+      <div className="max-w-4xl mx-auto px-6 py-14">
         {/* Hero */}
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold mb-2">AiKano ブログ</h1>
-          <p className="text-[var(--color-text-muted)] text-sm">
+        <div className="mb-12">
+          <p className="text-xs font-semibold tracking-widest mb-3" style={{ color: '#e8438f', letterSpacing: '0.12em' }}>
+            AIKANO BLOG
+          </p>
+          <h1 style={{ fontFamily: "'Noto Serif JP', serif", fontSize: '2rem', fontWeight: 700, color: '#1a1a1a', letterSpacing: '-0.02em', lineHeight: 1.3, marginBottom: '0.6em' }}>
+            AiKano ブログ
+          </h1>
+          <p style={{ color: '#888', fontSize: '14px', lineHeight: 1.7 }}>
             お知らせ・使い方・AIとの会話を楽しむためのコラム
           </p>
         </div>
 
         {/* Category tabs */}
-        <Suspense fallback={<div className="h-9 mb-6" />}>
+        <Suspense fallback={<div className="h-9 mb-8" />}>
           <CategoryTabs current={category} />
         </Suspense>
 
         {/* Posts grid */}
         {filtered.length === 0 ? (
-          <div className="text-center py-20 text-[var(--color-text-muted)] text-sm">
+          <div className="text-center py-24" style={{ color: '#aaa', fontSize: '14px' }}>
             記事がありません
           </div>
         ) : (
-          <div className="grid gap-5 sm:grid-cols-2">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map(post => (
               <BlogCard key={post.slug} post={post} />
             ))}

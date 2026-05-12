@@ -25,7 +25,7 @@ const RANK_COLORS: Record<number, { bg: string; text: string; border: string }> 
 const DEFAULT_RANK = { bg: '#f0f4ff', text: '#4455aa', border: '#aabbdd' }
 
 export function ComparisonTable({ title, rowLabels, services }: Props) {
-  const LABEL_W = 88
+  const LABEL_W = 120
   const COL_W = 160
 
   return (
@@ -84,7 +84,7 @@ export function ComparisonTable({ title, rowLabels, services }: Props) {
             {/* データ行 */}
             {rowLabels.map((label, ri) => (
               <tr key={label} style={{ background: ri % 2 === 0 ? '#fff' : '#fafafa' }}>
-                <td style={{ ...cellBase, background: '#f0f4f8', fontWeight: 700, borderRight: '2px solid #1a2a5e', padding: '10px 8px', color: '#333', lineHeight: 1.4 }}>
+                <td style={{ ...cellBase, background: '#f0f4f8', fontWeight: 700, borderRight: '2px solid #1a2a5e', padding: '10px 8px', color: '#333', lineHeight: 1.4, whiteSpace: 'nowrap' }}>
                   {label}
                 </td>
                 {services.map(s => (

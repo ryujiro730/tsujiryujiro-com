@@ -24,19 +24,26 @@ export function CategoryTabs({ current }: { current: BlogCategory }) {
   }
 
   return (
-    <div className="flex gap-2 flex-wrap mb-6">
+    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '32px' }}>
       {TABS.map(({ key, label }) => {
         const active = key === current
         return (
           <button
             key={key}
             onClick={() => select(key)}
-            className="text-xs px-3 py-1.5 rounded-full font-medium transition-all duration-150"
-            style={
-              active
-                ? { background: 'var(--color-primary)', color: '#fff' }
-                : { background: 'var(--color-surface-2)', color: 'var(--color-text-muted)', border: '1px solid var(--color-border)' }
-            }
+            style={{
+              fontSize: '12px',
+              padding: '6px 16px',
+              borderRadius: '99px',
+              fontWeight: active ? 700 : 500,
+              letterSpacing: '0.02em',
+              transition: 'all 0.15s',
+              cursor: 'pointer',
+              border: active ? 'none' : '1px solid #e0e0e0',
+              background: active ? '#e8438f' : '#fff',
+              color: active ? '#fff' : '#666',
+              boxShadow: active ? '0 2px 8px rgba(232,67,143,0.25)' : 'none',
+            }}
           >
             {label}
           </button>
