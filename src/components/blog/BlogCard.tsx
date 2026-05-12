@@ -1,3 +1,5 @@
+'use client'
+
 import Link from 'next/link'
 import { PostMeta, CATEGORY_LABELS } from '@/lib/blog'
 import { Clock, Calendar } from 'lucide-react'
