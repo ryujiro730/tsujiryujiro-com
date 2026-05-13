@@ -19,7 +19,9 @@ import type { ComparisonService } from '@/components/blog/ComparisonTable'
 import { AiKanoHikakuTable } from '@/components/blog/AiKanoHikakuTable'
 import { AiKanoCard, ChatGPTCard, GeminiCard, CandyAICard, CloverCard } from '@/components/blog/AiKanoRadarChart'
 import { Box } from '@/components/blog/Box'
+import { ImageGrid, GridImg } from '@/components/blog/ImageGrid'
 import { Review } from '@/components/blog/Review'
+import { FaqSection, FaqItem } from '@/components/blog/Faq'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://aikano.chat'
 
@@ -129,7 +131,7 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
         <article className="prose prose-sm sm:prose max-w-none blog-prose" style={{ maxWidth: 'none' }}>
           <MDXRemote
             source={post.content}
-            components={{ BlogCta, InlineLink, NextLink, RelatedPosts: () => <RelatedPosts currentSlug={post.slug} />, TwitterEmbed, ComparisonTable, AiKanoHikakuTable, AiKanoCard, ChatGPTCard, GeminiCard, CandyAICard, CloverCard, Box, Review }}
+            components={{ BlogCta, InlineLink, NextLink, RelatedPosts: () => <RelatedPosts currentSlug={post.slug} />, TwitterEmbed, ComparisonTable, AiKanoHikakuTable, AiKanoCard, ChatGPTCard, GeminiCard, CandyAICard, CloverCard, Box, Review, ImageGrid, GridImg, FaqSection, FaqItem }}
             options={{
               mdxOptions: {
                 remarkPlugins: [remarkGfm, remarkBreaks],

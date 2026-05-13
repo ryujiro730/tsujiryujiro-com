@@ -37,16 +37,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  let body: { conversationId: string; content: string }
+  let body: { conversationId: string; content: string; imageUrl?: string }
   try {
     body = await req.json()
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  const { conversationId, content } = body
-  if (!conversationId || !content?.trim()) {
-    return NextResponse.json({ error: 'conversationId and content are required' }, { status: 400 })
+  const { conversationId, content, imageUrl } = body
+  if (!conversationId || (!content?.trim() && !imageUrl)) {
+    return NextResponse.json({ error: 'conversationId and content or imageUrl are required' }, { status: 400 })
   }
 
   const admin = adminSupabase()
@@ -70,6 +70,7 @@ export async function POST(req: NextRequest) {
       content: resolvedContent,
       points_used: 0,
       is_read: false,
+      ...(imageUrl ? { metadata: { image_url: imageUrl } } : {}),
     })
     .select()
     .single()

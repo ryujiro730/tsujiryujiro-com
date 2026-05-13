@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { Send, ChevronLeft, Loader2, FileText, Save, Tag, Pencil, Trash2, Check, X } from 'lucide-react'
+import { Send, ChevronLeft, Loader2, FileText, Save, Tag, Pencil, Trash2, Check, X, ImagePlus } from 'lucide-react'
 import { formatDistanceToNow, format } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import type { Message, Character, Profile } from '@/types'
@@ -34,10 +34,12 @@ export default function AdminConversationDetailPage() {
   const [templates, setTemplates] = useState<Template[]>([])
   const [editingMsgId, setEditingMsgId] = useState<string | null>(null)
   const [editingContent, setEditingContent] = useState('')
+  const [uploadingImage, setUploadingImage] = useState(false)
 
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const sendBtnRef = useRef<HTMLButtonElement>(null)
+  const imageInputRef = useRef<HTMLInputElement>(null)
 
   const supabaseRef = useRef(createClient())
   const channelRef = useRef<ReturnType<typeof supabaseRef.current.channel> | null>(null)
@@ -284,6 +286,34 @@ export default function AdminConversationDetailPage() {
     }
   }
 
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
+
+    setUploadingImage(true)
+    const ext = file.name.split('.').pop()
+    const path = `admin-chat/${id}/${Date.now()}.${ext}`
+    const { error: uploadErr } = await supabase.storage.from('chat-images').upload(path, file, { upsert: true })
+    if (uploadErr) { alert('画像のアップロードに失敗しました: ' + uploadErr.message); setUploadingImage(false); return }
+
+    const { data: urlData } = supabase.storage.from('chat-images').getPublicUrl(path)
+    const imageUrl = urlData.publicUrl
+    setUploadingImage(false)
+
+    const res = await fetch('/api/admin/staff-reply', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ conversationId: id, content: '', imageUrl }),
+    })
+    if (!res.ok) { alert('画像メッセージの送信に失敗しました'); return }
+    const { message: msg } = await res.json()
+    if (msg) {
+      setMessages(prev => prev.find(p => p.id === msg.id) ? prev : [...prev, msg])
+      channelRef.current?.send({ type: 'broadcast', event: 'new_message', payload: { message: msg } })
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -504,6 +534,11 @@ export default function AdminConversationDetailPage() {
                           </button>
                         </div>
                       </div>
+                    ) : msg.metadata?.image_url ? (
+                      <div className={`overflow-hidden rounded-2xl ${isOp ? 'rounded-br-sm' : 'rounded-bl-sm'}`} style={{ maxWidth: 240 }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={msg.metadata.image_url} alt="送信画像" style={{ display: 'block', width: '100%', maxWidth: 240 }} />
+                      </div>
                     ) : (
                       <div className={`px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${isOp ? 'bubble-user' : 'bubble-operator'}`}>
                         {msg.content}
@@ -554,15 +589,29 @@ export default function AdminConversationDetailPage() {
               placeholder={`${character?.name}として返信… (Shift+Enterで改行、Tabで送信へ)`}
               className="flex-1 input-warm px-4 py-2.5 text-sm resize-none"
             />
-            <button
-              ref={sendBtnRef}
-              onClick={sendReply}
-              disabled={!input.trim() || sending}
-              className="btn-primary px-4 flex items-center gap-1.5 text-sm disabled:opacity-40"
-            >
-              {sending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
-              送信
-            </button>
+            <div className="flex flex-col gap-2">
+              {/* 画像送信 */}
+              <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
+              <button
+                onClick={() => imageInputRef.current?.click()}
+                disabled={uploadingImage || sending}
+                title="画像を送信"
+                className="px-3 flex items-center justify-center gap-1.5 text-sm rounded-lg disabled:opacity-40 transition-colors"
+                style={{ background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)', height: '40px' }}
+              >
+                {uploadingImage ? <Loader2 size={15} className="animate-spin" /> : <ImagePlus size={15} />}
+              </button>
+              {/* テキスト送信 */}
+              <button
+                ref={sendBtnRef}
+                onClick={sendReply}
+                disabled={!input.trim() || sending}
+                className="btn-primary px-4 flex items-center gap-1.5 text-sm disabled:opacity-40 flex-1"
+              >
+                {sending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
+                送信
+              </button>
+            </div>
           </div>
         </div>
       </div>
