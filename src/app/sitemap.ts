@@ -19,6 +19,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'daily',
       priority: 0.9,
     },
+    {
+      url: `${APP_URL}/legal/terms`,
+      lastModified: new Date('2026-05-14'),
+      changeFrequency: 'yearly',
+      priority: 0.3,
+    },
   ]
 
   const blogPages: MetadataRoute.Sitemap = posts.map(post => ({

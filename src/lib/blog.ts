@@ -25,6 +25,7 @@ export type PostMeta = {
   ogImage?: string
   noindex?: boolean
   readingMinutes: number
+  author?: string
 }
 
 export type Post = PostMeta & {
@@ -66,6 +67,7 @@ export function getAllPosts(): PostMeta[] {
       ogImage: data.ogImage,
       noindex: data.noindex ?? false,
       readingMinutes: Math.max(1, Math.ceil(rt.minutes)),
+      author: data.author,
     } satisfies PostMeta
   })
 
@@ -90,6 +92,7 @@ export function getPostBySlug(slug: string): Post | null {
     ogImage: data.ogImage,
     noindex: data.noindex ?? false,
     readingMinutes: Math.max(1, Math.ceil(rt.minutes)),
+    author: data.author,
     content,
   }
 }

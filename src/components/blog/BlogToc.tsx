@@ -15,10 +15,11 @@ export default function BlogToc() {
 
   useEffect(() => {
     const headings = Array.from(
-      document.querySelectorAll("article h2")
+      document.querySelectorAll("article h2, article h3")
     ) as HTMLHeadingElement[];
 
     const list = headings.map((h) => {
+      const level = parseInt(h.tagName[1])
       let id = h.id;
       if (!id) {
         id = h.innerText
@@ -28,7 +29,7 @@ export default function BlogToc() {
           .replace(/[^a-z0-9\-ぁ-んァ-ン一-龥]/g, "");
         h.id = id;
       }
-      return { id, text: h.innerText, level: 2 };
+      return { id, text: h.innerText, level };
     });
 
     setToc(list);
@@ -52,13 +53,19 @@ export default function BlogToc() {
         </button>
         {open && (
           <div className="border-t border-slate-200/60 px-4 pb-4 pt-2">
-            <ul className="space-y-2 border-l-2 border-slate-300/80 pl-4">
+            <ul className="space-y-1.5 border-l-2 border-slate-300/80 pl-4">
               {toc.map((item) => (
-                <li key={item.id}>
+                <li key={item.id} style={{ paddingLeft: item.level === 3 ? '16px' : '0' }}>
                   <a
                     href={`#${item.id}`}
-                    className="block font-medium text-slate-700 hover:text-slate-900 hover:underline underline-offset-4 transition"
+                    className="block hover:underline underline-offset-4 transition"
+                    style={{
+                      fontSize: item.level === 3 ? '12px' : '13px',
+                      fontWeight: item.level === 3 ? 400 : 600,
+                      color: item.level === 3 ? '#64748b' : '#334155',
+                    }}
                   >
+                    {item.level === 3 && <span style={{ marginRight: '4px', color: '#cbd5e1' }}>└</span>}
                     {item.text}
                   </a>
                 </li>

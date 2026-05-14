@@ -6,7 +6,7 @@ import { MDXRemote } from 'next-mdx-remote/rsc'
 import remarkGfm from 'remark-gfm'
 import remarkBreaks from 'remark-breaks'
 import { ChevronLeft, ChevronRight, Clock, Calendar } from 'lucide-react'
-import { AuthorSig } from '@/components/blog/AuthorSig'
+import { AuthorSig, AuthorSigCompact, SatsukiAuthorSig, SatsukiAuthorSigCompact } from '@/components/blog/AuthorSig'
 import { BlogCta } from '@/components/blog/BlogCta'
 import BlogToc from '@/components/blog/BlogToc'
 import { BlogBreadcrumb } from '@/components/blog/BlogBreadcrumb'
@@ -22,6 +22,7 @@ import { Box } from '@/components/blog/Box'
 import { ImageGrid, GridImg } from '@/components/blog/ImageGrid'
 import { Review } from '@/components/blog/Review'
 import { FaqSection, FaqItem } from '@/components/blog/Faq'
+import { Lead } from '@/components/blog/Lead'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://aikano.chat'
 
@@ -122,8 +123,8 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
           )}
         </div>
 
-        {/* Author */}
-        <AuthorSig />
+        {/* Author compact（上部） */}
+        {post.author === 'satsuki' ? <SatsukiAuthorSigCompact date={post.date} /> : <AuthorSigCompact date={post.date} />}
 
         <BlogToc />
 
@@ -131,7 +132,7 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
         <article className="prose prose-sm sm:prose max-w-none blog-prose" style={{ maxWidth: 'none' }}>
           <MDXRemote
             source={post.content}
-            components={{ BlogCta, InlineLink, NextLink, RelatedPosts: () => <RelatedPosts currentSlug={post.slug} />, TwitterEmbed, ComparisonTable, AiKanoHikakuTable, AiKanoCard, ChatGPTCard, GeminiCard, CandyAICard, CloverCard, Box, Review, ImageGrid, GridImg, FaqSection, FaqItem }}
+            components={{ BlogCta, InlineLink, NextLink, RelatedPosts: () => <RelatedPosts currentSlug={post.slug} />, TwitterEmbed, ComparisonTable, AiKanoHikakuTable, AiKanoCard, ChatGPTCard, GeminiCard, CandyAICard, CloverCard, Box, Review, ImageGrid, GridImg, FaqSection, FaqItem, Lead }}
             options={{
               mdxOptions: {
                 remarkPlugins: [remarkGfm, remarkBreaks],
@@ -152,7 +153,7 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
         )}
 
         {/* Author */}
-        <AuthorSig />
+        {post.author === 'satsuki' ? <SatsukiAuthorSig /> : <AuthorSig />}
 
         {/* CTA */}
         <BlogCta />
