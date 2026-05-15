@@ -162,3 +162,48 @@ export function CloverCard() {
     />
   )
 }
+
+export function ReplikaCard() {
+  return (
+    <ServiceCard
+      name="Replika"
+      color="#3aa676"
+      scores={{ 可愛さ: 65, 会話のリアルさ: 80, 汎用性: 55, アダルト対応: 0, コスパ: 75 }}
+      fits={[
+        '精神的なサポートや癒しが欲しい',
+        '長期的に関係を積み上げていきたい',
+        '健全な恋人・コンパニオンとして使いたい',
+      ]}
+    />
+  )
+}
+
+export function CrushonCard() {
+  return (
+    <ServiceCard
+      name="Crushon.AI"
+      color="#e05a9a"
+      scores={{ 可愛さ: 88, 会話のリアルさ: 65, 汎用性: 35, アダルト対応: 85, コスパ: 72 }}
+      fits={[
+        'アニメ・漫画系キャラクターが好き',
+        'アダルト会話も楽しみたい',
+        '好みのキャラを自分で探したい',
+      ]}
+    />
+  )
+}
+
+export function KindroidCard() {
+  return (
+    <ServiceCard
+      name="Kindroid"
+      color="#5b8dee"
+      scores={{ 可愛さ: 70, 会話のリアルさ: 85, 汎用性: 45, アダルト対応: 20, コスパ: 78 }}
+      fits={[
+        '声で話せるリアルな彼女感が欲しい',
+        '感情に寄り添った会話を楽しみたい',
+        '長期記憶で関係を育てたい',
+      ]}
+    />
+  )
+}

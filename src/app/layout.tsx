@@ -1,6 +1,9 @@
 import type { Metadata, Viewport } from 'next'
+import Script from 'next/script'
 import './globals.css'
 import ServiceWorkerRegister from '@/components/ServiceWorkerRegister'
+
+const GA_ID = 'G-E01TLB4KY3'
 
 export const metadata: Metadata = {
   title: 'AiKano - 超高性能AIがあなただけに返信します',
@@ -20,8 +23,6 @@ export const viewport: Viewport = {
   themeColor: '#0a1628',
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -30,8 +31,30 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
         <meta name="mobile-web-app-capable" content="yes" />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Organization",
+              "name": "AiKano",
+              "url": "https://aikano.chat",
+              "logo": "https://aikano.chat/icons/icon-192.png",
+              "description": "自社チューニングの超高性能AIが、あなたのメッセージにリアルタイムで返信します。アダルトOK・画像送り合いOK。",
+              "sameAs": [
+                "https://www.youtube.com/@AI%E3%82%AB%E3%83%8E%E3%81%A1%E3%82%83%E3%82%93",
+                "https://x.com/home",
+                "https://www.instagram.com/aibijo_girl/"
+              ]
+            })
+          }}
+        />
       </head>
       <body className="min-h-screen">
+        <Script src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`} strategy="afterInteractive" />
+        <Script id="ga4-init" strategy="afterInteractive">
+          {`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${GA_ID}');`}
+        </Script>
         <ServiceWorkerRegister />
         {children}
       </body>

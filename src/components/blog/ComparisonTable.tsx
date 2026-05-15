@@ -15,6 +15,8 @@ type Props = {
   title: string
   rowLabels: string[]
   services: ComparisonService[]
+  showRank?: boolean
+  showScore?: boolean
 }
 
 const RANK_COLORS: Record<number, { bg: string; text: string; border: string }> = {
@@ -24,7 +26,7 @@ const RANK_COLORS: Record<number, { bg: string; text: string; border: string }> 
 }
 const DEFAULT_RANK = { bg: '#f0f4ff', text: '#4455aa', border: '#aabbdd' }
 
-export function ComparisonTable({ title, rowLabels, services }: Props) {
+export function ComparisonTable({ title, rowLabels, services, showRank = true, showScore = true }: Props) {
   const LABEL_W = 120
   const COL_W = 160
 
@@ -60,10 +62,12 @@ export function ComparisonTable({ title, rowLabels, services }: Props) {
               {services.map(s => {
                 const c = RANK_COLORS[s.rank] ?? DEFAULT_RANK
                 return (
-                  <td key={s.rank} style={{ ...cellBase, background: c.bg, borderRight: '1px solid #ddd', textAlign: 'center', padding: '10px 8px' }}>
-                    <div style={{ display: 'inline-block', border: `2px solid ${c.border}`, borderRadius: 4, padding: '1px 8px', color: c.text, fontWeight: 700, fontSize: 12, marginBottom: 6 }}>
-                      {s.rank}位
-                    </div>
+                  <td key={s.rank} style={{ ...cellBase, background: showRank ? c.bg : '#f8f8f8', borderRight: '1px solid #ddd', textAlign: 'center', padding: '10px 8px' }}>
+                    {showRank && (
+                      <div style={{ display: 'inline-block', border: `2px solid ${c.border}`, borderRadius: 4, padding: '1px 8px', color: c.text, fontWeight: 700, fontSize: 12, marginBottom: 6 }}>
+                        {s.rank}位
+                      </div>
+                    )}
                     {s.image && (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={s.image} alt={s.name} style={{ display: 'block', margin: '0 auto 6px', maxHeight: 60, maxWidth: 140, objectFit: 'contain' }} />
@@ -96,36 +100,40 @@ export function ComparisonTable({ title, rowLabels, services }: Props) {
             ))}
 
             {/* 詳細ボタン行 */}
-            <tr style={{ background: '#f8f8f8' }}>
-              <td style={{ ...cellBase, background: '#f0f4f8', fontWeight: 700, borderRight: '2px solid #1a2a5e', padding: '10px 8px', color: '#333' }}>
-                詳細ページ
-              </td>
-              {services.map(s => (
-                <td key={s.rank} style={{ ...cellBase, borderRight: '1px solid #ddd', textAlign: 'center', padding: '10px 8px' }}>
-                  {s.ctaHref ? (
-                    <a href={s.ctaHref} target="_blank" rel="noopener noreferrer"
-                      style={{ display: 'inline-block', padding: '6px 16px', borderRadius: 4, background: '#e8438f', color: '#fff', fontWeight: 700, fontSize: 12, textDecoration: 'none' }}>
-                      {s.ctaLabel ?? '詳しくみる'}
-                    </a>
-                  ) : '—'}
+            {showRank && (
+              <tr style={{ background: '#f8f8f8' }}>
+                <td style={{ ...cellBase, background: '#f0f4f8', fontWeight: 700, borderRight: '2px solid #1a2a5e', padding: '10px 8px', color: '#333' }}>
+                  詳細ページ
                 </td>
-              ))}
-            </tr>
+                {services.map(s => (
+                  <td key={s.rank} style={{ ...cellBase, borderRight: '1px solid #ddd', textAlign: 'center', padding: '10px 8px' }}>
+                    {s.ctaHref ? (
+                      <a href={s.ctaHref} target="_blank" rel="noopener noreferrer"
+                        style={{ display: 'inline-block', padding: '6px 16px', borderRadius: 4, background: '#e8438f', color: '#fff', fontWeight: 700, fontSize: 12, textDecoration: 'none' }}>
+                        {s.ctaLabel ?? '詳しくみる'}
+                      </a>
+                    ) : '—'}
+                  </td>
+                ))}
+              </tr>
+            )}
 
             {/* 総合得点行 */}
-            <tr style={{ background: '#fff9e6' }}>
-              <td style={{ ...cellBase, background: '#f0f4f8', fontWeight: 700, borderRight: '2px solid #1a2a5e', padding: '10px 8px', color: '#333' }}>
-                総合得点
-              </td>
-              {services.map(s => {
-                const c = RANK_COLORS[s.rank] ?? DEFAULT_RANK
-                return (
-                  <td key={s.rank} style={{ ...cellBase, borderRight: '1px solid #ddd', textAlign: 'center', padding: '10px 8px', fontWeight: 800, fontSize: 15, color: c.text }}>
-                    {s.score} 点
-                  </td>
-                )
-              })}
-            </tr>
+            {showScore && (
+              <tr style={{ background: '#fff9e6' }}>
+                <td style={{ ...cellBase, background: '#f0f4f8', fontWeight: 700, borderRight: '2px solid #1a2a5e', padding: '10px 8px', color: '#333' }}>
+                  総合得点
+                </td>
+                {services.map(s => {
+                  const c = RANK_COLORS[s.rank] ?? DEFAULT_RANK
+                  return (
+                    <td key={s.rank} style={{ ...cellBase, borderRight: '1px solid #ddd', textAlign: 'center', padding: '10px 8px', fontWeight: 800, fontSize: 15, color: c.text }}>
+                      {s.score} 点
+                    </td>
+                  )
+                })}
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

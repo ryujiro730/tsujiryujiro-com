@@ -1,7 +1,14 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import AnimateOnScroll from '@/components/AnimateOnScroll'
-import { Cpu, Database, Dna, Unlock, Image as ImageIcon } from 'lucide-react';
+import { Cpu, Database, Dna, Unlock, Image as ImageIcon } from 'lucide-react'
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  alternates: {
+    canonical: 'https://aikano.chat',
+  },
+}
 
 
 export default async function HomePage() {
@@ -301,7 +308,7 @@ export default async function HomePage() {
           {['/p6.png', '/p7.png', '/p4.png'].map((src, i) => (
             <AnimateOnScroll key={i} type="photo" delay={i * 120} style={{ aspectRatio: '3/4', overflow: 'hidden', position: 'relative' }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
+              <img src={src} alt="アイカノ AIキャラクター" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
             </AnimateOnScroll>
           ))}
         </div>
@@ -376,7 +383,7 @@ export default async function HomePage() {
       {/* ── 写真バナー（横長） ── */}
       <section style={{ position: 'relative', height: '280px', overflow: 'hidden' }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/p2.png" alt="" className="ken-burns-r" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 20%' }} />
+        <img src="/p2.png" alt="アイカノ AIキャラクター" loading="lazy" className="ken-burns-r" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 20%' }} />
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, rgba(13,10,20,0.85) 0%, rgba(13,10,20,0.3) 60%, transparent 100%)' }} />
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', padding: '0 32px' }}>
           <div>
@@ -400,7 +407,7 @@ export default async function HomePage() {
             {['/p3.png', '/p5.png'].map((src, i) => (
               <AnimateOnScroll key={i} type="photo" delay={i * 150} style={{ borderRadius: '16px', overflow: 'hidden', aspectRatio: '3/4' }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
+                <img src={src} alt="アイカノ AIキャラクター" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
               </AnimateOnScroll>
             ))}
           </div>
@@ -418,7 +425,7 @@ export default async function HomePage() {
       {/* ── 最終CTA（写真背景） ── */}
       <section style={{ position: 'relative', overflow: 'hidden' }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/p8.png" alt="" className="ken-burns" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
+        <img src="/p8.png" alt="アイカノ AIキャラクター" loading="lazy" className="ken-burns" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(13,10,20,0.82)' }} />
         <AnimateOnScroll style={{ position: 'relative', zIndex: 10, padding: '80px 24px', textAlign: 'center', maxWidth: '460px', margin: '0 auto' }}>
           {user ? (
@@ -464,18 +471,35 @@ export default async function HomePage() {
       </section>
 
       {/* ── Footer ── */}
-      <footer style={{ borderTop: '1px solid rgba(220,80,140,0.1)', padding: '24px 20px', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-        <span style={{ fontWeight: 800, fontSize: '14px', background: 'linear-gradient(90deg, #e8438f, #a060e0)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>AiKano</span>
-        <div style={{ display: 'flex', gap: '20px' }}>
-          {[
-            { label: '特定商取引法', href: '/legal/tokusho' },
-            { label: 'プライバシー', href: '/legal/privacy' },
-            { label: '利用規約', href: '/legal/terms' },
-          ].map(l => (
-            <Link key={l.label} href={l.href} style={{ color: 'var(--color-text-muted)', fontSize: '12px', textDecoration: 'none' }}>{l.label}</Link>
-          ))}
+      <footer style={{ borderTop: '1px solid rgba(220,80,140,0.1)', padding: '24px 20px', background: 'var(--color-bg)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
+          <span style={{ fontWeight: 800, fontSize: '14px', background: 'linear-gradient(90deg, #e8438f, #a060e0)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>AiKano</span>
+          {/* SNS Links */}
+          <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+            {/* YouTube */}
+            <a href="https://www.youtube.com/@AI%E3%82%AB%E3%83%8E%E3%81%A1%E3%82%83%E3%82%93" target="_blank" rel="noopener noreferrer" aria-label="YouTube" style={{ color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.75 15.5V8.5l6.25 3.5-6.25 3.5z"/></svg>
+            </a>
+            {/* X (Twitter) */}
+            <a href="https://x.com/home" target="_blank" rel="noopener noreferrer" aria-label="X (Twitter)" style={{ color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+            </a>
+            {/* Instagram */}
+            <a href="https://www.instagram.com/aibijo_girl/" target="_blank" rel="noopener noreferrer" aria-label="Instagram" style={{ color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center' }}>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/></svg>
+            </a>
+          </div>
+          <div style={{ display: 'flex', gap: '20px' }}>
+            {[
+              { label: '特定商取引法', href: '/legal/tokusho' },
+              { label: 'プライバシー', href: '/legal/privacy' },
+              { label: '利用規約', href: '/legal/terms' },
+            ].map(l => (
+              <Link key={l.label} href={l.href} style={{ color: 'var(--color-text-muted)', fontSize: '12px', textDecoration: 'none' }}>{l.label}</Link>
+            ))}
+          </div>
         </div>
-        <span style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>© 2025 AiKano</span>
+        <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', textAlign: 'center' }}>© 2025 AiKano</p>
       </footer>
 
     </main>
