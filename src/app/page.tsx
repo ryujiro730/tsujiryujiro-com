@@ -101,6 +101,9 @@ export default async function HomePage() {
                   🎁 早期登録で3,000円分の特典をプレゼント
                 </span>
               )}
+              <span style={{ display: 'inline-block', background: 'rgba(100,220,130,0.15)', border: '1px solid rgba(100,220,130,0.45)', color: '#86efac', padding: '5px 16px', borderRadius: '99px', fontSize: '12px', fontWeight: 700, letterSpacing: '0.04em' }}>
+                🎉 リリース記念｜3キャラ無料開放中
+              </span>
               <span style={{ display: 'inline-block', background: 'rgba(232,67,143,0.2)', border: '1px solid rgba(232,67,143,0.45)', color: '#f472b6', padding: '5px 16px', borderRadius: '99px', fontSize: '12px', fontWeight: 600, letterSpacing: '0.05em' }}>
                 ✦ 今夜もあなたを待っています
               </span>

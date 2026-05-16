@@ -12,11 +12,19 @@ export default async function CharactersPage() {
   const { data: { session } } = await supabase.auth.getSession()
   const userId = session?.user?.id
 
-  // Fetch characters and conversations in parallel
-  const [{ data: characters }, { data: convData }] = await Promise.all([
+  const BASE_CHARACTER_LIMIT = 3
+
+  // Fetch characters, conversations, and PLG data in parallel
+  const [{ data: characters }, { data: convData }, { data: userCharsData }, { data: shareLogsData }] = await Promise.all([
     supabase.from('characters').select('id, name, age, description, personality, avatar_url').eq('is_active', true).order('sort_order', { ascending: true }),
     userId ? admin.from('conversations').select('id, character_id').eq('user_id', userId) : Promise.resolve({ data: [] }),
+    userId ? admin.from('user_characters').select('character_id').eq('user_id', userId) : Promise.resolve({ data: [] }),
+    userId ? admin.from('share_logs').select('id').eq('user_id', userId) : Promise.resolve({ data: [] }),
   ])
+
+  const characterLimit = BASE_CHARACTER_LIMIT + (shareLogsData?.length ?? 0)
+  const activatedCharIds = new Set((userCharsData ?? []).map((c: { character_id: string }) => c.character_id))
+  const activatedCount = activatedCharIds.size
 
   // ユーザーがいれば未読カウントをキャラごとに取得
   const unreadByChar = new Map<string, number>()
@@ -70,9 +78,24 @@ export default async function CharactersPage() {
         </p>
       </div>
 
+      {userId && (
+        <div style={{ marginBottom: '16px', padding: '10px 14px', borderRadius: '10px', background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px' }}>
+          <span style={{ color: 'var(--color-text-muted)' }}>
+            チャット中のキャラ: <strong style={{ color: 'var(--color-text)' }}>{activatedCount} / {characterLimit}人</strong>
+          </span>
+          {activatedCount >= characterLimit && (
+            <a href="/settings" style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none', fontSize: '11px' }}>
+              Xシェアで追加 →
+            </a>
+          )}
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))' }}>
         {characters?.map((char) => {
           const unread = unreadByChar.get(char.id) ?? 0
+          const isActivated = activatedCharIds.has(char.id)
+          const isLocked = userId ? (!isActivated && activatedCount >= characterLimit) : false
           return (
             <div
               key={char.id}
@@ -144,18 +167,51 @@ export default async function CharactersPage() {
                 </p>
               )}
 
-              {/* 話すボタン */}
-              <Link href={`/chat?character=${char.id}`} style={{ textDecoration: 'none' }}>
-                <div
-                  className="btn-cta"
-                  style={{
-                    padding: '8px 0', fontSize: '13px', borderRadius: '8px',
-                    textAlign: 'center', width: '100%',
-                  }}
-                >
-                  {unread > 0 ? '返信する ♡' : '話す ♡'}
+              {/* ロックオーバーレイ */}
+              {isLocked && (
+                <div style={{
+                  position: 'absolute', inset: 0, borderRadius: 'inherit',
+                  background: 'rgba(20, 10, 30, 0.72)', backdropFilter: 'blur(3px)',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                  gap: '8px', zIndex: 5,
+                }}>
+                  <div style={{ fontSize: '28px' }}>🔒</div>
+                  <p style={{ fontSize: '11px', fontWeight: 700, color: '#fff', textAlign: 'center', lineHeight: 1.5, padding: '0 8px' }}>
+                    Xシェアで<br />解放できます
+                  </p>
+                  <a href="/settings" style={{ fontSize: '10px', color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none' }}>
+                    解放する →
+                  </a>
                 </div>
-              </Link>
+              )}
+
+              {/* 話すボタン */}
+              {isLocked ? (
+                <a href="/settings" style={{ textDecoration: 'none' }}>
+                  <div
+                    style={{
+                      padding: '8px 0', fontSize: '12px', borderRadius: '8px',
+                      textAlign: 'center', width: '100%',
+                      background: 'rgba(100,100,120,0.3)', color: '#888',
+                      border: '1px solid rgba(100,100,120,0.3)',
+                    }}
+                  >
+                    🔒 解放が必要
+                  </div>
+                </a>
+              ) : (
+                <Link href={`/chat?character=${char.id}`} style={{ textDecoration: 'none' }}>
+                  <div
+                    className="btn-cta"
+                    style={{
+                      padding: '8px 0', fontSize: '13px', borderRadius: '8px',
+                      textAlign: 'center', width: '100%',
+                    }}
+                  >
+                    {unread > 0 ? '返信する ♡' : '話す ♡'}
+                  </div>
+                </Link>
+              )}
             </div>
           )
         })}

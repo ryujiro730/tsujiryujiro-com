@@ -34,20 +34,22 @@ export default function RegisterPage() {
 
     if (error) { setError(error.message); setLoading(false); return }
 
-    if (data.session) {
-      window.location.href = '/onboarding'
-    } else {
-      setDone(true)
-    }
+    setDone(true)
   }
 
   if (done) {
     return (
       <div>
+        <div style={{ fontSize: '40px', marginBottom: '16px' }}>📩</div>
         <h1 className="text-2xl font-bold mb-3">確認メールを送りました</h1>
+        <p className="text-[var(--color-text-muted)] text-sm leading-relaxed mb-4">
+          <span style={{ color: 'var(--color-primary)', fontWeight: 600 }}>{email}</span> に確認メールを送りました。
+        </p>
         <p className="text-[var(--color-text-muted)] text-sm leading-relaxed">
-          <span className="text-[var(--color-text)]">{email}</span> に確認メールを送りました。<br />
-          メール内のリンクから登録を完了してください。
+          メール内の<strong style={{ color: 'var(--color-text)' }}>「メールアドレスを確認する」</strong>ボタンをクリックして登録を完了してください。
+        </p>
+        <p className="text-[var(--color-text-muted)] text-xs mt-5 leading-relaxed">
+          メールが届かない場合は迷惑メールフォルダをご確認ください。
         </p>
       </div>
     )

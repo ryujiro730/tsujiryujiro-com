@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { Loader2, Check, LogOut, KeyRound, Trash2, MessageSquare } from 'lucide-react'
+import { Loader2, Check, LogOut, KeyRound, Trash2, MessageSquare, Twitter } from 'lucide-react'
 import type { Profile } from '@/types'
 import Link from 'next/link'
 
@@ -14,6 +14,12 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+
+  // シェアで枠解放
+  const [shareInfo, setShareInfo] = useState<{ activatedCount: number; limit: number; shareCount: number; nextAvailable: string | null; canShareNow: boolean } | null>(null)
+  const [tweetUrl, setTweetUrl] = useState('')
+  const [shareSubmitting, setShareSubmitting] = useState(false)
+  const [shareResult, setShareResult] = useState<{ ok: boolean; message: string } | null>(null)
 
   // パスワード変更
   const [showPwForm, setShowPwForm] = useState(false)
@@ -46,6 +52,34 @@ export default function SettingsPage() {
     }
     load()
   }, [])
+
+  useEffect(() => {
+    fetch('/api/share/unlock').then(r => r.json()).then(data => {
+      if (!data.error) setShareInfo(data)
+    }).catch(() => {})
+  }, [])
+
+  const handleShareSubmit = async () => {
+    if (!tweetUrl.trim() || shareSubmitting) return
+    setShareSubmitting(true)
+    setShareResult(null)
+    const res = await fetch('/api/share/unlock', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tweetUrl }),
+    })
+    const data = await res.json()
+    setShareSubmitting(false)
+    if (data.ok) {
+      setShareResult({ ok: true, message: data.message ?? 'キャラクター枠が解放されました！' })
+      setTweetUrl('')
+      // Refresh share info
+      fetch('/api/share/unlock').then(r => r.json()).then(d => { if (!d.error) setShareInfo(d) }).catch(() => {})
+    } else {
+      const msg = data.message ?? (data.error === 'weekly_limit_reached' ? '今週はすでにシェア済みです。次回は7日後から申請できます。' : '送信に失敗しました')
+      setShareResult({ ok: false, message: msg })
+    }
+  }
 
   const handleSave = async () => {
     if (!profile || !displayName.trim()) return
@@ -225,6 +259,56 @@ export default function SettingsPage() {
             </button>
           </div>
         )}
+      </div>
+
+      {/* Xシェアでキャラ解放 */}
+      <div className="card p-5 mb-4">
+        <p className="text-xs text-[var(--color-text-muted)] font-medium uppercase tracking-wider mb-4">キャラクター枠の解放</p>
+        {shareInfo && (
+          <p className="text-sm mb-3">
+            現在: <strong>{shareInfo.activatedCount} / {shareInfo.limit}人</strong>
+            <span className="text-xs text-[var(--color-text-muted)] ml-2">（Xシェアで+1枠）</span>
+          </p>
+        )}
+        <a
+          href={`https://twitter.com/intent/tweet?text=${encodeURIComponent('AIと本当のカップルみたいに話せる！#アイカノ を試してみたよ → https://aikano.chat')}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 text-sm mb-4 font-semibold"
+          style={{ color: 'var(--color-primary)', textDecoration: 'none' }}
+        >
+          <Twitter size={15} />
+          Xで#アイカノをシェアする
+        </a>
+        <div className="space-y-2">
+          <label className="text-xs text-[var(--color-text-muted)] block">シェアした投稿のURLを貼り付け</label>
+          <input
+            type="url"
+            value={tweetUrl}
+            onChange={e => setTweetUrl(e.target.value)}
+            placeholder="https://x.com/yourname/status/..."
+            className="input-warm w-full px-4 py-2.5 text-sm"
+          />
+          {shareInfo && !shareInfo.canShareNow && shareInfo.nextAvailable && (
+            <p className="text-xs text-[var(--color-text-muted)]">
+              次回申請可能日: {new Date(shareInfo.nextAvailable).toLocaleDateString('ja-JP', { month: 'long', day: 'numeric' })}
+            </p>
+          )}
+          {shareResult && (
+            <p className={`text-xs flex items-center gap-1 ${shareResult.ok ? 'text-emerald-400' : 'text-red-400'}`}>
+              {shareResult.ok ? <Check size={12} /> : null}
+              {shareResult.message}
+            </p>
+          )}
+          <button
+            onClick={handleShareSubmit}
+            disabled={shareSubmitting || !tweetUrl.trim() || (shareInfo ? !shareInfo.canShareNow : false)}
+            className="btn-primary px-4 py-2 text-sm flex items-center gap-1.5 disabled:opacity-60"
+          >
+            {shareSubmitting ? <Loader2 size={13} className="animate-spin" /> : null}
+            URLを送信して枠を解放
+          </button>
+        </div>
       </div>
 
       {/* お問い合わせ */}

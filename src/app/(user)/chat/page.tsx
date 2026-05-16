@@ -40,6 +40,7 @@ export default function ChatPage() {
   const [showGiftPanel, setShowGiftPanel] = useState(false)
   const [inventory, setInventory] = useState<UserItem[]>([])
   const [sendingItem, setSendingItem] = useState<string | null>(null)
+  const [charLimitReached, setCharLimitReached] = useState(false)
 
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -226,6 +227,21 @@ export default function ChatPage() {
     if (profile.points < SEND_COST) {
       alert(`メッセージ送信には${SEND_COST}ポイント必要です。ポイントを購入してください。`)
       return
+    }
+
+    // 初回メッセージの場合はキャラクター枠のチェック
+    const isFirstUserMessage = !messages.some(m => m.sender_role === 'user')
+    if (isFirstUserMessage) {
+      const activateRes = await fetch('/api/chat/activate-character', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ characterId: character.id }),
+      })
+      const activateData = await activateRes.json()
+      if (!activateData.ok) {
+        setCharLimitReached(true)
+        return
+      }
     }
 
     setSending(true)
@@ -606,6 +622,46 @@ export default function ChatPage() {
           onClose={() => setLightboxIndex(null)}
           onChange={setLightboxIndex}
         />
+      )}
+
+      {/* キャラクター枠上限モーダル */}
+      {charLimitReached && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" style={{ background: 'rgba(0,0,0,0.7)' }}>
+          <div style={{ background: 'var(--color-surface)', borderRadius: '20px 20px 0 0', padding: '28px 24px 32px', width: '100%', maxWidth: '440px', boxShadow: '0 -8px 40px rgba(0,0,0,0.4)' }}
+            className="sm:rounded-[20px]">
+            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+              <div style={{ fontSize: '40px', marginBottom: '12px' }}>🔒</div>
+              <h3 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '8px', color: 'var(--color-text)' }}>
+                キャラクター枠が上限です
+              </h3>
+              <p style={{ fontSize: '13px', color: 'var(--color-text-muted)', lineHeight: 1.7 }}>
+                現在のキャンペーン期間中は3人のキャラと会話できます。<br />
+                Xで<strong style={{ color: 'var(--color-primary)' }}>#アイカノ</strong>を含む投稿をシェアすることで、枠を追加解放できます。
+              </p>
+            </div>
+            <a
+              href={`https://twitter.com/intent/tweet?text=${encodeURIComponent('AIと本当のカップルみたいに話せる！#アイカノ を試してみたよ → https://aikano.chat')}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-primary w-full py-3 flex items-center justify-center gap-2 mb-3"
+              style={{ borderRadius: '12px', textDecoration: 'none', fontSize: '14px', fontWeight: 700 }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+              </svg>
+              Xでシェアして枠を解放する
+            </a>
+            <p style={{ fontSize: '11px', color: 'var(--color-text-muted)', textAlign: 'center', marginBottom: '16px' }}>
+              シェア後、設定ページからURLを送信してください
+            </p>
+            <button
+              onClick={() => setCharLimitReached(false)}
+              style={{ width: '100%', padding: '10px', borderRadius: '10px', fontSize: '13px', color: 'var(--color-text-muted)', background: 'transparent', border: '1px solid var(--color-border)', cursor: 'pointer' }}
+            >
+              閉じる
+            </button>
+          </div>
+        </div>
       )}
     </div>
   )
