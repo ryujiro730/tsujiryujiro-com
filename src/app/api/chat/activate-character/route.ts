@@ -19,6 +19,22 @@ export async function POST(req: NextRequest) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
+  // Admin/staff はキャラクター枠制限なし
+  const { data: profile } = await adminClient
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (profile?.role === 'admin' || profile?.role === 'staff') {
+    // レコードがなければ挿入（表示カウント正規化のため）
+    await adminClient.from('user_characters').upsert(
+      { user_id: user.id, character_id: characterId },
+      { onConflict: 'user_id,character_id', ignoreDuplicates: true }
+    )
+    return NextResponse.json({ ok: true, adminBypass: true })
+  }
+
   // Already activated?
   const { data: existing } = await adminClient
     .from('user_characters')

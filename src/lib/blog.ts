@@ -66,7 +66,7 @@ export function getAllPosts(): PostMeta[] {
       tags: parseTags(data.tags),
       ogImage: data.ogImage,
       noindex: data.noindex ?? false,
-      readingMinutes: Math.max(1, Math.ceil(rt.minutes)),
+      readingMinutes: data.readingMinutes ? parseInt(data.readingMinutes) : Math.min(20, Math.max(1, Math.ceil(rt.minutes))),
       author: data.author,
     } satisfies PostMeta
   })
@@ -91,7 +91,7 @@ export function getPostBySlug(slug: string): Post | null {
     tags: parseTags(data.tags),
     ogImage: data.ogImage,
     noindex: data.noindex ?? false,
-    readingMinutes: Math.max(1, Math.ceil(rt.minutes)),
+    readingMinutes: data.readingMinutes ? parseInt(data.readingMinutes) : Math.min(20, Math.max(1, Math.ceil(rt.minutes))),
     author: data.author,
     content,
   }
