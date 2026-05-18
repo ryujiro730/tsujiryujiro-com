@@ -3,6 +3,9 @@ const nextConfig = {
   output: 'standalone',
   experimental: {
     serverComponentsExternalPackages: ['next-mdx-remote'],
+    outputFileTracingIncludes: {
+      '/blog/[slug]': ['./node_modules/next-mdx-remote/**/*'],
+    },
   },
   images: {
     remotePatterns: [
