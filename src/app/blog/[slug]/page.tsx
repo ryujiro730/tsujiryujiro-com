@@ -17,13 +17,16 @@ import { TwitterEmbed } from '@/components/blog/TwitterEmbed'
 import { ComparisonTable } from '@/components/blog/ComparisonTable'
 import type { ComparisonService } from '@/components/blog/ComparisonTable'
 import { AiKanoHikakuTable } from '@/components/blog/AiKanoHikakuTable'
-import { AiKanoCard, ChatGPTCard, GeminiCard, CandyAICard, CloverCard, ReplikaCard, CrushonCard, KindroidCard } from '@/components/blog/AiKanoRadarChart'
+import { AiKanoCard, ChatGPTCard, GeminiCard, CandyAICard, CloverCard, ReplikaCard, CrushonCard, KindroidCard, MyDreamCompanionCard, DreamGFCard, CotomoCard, OzChatCard } from '@/components/blog/AiKanoRadarChart'
 import { Box } from '@/components/blog/Box'
 import { ImageGrid, GridImg, SizedImg } from '@/components/blog/ImageGrid'
 import { Review } from '@/components/blog/Review'
 import { FaqSection, FaqItem } from '@/components/blog/Faq'
 import { Lead } from '@/components/blog/Lead'
 import { HowToUseCompare1, HowToUseCompare2 } from '@/components/blog/HowToUseCompare'
+import { EroMethodCompare } from '@/components/blog/EroMethodCompare'
+import { JpAiHikakuTable } from '@/components/blog/JpAiHikakuTable'
+import { MdxPre } from '@/components/blog/MdxPre'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://aikano.chat'
 
@@ -133,7 +136,7 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
         <article className="prose prose-sm sm:prose max-w-none blog-prose" style={{ maxWidth: 'none' }}>
           <MDXRemote
             source={post.content}
-            components={{ BlogCta, InlineLink, NextLink, RelatedPosts: () => <RelatedPosts currentSlug={post.slug} />, TwitterEmbed, ComparisonTable, AiKanoHikakuTable, AiKanoCard, ChatGPTCard, GeminiCard, CandyAICard, CloverCard, ReplikaCard, CrushonCard, KindroidCard, Box, Review, ImageGrid, GridImg, SizedImg, FaqSection, FaqItem, Lead, HowToUseCompare1, HowToUseCompare2 }}
+            components={{ BlogCta, InlineLink, NextLink, RelatedPosts: () => <RelatedPosts currentSlug={post.slug} />, TwitterEmbed, ComparisonTable, AiKanoHikakuTable, JpAiHikakuTable, AiKanoCard, ChatGPTCard, GeminiCard, CandyAICard, CloverCard, ReplikaCard, CrushonCard, KindroidCard, MyDreamCompanionCard, DreamGFCard, CotomoCard, OzChatCard, Box, Review, ImageGrid, GridImg, SizedImg, FaqSection, FaqItem, Lead, HowToUseCompare1, HowToUseCompare2, EroMethodCompare, pre: MdxPre }}
             options={{
               mdxOptions: {
                 remarkPlugins: [remarkGfm, remarkBreaks],

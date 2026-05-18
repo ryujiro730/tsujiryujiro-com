@@ -9,8 +9,11 @@ const nextConfig = {
     ],
     dangerouslyAllowSVG: true,
   },
+  trailingSlash: false,
   async redirects() {
     return [
+      // 末尾スラッシュを正規URLにリダイレクト
+      { source: '/:path+/', destination: '/:path+', permanent: true },
       // ブラウザのi18n自動リクエスト対策
       { source: '/ja', destination: '/', permanent: false },
       { source: '/ja/:path*', destination: '/:path*', permanent: false },
