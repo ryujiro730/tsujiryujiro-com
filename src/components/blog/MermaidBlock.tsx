@@ -9,7 +9,7 @@ export function MermaidBlock({ chart }: { chart: string }) {
   useEffect(() => {
     let cancelled = false
     async function render() {
-      const mermaid = (await import('mermaid')).default
+      const mermaid = (await import(/* webpackChunkName: "mermaid" */ 'mermaid')).default
       mermaid.initialize({ startOnLoad: false, theme: 'default', securityLevel: 'loose' })
       try {
         const id = `mermaid-${Math.random().toString(36).slice(2)}`
