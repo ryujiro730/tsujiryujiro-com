@@ -2,15 +2,16 @@ import React from 'react'
 import { MermaidBlock } from './MermaidBlock'
 
 export function MdxPre({ children, ...props }: React.HTMLAttributes<HTMLPreElement>) {
-  const child = React.Children.count(children) === 1
-    ? (React.Children.toArray(children)[0] as React.ReactElement)
-    : null
+  const childArray = React.Children.toArray(children)
 
-  if (child?.props?.className === 'language-mermaid') {
-    const code = typeof child.props.children === 'string'
-      ? child.props.children
-      : ''
-    return <MermaidBlock chart={code} />
+  if (childArray.length === 1) {
+    const child = childArray[0]
+    if (React.isValidElement(child) && (child.props as Record<string, unknown>)?.className === 'language-mermaid') {
+      const code = typeof (child.props as Record<string, unknown>).children === 'string'
+        ? (child.props as Record<string, unknown>).children as string
+        : ''
+      return <MermaidBlock chart={code} />
+    }
   }
 
   return <pre {...props}>{children}</pre>
