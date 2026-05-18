@@ -8,6 +8,21 @@ export const metadata: Metadata = {
   alternates: {
     canonical: 'https://aikano.chat',
   },
+  openGraph: {
+    title: 'AiKano｜AI彼女チャット - 日本語ネイティブ・アダルトOK',
+    description: '自社開発の超高性能AIが、あなたのメッセージにリアルタイムで返信します。アダルトOK・画像送り合いOK。',
+    url: 'https://aikano.chat',
+    siteName: 'AiKano',
+    locale: 'ja_JP',
+    type: 'website',
+    images: [{ url: 'https://aikano.chat/og-default.png', width: 1200, height: 630 }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'AiKano｜AI彼女チャット - 日本語ネイティブ・アダルトOK',
+    description: '自社開発の超高性能AIが、あなたのメッセージにリアルタイムで返信します。アダルトOK・画像送り合いOK。',
+    images: ['https://aikano.chat/og-default.png'],
+  },
 }
 
 
@@ -90,7 +105,7 @@ export default async function HomePage() {
           minHeight: '100dvh',
         }}>
           {/* 背景画像 */}
-          <img src="/LP1.png" alt="hero" className="ken-burns" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} />
+          <img src="/LP1.png" alt="アイカノ AIキャラクターとのチャット画面イメージ" className="ken-burns" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} />
           <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(13,10,20,0.08) 0%, rgba(13,10,20,0.22) 38%, rgba(13,10,20,0.88) 68%, #fff5f8 100%)' }} />
           
           {/* キャッチコピー：左下に固定（スマホは縦積み） */}

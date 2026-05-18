@@ -77,9 +77,30 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
 
   const { prev, next } = getPrevNext(params.slug)
   const categoryLabel = CATEGORY_LABELS[post.category] ?? post.category
+  const ogImage = post.ogImage ?? `${APP_URL}/og-default.png`
+
+  const articleJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: post.title,
+    description: post.description,
+    image: ogImage,
+    datePublished: post.date,
+    author: {
+      '@type': 'Person',
+      name: post.author === 'satsuki' ? '千田さつき' : 'AiKano編集部',
+    },
+    publisher: {
+      '@type': 'Organization',
+      name: 'AiKano',
+      logo: { '@type': 'ImageObject', url: `${APP_URL}/icons/icon-192.png` },
+    },
+    mainEntityOfPage: { '@type': 'WebPage', '@id': `${APP_URL}/blog/${params.slug}` },
+  }
 
   return (
     <div className="blog-layout min-h-screen" style={{ background: '#fff' }}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }} />
       {/* Header */}
       <div style={{ background: '#fff', borderBottom: '1px solid #e8e8e8' }}
         className="sticky top-0 z-10">
