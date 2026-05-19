@@ -10,7 +10,7 @@ export function BlogCta() {
           🎁 早期登録キャンペーン実施中
         </div>
         <h3 className="text-white font-black text-xl mb-2 leading-snug">
-          今アイカノに登録した人だけに<br />3,000円分の特典をプレゼント
+          今アイカノに登録した人だけに先着100名様まで<br />5,000円分の特典をプレゼント
         </h3>
         <p className="text-sm mb-6" style={{ color: 'rgba(255,255,255,0.75)' }}>
           サービス開始と同時にポイント付与。登録は無料・30秒で完了。
