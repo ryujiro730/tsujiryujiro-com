@@ -4,10 +4,12 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 import { getAuthUser } from '@/lib/supabase/get-auth-user'
 
-const supabaseAdmin = createSupabaseClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+function getSupabaseAdmin() {
+  return createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+}
 
 export async function POST(request: Request) {
   // 呼び出し元がadmin/staffか確認
@@ -28,7 +30,7 @@ export async function POST(request: Request) {
   const { userId, note } = await request.json()
   if (!userId) return NextResponse.json({ error: 'Missing userId' }, { status: 400 })
 
-  const { error } = await supabaseAdmin
+  const { error } = await getSupabaseAdmin()
     .from('profiles')
     .update({ admin_note: note })
     .eq('id', userId)
@@ -58,7 +60,7 @@ export async function GET(request: Request) {
   const userId = searchParams.get('userId')
   if (!userId) return NextResponse.json({ error: 'Missing userId' }, { status: 400 })
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await getSupabaseAdmin()
     .from('profiles')
     .select('admin_note')
     .eq('id', userId)
