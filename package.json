@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently -n next,cron -c cyan,magenta \"next dev\" \"node scripts/dev-cron.js\"",
+    "dev": "concurrently -n next,cron -c cyan,magenta \"next dev -H 0.0.0.0\" \"node scripts/dev-cron.js\"",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
