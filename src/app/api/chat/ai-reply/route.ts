@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 /**
  * AI自動返信APIルート
  * POST /api/chat/ai-reply

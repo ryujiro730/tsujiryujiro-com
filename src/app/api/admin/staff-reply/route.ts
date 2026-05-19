@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 /**
  * スタッフ返信API
  * POST /api/admin/staff-reply

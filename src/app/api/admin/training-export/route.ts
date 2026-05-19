@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 /**
  * AI学習データエクスポートAPI
  * GET /api/admin/training-export
