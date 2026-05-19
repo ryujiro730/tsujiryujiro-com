@@ -8,9 +8,12 @@
 
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
 const FROM = process.env.EMAIL_FROM ?? 'AiKano <noreply@example.com>'
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://example.com'
+
+function getResend() {
+  return new Resend(process.env.RESEND_API_KEY)
+}
 
 export interface NotificationEmailOptions {
   toEmail: string
@@ -33,7 +36,7 @@ export async function sendNotificationEmail(opts: NotificationEmailOptions): Pro
   const preview = opts.messageContent.slice(0, 60) + (opts.messageContent.length > 60 ? '…' : '')
 
   try {
-    await resend.emails.send({
+    await getResend().emails.send({
       from: FROM,
       to: opts.toEmail,
       subject: `${opts.characterName}からメッセージが届きました`,
