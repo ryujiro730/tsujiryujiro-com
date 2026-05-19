@@ -6,8 +6,8 @@ import ServiceWorkerRegister from '@/components/ServiceWorkerRegister'
 const GA_ID = 'G-E01TLB4KY3'
 
 export const metadata: Metadata = {
-  title: 'AiKano - 超高性能AIがあなただけに返信します',
-  description: '自社開発の超高性能AIが、あなたのメッセージにリアルタイムで返信します。アダルトOK・画像送り合いOK。',
+ title: 'アイカノ｜国産AI彼女チャット【日本語AI唯一の自由会話】',
+ description: '独自チューニングのAIが、あなただけにリアルタイム返信。日本語AIで唯一、制限のない自由な会話に対応。リアルな日本人キャラと写真も楽しめます。',
   manifest: '/manifest.json',
   icons: {
     icon: [

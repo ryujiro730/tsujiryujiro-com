@@ -78,17 +78,30 @@ jobs:
           CRON_SECRET=${{ secrets.CRON_SECRET }}
           EOF"
 
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Sync docker-compose.yml to VPS
+        run: |
+          rsync -avz docker-compose.yml \
+            ${{ secrets.VULTR_USER }}@${{ secrets.VULTR_HOST }}:/opt/lovechat/docker-compose.yml
+
       - name: Pull and restart on VPS
         env:
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ACTOR: ${{ github.actor }}
-          IMAGE: ghcr.io/${{ github.repository }}
         run: |
           ssh ${{ secrets.VULTR_USER }}@${{ secrets.VULTR_HOST }} \
-            "echo '$TOKEN' | docker login ghcr.io -u $ACTOR --password-stdin && \
-             cd /opt/lovechat && \
-             docker compose pull && \
-             docker compose up -d --remove-orphans && \
+            "docker logout ghcr.io; \
+             echo '$TOKEN' | docker login ghcr.io -u $ACTOR --password-stdin && \
+             docker pull ghcr.io/${{ github.repository }}:latest && \
+             docker stop lovechat-app-1 || true && \
+             docker rm lovechat-app-1 || true && \
+             docker run -d --name lovechat-app-1 -p 127.0.0.1:3001:3000 \
+               --env-file /opt/lovechat/.env \
+               -e NODE_ENV=production \
+               --restart unless-stopped \
+               ghcr.io/${{ github.repository }}:latest && \
              docker image prune -f"
 
       - name: Setup crontab on VPS

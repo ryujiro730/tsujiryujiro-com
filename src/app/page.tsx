@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     canonical: 'https://aikano.chat',
   },
   openGraph: {
-    title: 'AiKano｜AI彼女チャット - 日本語ネイティブ・アダルトOK',
+    title: 'アイカノ｜AI彼女チャット - 日本語ネイティブ・アダルトOK',
     description: '自社開発の超高性能AIが、あなたのメッセージにリアルタイムで返信します。アダルトOK・画像送り合いOK。',
     url: 'https://aikano.chat',
     siteName: 'AiKano',
