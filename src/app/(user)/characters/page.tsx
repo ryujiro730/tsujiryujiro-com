@@ -2,6 +2,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { unstable_noStore as noStore } from 'next/cache'
+import { UnlockWithPointsButton } from '@/components/UnlockWithPointsButton'
 
 export default async function CharactersPage() {
   noStore()
@@ -173,15 +174,18 @@ export default async function CharactersPage() {
                   position: 'absolute', inset: 0, borderRadius: 'inherit',
                   background: 'rgba(20, 10, 30, 0.72)', backdropFilter: 'blur(3px)',
                   display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                  gap: '8px', zIndex: 5,
+                  gap: '6px', zIndex: 5, padding: '0 8px',
                 }}>
                   <div style={{ fontSize: '28px' }}>🔒</div>
-                  <p style={{ fontSize: '11px', fontWeight: 700, color: '#fff', textAlign: 'center', lineHeight: 1.5, padding: '0 8px' }}>
+                  <p style={{ fontSize: '11px', fontWeight: 700, color: '#fff', textAlign: 'center', lineHeight: 1.5 }}>
                     Xシェアで<br />解放できます
                   </p>
                   <a href="/settings" style={{ fontSize: '10px', color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none' }}>
                     解放する →
                   </a>
+                  <div style={{ width: '100%', borderTop: '1px solid rgba(255,255,255,0.15)', paddingTop: '6px' }}>
+                    <UnlockWithPointsButton />
+                  </div>
                 </div>
               )}
 
