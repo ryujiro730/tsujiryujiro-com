@@ -5,8 +5,9 @@ import { NextRequest, NextResponse } from 'next/server'
 // POST /api/items/purchase - アイテム購入（ポイント消費）
 export async function POST(req: NextRequest) {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const user = session.user
 
   const { itemId } = await req.json()
   if (!itemId) return NextResponse.json({ error: 'itemId required' }, { status: 400 })

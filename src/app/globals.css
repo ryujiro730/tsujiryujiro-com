@@ -303,7 +303,7 @@ body {
 /* Blog prose overrides */
 .blog-prose {
   color: #2a2a2a;
-  font-size: 15px;
+  font-size: 17px;
   line-height: 1.85;
   letter-spacing: 0.01em;
 }
@@ -319,12 +319,14 @@ body {
 .blog-prose h2 {
   border-bottom: 2px solid #e8438f;
   padding-bottom: 0.35em;
-  margin-top: 2.2em;
-  font-size: 1.25em;
+  margin-top: 2.8em;
+  margin-bottom: 0.8em;
+  font-size: 1.45em;
 }
 .blog-prose h3 {
-  font-size: 1.1em;
-  margin-top: 1.8em;
+  font-size: 1.2em;
+  margin-top: 2.2em;
+  margin-bottom: 0.6em;
   color: #222;
 }
 .blog-prose p {

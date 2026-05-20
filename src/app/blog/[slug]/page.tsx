@@ -154,7 +154,7 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
         <BlogToc />
 
         {/* Article body */}
-        <article className="prose prose-sm sm:prose max-w-none blog-prose" style={{ maxWidth: 'none' }}>
+        <article className="prose max-w-none blog-prose" style={{ maxWidth: 'none' }}>
           <MDXRemote
             source={post.content}
             components={{ BlogCta, InlineLink, NextLink, RelatedPosts: () => <RelatedPosts currentSlug={post.slug} />, TwitterEmbed, ComparisonTable, AiKanoHikakuTable, JpAiHikakuTable, AiKanoCard, ChatGPTCard, GeminiCard, CandyAICard, CloverCard, ReplikaCard, CrushonCard, KindroidCard, MyDreamCompanionCard, DreamGFCard, CotomoCard, OzChatCard, Box, Review, ImageGrid, GridImg, SizedImg, FaqSection, FaqItem, Lead, HowToUseCompare1, HowToUseCompare2, EroMethodCompare, pre: MdxPre }}

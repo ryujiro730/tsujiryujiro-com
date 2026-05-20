@@ -90,7 +90,7 @@ export default function PaymentPage() {
           </span>
           <span className="text-sm text-[var(--color-text-muted)] mb-1">ポイント</span>
         </div>
-        <p className="text-xs text-[var(--color-text-muted)] mt-1">1ポイント = 1円相当</p>
+        <p className="text-xs text-[var(--color-text-muted)] mt-1">1ポイント = 10円相当</p>
       </div>
 
       {/* パッケージ一覧 */}
@@ -127,7 +127,7 @@ export default function PaymentPage() {
                   </p>
                 ) : (
                   <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-                    1pt = 1円
+                    1pt = 10円
                   </p>
                 )}
               </div>

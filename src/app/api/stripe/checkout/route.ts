@@ -17,7 +17,7 @@ export async function POST(request: Request) {
             currency: 'jpy',
             product_data: {
               name: `AiKano ${tokens}ポイント`,
-              description: `1ポイント = 1円相当`,
+              description: `1ポイント = 10円相当`,
             },
             unit_amount: priceYen,
           },

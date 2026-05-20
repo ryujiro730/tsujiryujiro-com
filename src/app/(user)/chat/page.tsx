@@ -9,6 +9,7 @@ import { ja } from 'date-fns/locale'
 import type { Character, Message, Profile, CharacterPhoto, UserItem } from '@/types'
 import Link from 'next/link'
 import Lightbox from '@/components/Lightbox'
+import { UnlockWithPointsButton } from '@/components/UnlockWithPointsButton'
 
 const MAX_CACHED_MSGS = 60
 const CHAT_ENABLED = process.env.NEXT_PUBLIC_CHAT_ENABLED !== 'false'
@@ -43,6 +44,7 @@ export default function ChatPage() {
   const [charLimitReached, setCharLimitReached] = useState(false)
   const [showItemPromoDialog, setShowItemPromoDialog] = useState(false)
   const [showSharePromoDialog, setShowSharePromoDialog] = useState(false)
+  const [imageLightboxUrl, setImageLightboxUrl] = useState<string | null>(null)
 
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -234,7 +236,7 @@ export default function ChatPage() {
   const sendMessage = async () => {
     if (!input.trim() || sending || !conversationId || !profile || !character) return
 
-    const SEND_COST = 100
+    const SEND_COST = 15
     if (profile.points < SEND_COST) {
       alert(`メッセージ送信には${SEND_COST}ポイント必要です。ポイントを購入してください。`)
       return
@@ -444,7 +446,7 @@ export default function ChatPage() {
   const hasPhotos = photos.length > 0
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-52px)] -mx-4">
+    <div className="fixed flex flex-col" style={{ top: '52px', left: 0, right: 0, bottom: 0 }}>
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 flex-shrink-0"
         style={{ background: 'rgba(255, 245, 248, 0.92)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--color-border)' }}>
@@ -489,7 +491,7 @@ export default function ChatPage() {
           </div>
         )}
         {messages.map((msg) => (
-          <MessageBubble key={msg.id} message={msg} characterName={character.name} characterAvatar={character.avatar_url} />
+          <MessageBubble key={msg.id} message={msg} characterName={character.name} characterAvatar={character.avatar_url} onImageClick={setImageLightboxUrl} />
         ))}
         {isTyping && (
           <div className="flex items-end gap-2 animate-fade-in">
@@ -511,8 +513,31 @@ export default function ChatPage() {
       <div className="flex-shrink-0 px-4 py-3"
         style={{ borderTop: '1px solid var(--color-border)', background: 'rgba(255, 245, 248, 0.97)' }}>
         {CHAT_ENABLED ? (
-          <div className="flex gap-2 items-end">
+          charLimitReached ? (
+            <div className="rounded-2xl px-4 py-4" style={{ background: 'linear-gradient(135deg, rgba(249,168,184,0.12), rgba(232,121,160,0.06))', border: '1px solid var(--color-border-warm)' }}>
+              <p className="text-sm font-bold mb-1 text-center" style={{ color: 'var(--color-text)' }}>🔒 キャラクター枠が上限です</p>
+              <p className="text-xs text-center mb-3" style={{ color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
+                Xで <strong style={{ color: 'var(--color-primary)' }}>#アイカノ</strong> を含む投稿をシェアすると枠を追加解放できます
+              </p>
+              <a
+                href={`https://twitter.com/intent/tweet?text=${encodeURIComponent('AIと本当のカップルみたいに話せる！#アイカノ を試してみたよ → https://aikano.chat')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-cta w-full py-3 flex items-center justify-center gap-2"
+                style={{ textDecoration: 'none', fontSize: '14px' }}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
+                Xでシェアして枠を解放する
+              </a>
+              <p className="text-[11px] text-center mt-2" style={{ color: 'var(--color-text-muted)' }}>シェア後、設定ページからURLを送信してください</p>
+              <div style={{ borderTop: '1px solid var(--color-border)', marginTop: '10px', paddingTop: '10px' }}>
+                <UnlockWithPointsButton />
+              </div>
+            </div>
+          ) : (
+          <form autoComplete="off" onSubmit={e => e.preventDefault()} className="flex gap-2 items-end">
             <button
+              type="button"
               onClick={openGiftPanel}
               className={`p-2.5 flex-shrink-0 rounded-[10px] transition-colors ${showGiftPanel ? 'text-white' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}`}
               style={showGiftPanel ? { background: 'var(--color-primary)' } : {}}
@@ -527,10 +552,15 @@ export default function ChatPage() {
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() } }}
               placeholder="メッセージを送る…"
               rows={1}
-              className="flex-1 input-warm px-4 py-2.5 text-sm resize-none"
-              style={{ minHeight: '42px', maxHeight: '120px', lineHeight: '1.5' }}
+              name="message"
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              className="flex-1 input-warm px-4 py-2.5 resize-none"
+              style={{ minHeight: '42px', maxHeight: '120px', lineHeight: '1.5', fontSize: '16px' }}
             />
             <button
+              type="button"
               onClick={sendMessage}
               disabled={!input.trim() || sending}
               className="btn-primary p-2.5 flex-shrink-0 disabled:opacity-40"
@@ -538,7 +568,8 @@ export default function ChatPage() {
             >
               <Send size={17} />
             </button>
-          </div>
+          </form>
+          )
         ) : (
           <div className="rounded-2xl px-4 py-3 text-center"
             style={{ background: 'linear-gradient(135deg, rgba(249,168,184,0.15), rgba(232,121,160,0.08))', border: '1px solid var(--color-border-warm)' }}>
@@ -643,6 +674,16 @@ export default function ChatPage() {
           index={lightboxIndex}
           onClose={() => setLightboxIndex(null)}
           onChange={setLightboxIndex}
+        />
+      )}
+
+      {/* チャット内画像タップのライトボックス */}
+      {imageLightboxUrl && (
+        <Lightbox
+          photos={[imageLightboxUrl]}
+          index={0}
+          onClose={() => setImageLightboxUrl(null)}
+          onChange={() => {}}
         />
       )}
 
@@ -934,51 +975,12 @@ export default function ChatPage() {
         </div>
       )}
 
-      {/* キャラクター枠上限モーダル */}
-      {charLimitReached && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" style={{ background: 'rgba(0,0,0,0.7)' }}>
-          <div style={{ background: 'var(--color-surface)', borderRadius: '20px 20px 0 0', padding: '28px 24px 32px', width: '100%', maxWidth: '440px', boxShadow: '0 -8px 40px rgba(0,0,0,0.4)' }}
-            className="sm:rounded-[20px]">
-            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-              <div style={{ fontSize: '40px', marginBottom: '12px' }}>🔒</div>
-              <h3 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '8px', color: 'var(--color-text)' }}>
-                キャラクター枠が上限です
-              </h3>
-              <p style={{ fontSize: '13px', color: 'var(--color-text-muted)', lineHeight: 1.7 }}>
-                現在のキャンペーン期間中は3人のキャラと会話できます。<br />
-                Xで<strong style={{ color: 'var(--color-primary)' }}>#アイカノ</strong>を含む投稿をシェアすることで、枠を追加解放できます。
-              </p>
-            </div>
-            <a
-              href={`https://twitter.com/intent/tweet?text=${encodeURIComponent('AIと本当のカップルみたいに話せる！#アイカノ を試してみたよ → https://aikano.chat')}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-primary w-full py-3 flex items-center justify-center gap-2 mb-3"
-              style={{ borderRadius: '12px', textDecoration: 'none', fontSize: '14px', fontWeight: 700 }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-              </svg>
-              Xでシェアして枠を解放する
-            </a>
-            <p style={{ fontSize: '11px', color: 'var(--color-text-muted)', textAlign: 'center', marginBottom: '16px' }}>
-              シェア後、設定ページからURLを送信してください
-            </p>
-            <button
-              onClick={() => setCharLimitReached(false)}
-              style={{ width: '100%', padding: '10px', borderRadius: '10px', fontSize: '13px', color: 'var(--color-text-muted)', background: 'transparent', border: '1px solid var(--color-border)', cursor: 'pointer' }}
-            >
-              閉じる
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
 
-function MessageBubble({ message, characterName, characterAvatar }: {
-  message: Message; characterName: string; characterAvatar: string
+function MessageBubble({ message, characterName, characterAvatar, onImageClick }: {
+  message: Message; characterName: string; characterAvatar: string; onImageClick?: (url: string) => void
 }) {
   const isUser = message.sender_role === 'user'
   const isItem = !!message.metadata?.item_id
@@ -1017,7 +1019,7 @@ function MessageBubble({ message, characterName, characterAvatar }: {
         ) : hasBroadcastImage ? (
           <div className={`rounded-2xl overflow-hidden ${isUser ? 'bubble-user' : 'bubble-operator'}`}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={message.metadata!.image_url!} alt="" className="w-full max-w-[240px] object-cover block" />
+            <img src={message.metadata!.image_url!} alt="" className="w-full max-w-[240px] object-cover block cursor-pointer" onClick={() => onImageClick?.(message.metadata!.image_url!)} />
             {message.content && (
               <p className="px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
             )}

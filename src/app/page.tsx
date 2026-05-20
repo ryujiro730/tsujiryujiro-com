@@ -186,9 +186,9 @@ export default async function HomePage() {
       {/* 数字バー */}
       <div style={{ display: 'flex', background: 'var(--color-surface)', borderTop: '1px solid rgba(220,80,140,0.15)', borderBottom: '1px solid rgba(220,80,140,0.15)' }}>
         {[
-          { num: '8人', label: '個性豊かな女の子' },
+          { num: '10人', label: '個性豊かな女の子' },
           { num: '24h', label: 'いつでも話せる' },
-          { num: '独自AI', label: '超高性能AIが返信' },
+          { num: '独自AI', label: '生々しいまでのメール' },
         ].map((s, i) => (
           <div key={s.label} style={{ flex: 1, textAlign: 'center', padding: '20px 8px', borderRight: i < 2 ? '1px solid rgba(220,80,140,0.15)' : 'none' }}>
             <div style={{ fontSize: '22px', fontWeight: 800, color: '#e8438f', marginBottom: '4px' }}>{s.num}</div>

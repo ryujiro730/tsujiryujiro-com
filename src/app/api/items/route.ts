@@ -5,8 +5,9 @@ import { NextResponse } from 'next/server'
 // GET /api/items - アクティブなアイテム一覧 + カテゴリー一覧 + ユーザーインベントリ
 export async function GET() {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const user = session.user
 
   const [{ data: items }, { data: categories }, { data: inventory }, { data: profile }] = await Promise.all([
     supabase.from('items').select('*, category:item_categories(*)').eq('is_active', true).order('sort_order').order('created_at'),
