@@ -237,7 +237,13 @@ export default function ChatPage() {
     if (!input.trim() || sending || !conversationId || !profile || !character) return
 
     const SEND_COST = 15
-    if (profile.points < SEND_COST) {
+    const now = new Date()
+    const bonusAvailable =
+      profile.bonus_points_expires_at && new Date(profile.bonus_points_expires_at) > now
+        ? (profile.bonus_points ?? 0)
+        : 0
+    const totalPoints = profile.points + bonusAvailable
+    if (totalPoints < SEND_COST) {
       alert(`メッセージ送信には${SEND_COST}ポイント必要です。ポイントを購入してください。`)
       return
     }
@@ -262,10 +268,15 @@ export default function ChatPage() {
     setInput('')
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
 
-    // ポイント消費
-    const newPoints = profile.points - SEND_COST
+    // ポイント消費（ボーナスptから先に引く）
+    const bonusDeduct = Math.min(bonusAvailable, SEND_COST)
+    const regularDeduct = SEND_COST - bonusDeduct
+    const newBonusPoints = bonusAvailable - bonusDeduct
+    const newPoints = profile.points - regularDeduct
+    const updatePayload: Record<string, number> = { points: newPoints }
+    if (bonusDeduct > 0) updatePayload.bonus_points = newBonusPoints
     await Promise.all([
-      supabase.from('profiles').update({ points: newPoints }).eq('id', profile.id),
+      supabase.from('profiles').update(updatePayload).eq('id', profile.id),
       supabase.from('point_transactions').insert({
         user_id: profile.id,
         amount: -SEND_COST,
@@ -273,8 +284,8 @@ export default function ChatPage() {
         description: 'メッセージ送信',
       }),
     ])
-    setProfile(prev => prev ? { ...prev, points: newPoints } : prev)
-    window.dispatchEvent(new CustomEvent('pointsUpdated', { detail: { points: newPoints } }))
+    setProfile(prev => prev ? { ...prev, points: newPoints, bonus_points: newBonusPoints } : prev)
+    window.dispatchEvent(new CustomEvent('pointsUpdated', { detail: { points: newPoints + newBonusPoints } }))
 
     // ユーザーメッセージをDBに保存
     const { data: msg } = await supabase.from('messages').insert({
@@ -408,14 +419,25 @@ export default function ChatPage() {
     if (!character || !profile) return
 
     const VIEW_COST = 300
-    if (profile.points < VIEW_COST) {
+    const nowV = new Date()
+    const bonusAvailableV =
+      profile.bonus_points_expires_at && new Date(profile.bonus_points_expires_at) > nowV
+        ? (profile.bonus_points ?? 0)
+        : 0
+    const totalPointsV = profile.points + bonusAvailableV
+    if (totalPointsV < VIEW_COST) {
       alert(`画像閲覧には${VIEW_COST}ポイント必要です。ポイントを購入してください。`)
       return
     }
 
-    const newPoints = profile.points - VIEW_COST
+    const bonusDeductV = Math.min(bonusAvailableV, VIEW_COST)
+    const regularDeductV = VIEW_COST - bonusDeductV
+    const newBonusPointsV = bonusAvailableV - bonusDeductV
+    const newPoints = profile.points - regularDeductV
+    const updatePayloadV: Record<string, number> = { points: newPoints }
+    if (bonusDeductV > 0) updatePayloadV.bonus_points = newBonusPointsV
     await Promise.all([
-      supabase.from('profiles').update({ points: newPoints }).eq('id', profile.id),
+      supabase.from('profiles').update(updatePayloadV).eq('id', profile.id),
       supabase.from('point_transactions').insert({
         user_id: profile.id,
         amount: -VIEW_COST,
@@ -423,8 +445,8 @@ export default function ChatPage() {
         description: '画像閲覧',
       }),
     ])
-    setProfile(prev => prev ? { ...prev, points: newPoints } : prev)
-    window.dispatchEvent(new CustomEvent('pointsUpdated', { detail: { points: newPoints } }))
+    setProfile(prev => prev ? { ...prev, points: newPoints, bonus_points: newBonusPointsV } : prev)
+    window.dispatchEvent(new CustomEvent('pointsUpdated', { detail: { points: newPoints + newBonusPointsV } }))
 
     const all = [character.avatar_url, ...photos.map(p => p.url)]
     setLightboxPhotos(all)

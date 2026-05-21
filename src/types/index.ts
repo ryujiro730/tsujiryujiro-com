@@ -12,6 +12,9 @@ export interface Profile {
   age: number | null
   gender: 'male' | 'female' | 'other' | null
   last_login_at: string | null
+  bonus_points: number
+  bonus_points_expires_at: string | null
+  last_login_bonus_at: string | null
   created_at: string
 }
 
@@ -102,7 +105,7 @@ export interface PointTransaction {
   id: string
   user_id: string
   amount: number
-  type: 'purchase' | 'spend'
+  type: 'purchase' | 'spend' | 'login_bonus'
   description: string
   created_at: string
 }

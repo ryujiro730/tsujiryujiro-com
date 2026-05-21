@@ -1,6 +1,5 @@
 import { getAllPosts, CATEGORY_LABELS, BlogCategory } from '@/lib/blog'
 import { Metadata } from 'next'
-import Link from 'next/link'
 import { Suspense } from 'react'
 import { BlogCard } from '@/components/blog/BlogCard'
 import { CategoryTabs } from '@/components/blog/CategoryTabs'
@@ -40,21 +39,7 @@ export default function BlogPage({
     : allPosts.filter(p => p.category === category)
 
   return (
-    <div className="blog-layout min-h-screen" style={{ background: '#fff' }}>
-      {/* Header */}
-      <div style={{ background: '#fff', borderBottom: '1px solid #e8e8e8' }}
-        className="sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-6 h-14 flex items-center justify-between">
-          <Link href="/" className="text-sm font-medium" style={{ color: '#e8438f' }}>
-            ← AiKano
-          </Link>
-          <span className="text-sm font-semibold" style={{ color: '#1a1a1a', fontFamily: "'Noto Serif JP', serif" }}>
-            ブログ
-          </span>
-          <div className="w-16" />
-        </div>
-      </div>
-
+    <>
       <div className="max-w-4xl mx-auto px-6 py-14">
         {/* Hero */}
         <div className="mb-12">
@@ -87,6 +72,6 @@ export default function BlogPage({
           </div>
         )}
       </div>
-    </div>
+    </>
   )
 }

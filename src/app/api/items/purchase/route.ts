@@ -19,15 +19,30 @@ export async function POST(req: NextRequest) {
 
   // ユーザーのポイント確認
   const { data: profile } = await supabase
-    .from('profiles').select('points').eq('id', user.id).single()
-  if (!profile || profile.points < item.price_points) {
+    .from('profiles').select('points, bonus_points, bonus_points_expires_at').eq('id', user.id).single()
+  if (!profile) return NextResponse.json({ error: 'ポイントが不足しています' }, { status: 400 })
+
+  const now = new Date()
+  const bonusAvailable =
+    profile.bonus_points_expires_at && new Date(profile.bonus_points_expires_at) > now
+      ? (profile.bonus_points ?? 0)
+      : 0
+  const totalPoints = profile.points + bonusAvailable
+  if (totalPoints < item.price_points) {
     return NextResponse.json({ error: 'ポイントが不足しています' }, { status: 400 })
   }
 
-  // ポイント消費
+  // ボーナスptから先に消費
+  const bonusDeduct = Math.min(bonusAvailable, item.price_points)
+  const regularDeduct = item.price_points - bonusDeduct
+  const newBonusPoints = bonusAvailable - bonusDeduct
+  const newPoints = profile.points - regularDeduct
+  const updatePayload: Record<string, number> = { points: newPoints }
+  if (bonusDeduct > 0) updatePayload.bonus_points = newBonusPoints
+
   const { error: pointsError } = await supabase
     .from('profiles')
-    .update({ points: profile.points - item.price_points })
+    .update(updatePayload)
     .eq('id', user.id)
   if (pointsError) return NextResponse.json({ error: 'ポイント更新失敗' }, { status: 500 })
 
@@ -54,5 +69,5 @@ export async function POST(req: NextRequest) {
     description: `アイテム購入: ${item.name}`,
   })
 
-  return NextResponse.json({ success: true, remainingPoints: profile.points - item.price_points })
+  return NextResponse.json({ success: true, remainingPoints: newPoints + newBonusPoints })
 }

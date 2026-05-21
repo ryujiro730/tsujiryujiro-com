@@ -11,6 +11,7 @@ import { Suspense } from 'react'
 import { PointsDisplay } from '@/components/PointsDisplay'
 import { BottomNav } from '@/components/BottomNav'
 import { BottomNavServer } from '@/components/BottomNavServer'
+import { LoginBonusDialog } from '@/components/LoginBonusDialog'
 
 
 export default async function UserLayout({ children }: { children: React.ReactNode }) {
@@ -27,7 +28,7 @@ export default async function UserLayout({ children }: { children: React.ReactNo
   // Only 1 DB query blocks the critical path
   const { data: profile } = await admin
     .from('profiles')
-    .select('display_name, age, points')
+    .select('display_name, age, points, bonus_points, bonus_points_expires_at')
     .eq('id', userId)
     .single()
 
@@ -42,13 +43,15 @@ export default async function UserLayout({ children }: { children: React.ReactNo
           <Link href="/characters" className="text-sm font-semibold tracking-wide" style={{ color: 'var(--color-text-warm)' }}>
             AiKano
           </Link>
-          <PointsDisplay initialPoints={profile?.points ?? 0} />
+          <PointsDisplay initialPoints={(profile?.points ?? 0) + (profile?.bonus_points ?? 0)} />
         </div>
       </header>
 
       <main className="pt-[52px] pb-[72px] max-w-2xl mx-auto px-4 py-5">
         {children}
       </main>
+
+      <LoginBonusDialog />
 
       {/* ボトムナビ: unreadCountをSuspenseで非ブロッキングにストリーム */}
       <Suspense fallback={<BottomNav unreadCount={0} />}>

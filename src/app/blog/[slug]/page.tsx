@@ -99,20 +99,8 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
   }
 
   return (
-    <div className="blog-layout min-h-screen" style={{ background: '#fff' }}>
+    <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }} />
-      {/* Header */}
-      <div style={{ background: '#fff', borderBottom: '1px solid #e8e8e8' }}
-        className="sticky top-0 z-10">
-        <div className="max-w-3xl mx-auto px-6 h-14 flex items-center gap-3">
-          <Link href="/blog" style={{ fontSize: '13px', color: '#888', display: 'flex', alignItems: 'center', gap: '4px', textDecoration: 'none' }}
-            className="hover:text-[#1a1a1a] transition-colors">
-            <ChevronLeft size={14} />ブログ
-          </Link>
-          <span style={{ color: '#ddd' }}>/</span>
-          <span style={{ fontSize: '13px', color: '#bbb', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{post.title}</span>
-        </div>
-      </div>
 
       <div className="max-w-3xl mx-auto px-6 py-12">
         <BlogBreadcrumb crumbs={[
@@ -214,7 +202,10 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
             )}
           </div>
         )}
+
+        {/* 関連記事 */}
+        <RelatedPosts currentSlug={post.slug} />
       </div>
-    </div>
+    </>
   )
 }
