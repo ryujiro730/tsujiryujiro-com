@@ -2,15 +2,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? ''
+
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
+  const base = APP_URL || origin
   const code = searchParams.get('code')
 
   if (code) {
     const supabase = createClient()
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (error) {
-      return NextResponse.redirect(`${origin}/auth/login?error=confirmation_failed`)
+      return NextResponse.redirect(`${base}/auth/login?error=confirmation_failed`)
     }
 
     try {
@@ -37,16 +40,16 @@ export async function GET(request: NextRequest) {
             role: 'user',
             points: 0,
           })
-          return NextResponse.redirect(`${origin}/onboarding`)
+          return NextResponse.redirect(`${base}/onboarding`)
         }
 
         if (profile.age === null) {
           // プロフィールはあるがonboarding未完了
-          return NextResponse.redirect(`${origin}/onboarding`)
+          return NextResponse.redirect(`${base}/onboarding`)
         }
       }
     } catch {}
   }
 
-  return NextResponse.redirect(`${origin}/characters`)
+  return NextResponse.redirect(`${base}/characters`)
 }
