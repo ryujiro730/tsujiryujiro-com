@@ -8,9 +8,11 @@ export async function GET(request: NextRequest) {
 
   if (code) {
     const supabase = createClient()
-    await supabase.auth.exchangeCodeForSession(code)
+    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    if (error) {
+      return NextResponse.redirect(`${origin}/auth/login?error=confirmation_failed`)
+    }
 
-    // プロフィール行を保証する（DBトリガーが機能していない環境に対応）
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
@@ -18,13 +20,30 @@ export async function GET(request: NextRequest) {
           process.env.NEXT_PUBLIC_SUPABASE_URL!,
           process.env.SUPABASE_SERVICE_ROLE_KEY!,
         )
-        await admin.from('profiles').upsert({
-          id: user.id,
-          email: user.email ?? '',
-          user_code: Math.random().toString(36).substring(2, 10).toUpperCase(),
-          role: 'user',
-          points: 0,
-        }, { onConflict: 'id', ignoreDuplicates: true })
+
+        // プロフィールが存在するか確認
+        const { data: profile } = await admin
+          .from('profiles')
+          .select('age')
+          .eq('id', user.id)
+          .single()
+
+        if (!profile) {
+          // 新規ユーザー：スケルトンプロフィールを作成
+          await admin.from('profiles').insert({
+            id: user.id,
+            email: user.email ?? '',
+            user_code: Math.random().toString(36).substring(2, 10).toUpperCase(),
+            role: 'user',
+            points: 0,
+          })
+          return NextResponse.redirect(`${origin}/onboarding`)
+        }
+
+        if (profile.age === null) {
+          // プロフィールはあるがonboarding未完了
+          return NextResponse.redirect(`${origin}/onboarding`)
+        }
       }
     } catch {}
   }

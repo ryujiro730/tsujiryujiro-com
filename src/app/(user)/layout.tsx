@@ -32,7 +32,7 @@ export default async function UserLayout({ children }: { children: React.ReactNo
     .eq('id', userId)
     .single()
 
-  if (profile && profile.age === null) {
+  if (!profile || profile.age === null) {
     redirect('/onboarding')
   }
 
