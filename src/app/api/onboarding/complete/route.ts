@@ -4,7 +4,8 @@ import { createClient as createServerClient } from '@/lib/supabase/server'
 import { createClient } from '@supabase/supabase-js'
 import { getAuthUser } from '@/lib/supabase/get-auth-user'
 
-const BONUS_POINTS = 1000
+const REGISTRATION_BONUS = 60
+const EARLY_BONUS = 200
 const IP_WINDOW_DAYS = 30
 const REFERRAL_BONUS = 1000
 
@@ -73,11 +74,13 @@ export async function POST(req: NextRequest) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
-  // プロフィール行の存在確認
+  // プロフィール行の存在確認（age === null はcallbackで作ったスケルトン）
   const { data: existing } = await adminClient
-    .from('profiles').select('id').eq('id', user.id).single()
+    .from('profiles').select('id, age').eq('id', user.id).single()
 
-  if (!existing) {
+  const isNewUser = !existing || existing.age === null
+
+  if (isNewUser) {
     const ip = getClientIp(req)
     const ua = req.headers.get('user-agent') ?? ''
 
@@ -90,32 +93,46 @@ export async function POST(req: NextRequest) {
         .select('id', { count: 'exact', head: true })
         .eq('registration_ip', ip)
         .gte('created_at', since)
-      if ((count ?? 0) > 0) giveBonus = false
+      if ((count ?? 0) > 1) giveBonus = false  // 自分自身のスケルトンが1件あるので>1
     }
 
-    const points = giveBonus ? BONUS_POINTS : 0
-    const { error: insertError } = await adminClient.from('profiles').insert({
-      id: user.id,
-      email: user.email ?? '',
-      user_code: Math.random().toString(36).substring(2, 10).toUpperCase(),
-      role: 'user',
-      points,
-      display_name: name.trim(),
-      age: parseInt(age),
-      gender,
-      registration_ip: ip,
-      registration_ua: ua,
-      ...(referralSource ? { referral_source: referralSource } : {}),
-    })
-    if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 })
+    const totalPoints = giveBonus ? REGISTRATION_BONUS + EARLY_BONUS : 0
+
+    if (!existing) {
+      // スケルトンなし（旧フロー）→ insert
+      const { error: insertError } = await adminClient.from('profiles').insert({
+        id: user.id,
+        email: user.email ?? '',
+        user_code: Math.random().toString(36).substring(2, 10).toUpperCase(),
+        role: 'user',
+        points: totalPoints,
+        display_name: name.trim(),
+        age: parseInt(age),
+        gender,
+        registration_ip: ip,
+        registration_ua: ua,
+        ...(referralSource ? { referral_source: referralSource } : {}),
+      })
+      if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 })
+    } else {
+      // スケルトンあり（callbackで作成済み）→ update
+      const { error: updateError } = await adminClient.from('profiles').update({
+        points: totalPoints,
+        display_name: name.trim(),
+        age: parseInt(age),
+        gender,
+        registration_ip: ip,
+        registration_ua: ua,
+        ...(referralSource ? { referral_source: referralSource } : {}),
+      }).eq('id', user.id)
+      if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
+    }
 
     if (giveBonus) {
-      await adminClient.from('point_transactions').insert({
-        user_id: user.id,
-        amount: BONUS_POINTS,
-        type: 'purchase',
-        description: '新規登録ボーナス',
-      })
+      await adminClient.from('point_transactions').insert([
+        { user_id: user.id, amount: REGISTRATION_BONUS, type: 'purchase', description: '新規登録ボーナス' },
+        { user_id: user.id, amount: EARLY_BONUS, type: 'purchase', description: '早期登録ボーナス' },
+      ])
     }
 
     // 紹介ボーナス処理
@@ -126,7 +143,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true })
   }
 
-  // 既存行がある場合は onboarding フィールドのみ更新
+  // onboarding完了済み → 名前・年齢・性別のみ更新
   const { error } = await adminClient
     .from('profiles')
     .update({ display_name: name.trim(), age: parseInt(age), gender })
