@@ -220,17 +220,7 @@ AIは検索意図を推測で確定しない。仮説を1つ出してよいが�
 
 新規記事のキーワード・検索意図が、以下と重複しないか工程1で必ず照合する。
 
-- `what-is-ai-kanojo` … AI彼女とは（定義）
-- `ai-kanojo-osusume` … おすすめ5選（エロ込み総合・アイカノ1位・CV主力）
-- `ai-kanojo-hikaku` … 日本語が自然な比較ランキング（健全軸・Cotomo1位・信頼構築）
-- `ai-kanojo-ero-hikaku` … エロ会話できるAI彼女比較（エロ軸・アイカノ1位・CV主力）
-- `how-to-ai-ero-chat` … AIとエロ会話する方法
-- `how-to-use-ai-kanojo` … アイカノの使い方
-- `ero-ai-not-possible` … エロAIが存在しない理由
-- `welcome-to-aikano` … アイカノとは
-- `aikano-review` … アイカノ評判・口コミ（指名検索・CV直前）★デプロイ済み
-- `aikano-price`（予定）… アイカノ料金（指名検索・CV直前）
-
+humanchat/src/content/blog/
 ※「おすすめ」と「比較」は評価軸を記事冒頭に明記して棲み分ける（軸が違えば順位が違ってよい）。
 
 ---
