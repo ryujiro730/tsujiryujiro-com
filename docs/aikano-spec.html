@@ -1,0 +1,543 @@
+
+
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>アイカノ 仕様書</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+    background: #f5f5f7;
+    color: #1d1d1f;
+    font-size: 15px;
+    line-height: 1.7;
+  }
+  .cover {
+    background: linear-gradient(135deg, #e8729f, #c45080);
+    color: white;
+    padding: 48px 24px 40px;
+    text-align: center;
+  }
+  .cover h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+  .cover p { font-size: 13px; margin-top: 8px; opacity: 0.85; }
+  .toc {
+    background: white;
+    margin: 16px 16px 0;
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  }
+  .toc h2 { font-size: 13px; color: #86868b; font-weight: 600; margin-bottom: 12px; letter-spacing: 0.05em; }
+  .toc a {
+    display: block;
+    color: #e8729f;
+    text-decoration: none;
+    font-size: 14px;
+    padding: 4px 0;
+    border-bottom: 1px solid #f5f5f7;
+  }
+  .toc a:last-child { border-bottom: none; }
+  .section {
+    background: white;
+    margin: 16px 16px 0;
+    border-radius: 16px;
+    padding: 24px 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  }
+  .section:last-of-type { margin-bottom: 32px; }
+  h2 {
+    font-size: 19px;
+    font-weight: 700;
+    color: #1d1d1f;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #e8729f;
+  }
+  h3 {
+    font-size: 15px;
+    font-weight: 700;
+    color: #1d1d1f;
+    margin: 20px 0 8px;
+  }
+  h3:first-of-type { margin-top: 0; }
+  p { color: #3a3a3c; margin-bottom: 10px; font-size: 14px; }
+  ul { padding-left: 0; list-style: none; }
+  ul li {
+    font-size: 14px;
+    color: #3a3a3c;
+    padding: 5px 0 5px 16px;
+    position: relative;
+    border-bottom: 1px solid #f5f5f7;
+  }
+  ul li:last-child { border-bottom: none; }
+  ul li::before { content: "·"; position: absolute; left: 0; color: #e8729f; font-size: 18px; line-height: 1.4; }
+  .badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 20px;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+  .badge-pink { background: #fde8f0; color: #c45080; }
+  .badge-blue { background: #e3f0ff; color: #2563eb; }
+  .badge-green { background: #e3faf0; color: #16a34a; }
+  .badge-gray { background: #f0f0f5; color: #6b6b80; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin-top: 8px;
+  }
+  th {
+    background: #f5f5f7;
+    padding: 9px 10px;
+    text-align: left;
+    font-weight: 600;
+    color: #86868b;
+    font-size: 12px;
+  }
+  td {
+    padding: 10px 10px;
+    border-bottom: 1px solid #f5f5f7;
+    color: #3a3a3c;
+    vertical-align: top;
+  }
+  tr:last-child td { border-bottom: none; }
+  .highlight-row td { background: #fef3f8; font-weight: 600; }
+  .flow {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .flow-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid #f5f5f7;
+  }
+  .flow-step:last-child { border-bottom: none; }
+  .flow-num {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #e8729f, #c45080);
+    color: white;
+    font-size: 13px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .flow-content { flex: 1; }
+  .flow-title { font-weight: 700; font-size: 14px; margin-bottom: 3px; }
+  .flow-desc { font-size: 13px; color: #6b6b80; }
+  .note {
+    background: #fef3f8;
+    border-left: 3px solid #e8729f;
+    border-radius: 0 8px 8px 0;
+    padding: 12px 14px;
+    font-size: 13px;
+    color: #5a3040;
+    margin-top: 12px;
+  }
+  .point-card {
+    background: #f5f5f7;
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 10px;
+  }
+  .point-card-title {
+    font-weight: 700;
+    font-size: 14px;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .point-card-body { font-size: 13px; color: #6b6b80; }
+  .divider { height: 1px; background: #f0f0f5; margin: 16px 0; }
+  .tag {
+    display: inline-block;
+    font-size: 11px;
+    background: #f0f0f5;
+    color: #6b6b80;
+    border-radius: 4px;
+    padding: 2px 6px;
+    margin-right: 4px;
+  }
+  .updated { text-align: center; font-size: 12px; color: #86868b; padding: 0 0 8px; }
+</style>
+
+
+
+<div class="cover">
+  <h1>アイカノ 仕様書</h1>
+  <p>更新日：2026年5月24日</p>
+</div>
+
+<div class="toc">
+  <h2>目次</h2>
+  <a href="#strength">1. アイカノの強み</a>
+  <a href="#overview">2. サービス概要</a>
+  <a href="#registration">3. ユーザー登録フロー</a>
+  <a href="#points">4. ポイントシステム</a>
+  <a href="#monetization">5. 課金導線</a>
+  <a href="#payment">6. 課金プラン・決済</a>
+  <a href="#chat">7. チャット機能</a>
+  <a href="#characters">8. キャラクター</a>
+  <a href="#referral">9. 友達紹介</a>
+  <a href="#admin">10. 管理者機能</a>
+  <a href="#tech">11. 技術・インフラ</a>
+</div>
+
+<!-- 0. 強み -->
+<div class="section" id="strength">
+  <h2>1. アイカノの強み</h2>
+
+  <h3>🔞 国産AI唯一のエロ会話対応</h3>
+  <p>日本語のAI彼女サービスの中で、エロ会話・アダルト会話に正面から対応しているのはアイカノだけです。他の国産AIは制限がかかっており、同様の会話を試みると必ず拒否されます。この差別化は他社が簡単に追いつけないポジションです。</p>
+
+  <h3>💬 AIから自然に会話を広げる設計</h3>
+  <p>従来のAIチャットサービスはユーザーが質問を投げて、AIが答えるだけの一方通行になりがちです。アイカノのキャラクターはAI側から積極的に話題を振り、関係性を進め、ユーザーの情報を覚えて会話に活かします。ユーザーは「質問する人」ではなく「対話する人」になれるのが最大の特徴です。</p>
+  <ul>
+    <li>キャラクターが自分から関係性を進めてくる（告白・距離感の変化など）</li>
+    <li>ユーザーの名前・趣味・生活ディテールを記憶して次回以降に活用</li>
+    <li>固有性の高い返答（テンプレ感のない自然な会話）</li>
+    <li>他ユーザーとのつながりなし・サクラ・人間オペレーター一切不在</li>
+  </ul>
+</div>
+
+<!-- 2. サービス概要 -->
+<div class="section" id="overview">
+  <h2>1. サービス概要</h2>
+  <p>アイカノは、AIキャラクターと1対1でチャットができる日本語特化のサービスです。メッセージを送るたびにポイントを消費するポイント制を採用しています。</p>
+  <ul>
+    <li>ユーザーはキャラクターを選んでチャット</li>
+    <li>メッセージ送信のたびにポイントを消費</li>
+    <li>ポイントは購入で補充、毎日のログインでも少量もらえる</li>
+    <li>スタッフが管理画面から会話を確認・サポートできる</li>
+  </ul>
+</div>
+
+<!-- 2. 登録フロー -->
+<div class="section" id="registration">
+  <h2>2. ユーザー登録フロー</h2>
+  <div class="flow">
+    <div class="flow-step">
+      <div class="flow-num">1</div>
+      <div class="flow-content">
+        <div class="flow-title">アカウント作成</div>
+        <div class="flow-desc">メールアドレス＋パスワード、またはGoogleアカウントで登録。メール登録の場合は確認メールが届き、リンクをクリックして認証完了。</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">2</div>
+      <div class="flow-content">
+        <div class="flow-title">オンボーディング（初回のみ）</div>
+        <div class="flow-desc">表示名・年齢・性別を入力。18歳未満は利用不可。友達紹介コードがある場合はここで入力。</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">3</div>
+      <div class="flow-content">
+        <div class="flow-title">キャラクター一覧</div>
+        <div class="flow-desc">キャラクターを選んでチャット開始。ポイント残高60からスタート。</div>
+      </div>
+    </div>
+  </div>
+  <div class="note">
+    登録完了時に60ptが自動付与される。早期登録ボーナスは廃止済み。
+  </div>
+</div>
+
+<!-- 3. ポイントシステム -->
+<div class="section" id="points">
+  <h2>3. ポイントシステム</h2>
+
+  <h3>ポイントの種類</h3>
+  <div class="point-card">
+    <div class="point-card-title">💰 通常ポイント</div>
+    <div class="point-card-body">購入で取得。<strong>有効期限なし（無期限）</strong>。</div>
+  </div>
+  <div class="point-card">
+    <div class="point-card-title">🎁 ボーナスポイント</div>
+    <div class="point-card-body">ログインボーナスや紹介ボーナスで取得。有効期限は付与日から<strong>30日</strong>。期限が切れると消滅。<br><strong>消費は通常ポイントより先に行われる</strong>（ボーナスが先にゼロになる）。</div>
+  </div>
+
+  <div class="divider"></div>
+
+  <h3>ポイントの消費</h3>
+  <table>
+    <tbody><tr><th>アクション</th><th>消費ポイント</th></tr>
+    <tr><td>メッセージを1通送る</td><td><strong>15pt</strong></td></tr>
+    <tr><td>写真を送る</td><td><strong>15pt</strong></td></tr>
+    <tr><td>アルバム（写真）を見る</td><td><strong>30pt</strong></td></tr>
+    <tr><td>キャラクター開放</td><td><strong>300pt</strong></td></tr>
+  </tbody></table>
+
+  <div class="divider"></div>
+
+  <h3>ポイントの取得方法</h3>
+  <table>
+    <tbody><tr><th>方法</th><th>内容</th><th>種別</th></tr>
+    <tr>
+      <td>ポイント購入</td>
+      <td>TELECOMで決済</td>
+      <td><span class="badge badge-blue">通常</span></td>
+    </tr>
+    <tr>
+      <td>新規登録ボーナス</td>
+      <td>登録完了時に<strong>60pt</strong>付与</td>
+      <td><span class="badge badge-blue">通常</span></td>
+    </tr>
+    <tr>
+      <td>ログインボーナス</td>
+      <td>1日1回ログインで<strong>2pt</strong>付与。30日で消滅</td>
+      <td><span class="badge badge-pink">ボーナス</span></td>
+    </tr>
+    <tr>
+      <td>友達紹介ボーナス</td>
+      <td>紹介した人・された人ともに<strong>100pt</strong>付与</td>
+      <td><span class="badge badge-pink">ボーナス</span></td>
+    </tr>
+  </tbody></table>
+
+  <div class="note">
+    ログインボーナスは1日2ptのため、30日間フル取得しても最大60pt。ほぼ「毎日使ってくれる理由づくり」の施策。実質の収益はポイント購入から。
+  </div>
+</div>
+
+<!-- 5. 課金導線 -->
+<div class="section" id="monetization">
+  <h2>5. 課金導線</h2>
+  <p>ユーザーがポイントを購入するまでの主な流れは5つあります。</p>
+
+  <div class="flow">
+    <div class="flow-step">
+      <div class="flow-num">①</div>
+      <div class="flow-content">
+        <div class="flow-title">アイテムで課金</div>
+        <div class="flow-desc">チャット画面でキャラクターにギフトアイテムを贈れる。「好きな子にプレゼントしたい」という感情が自然な課金につながる。アイテムは管理画面で自由に設定可能。</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">②</div>
+      <div class="flow-content">
+        <div class="flow-title">ポイント不足で写真（アルバム）送付</div>
+        <div class="flow-desc">キャラクターがアルバム写真の存在をほのめかす or 「見てほしい」と送ってくる。閲覧には30ptかかるため、残高が足りなければその場で課金動機が生まれる。</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">③</div>
+      <div class="flow-content">
+        <div class="flow-title">普通に楽しませて課金</div>
+        <div class="flow-desc">会話の質が高く、ユーザーが「もっと話したい」と思えば自然にポイントが尽きる。メッセージ1通15ptのため、100pt（¥1,000相当）で約6〜7往復。熱量が高いユーザーはすぐ到達する。</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">④</div>
+      <div class="flow-content">
+        <div class="flow-title">キャラ未開放キャラからの同報で課金</div>
+        <div class="flow-desc">まだ開放していないキャラクターから好意を抱くような内容のメールが届く（同報スケジュール機能）。気になったユーザーがそのキャラを開放するために300ptを使うという流れ。</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">⑤</div>
+      <div class="flow-content">
+        <div class="flow-title">掘り起こしで課金</div>
+        <div class="flow-desc">しばらく来ていないユーザーへキャラクターから「最近どうしてた？」「待ってたよ」などのメッセージを同報配信。休眠ユーザーを再来訪させ、ポイント購入を促す。</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 6. 課金プラン -->
+<div class="section" id="payment">
+  <h2>6. 課金プラン・決済</h2>
+
+  <h3>ポイントパック一覧</h3>
+  <table>
+    <tbody><tr><th>金額</th><th>付与pt（合計）</th><th>内訳</th><th></th></tr>
+    <tr>
+      <td>¥1,000</td>
+      <td>100pt</td>
+      <td>100pt</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>¥3,000</td>
+      <td>330pt</td>
+      <td>300pt + ボーナス30pt</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>¥5,000</td>
+      <td>550pt</td>
+      <td>500pt + ボーナス50pt</td>
+      <td></td>
+    </tr>
+    <tr class="highlight-row">
+      <td>¥10,000</td>
+      <td>1,150pt</td>
+      <td>1,000pt + ボーナス150pt</td>
+      <td><span class="badge badge-pink">人気</span></td>
+    </tr>
+    <tr>
+      <td>¥30,000</td>
+      <td>3,600pt</td>
+      <td>3,000pt + ボーナス600pt</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>¥50,000</td>
+      <td>6,500pt</td>
+      <td>5,000pt + ボーナス1,500pt</td>
+      <td></td>
+    </tr>
+  </tbody></table>
+  <div class="note">
+    1pt = 10円換算。購入ポイントは<strong>無期限</strong>。追加費用・隠れた請求は一切なし（利用規約で明示）。
+  </div>
+
+  <div class="divider"></div>
+
+  <h3>決済の流れ</h3>
+  <div class="flow">
+    <div class="flow-step">
+      <div class="flow-num">1</div>
+      <div class="flow-content">
+        <div class="flow-title">ポイントページでパックを選択</div>
+        <div class="flow-desc">/payment ページ。残高・取引履歴も確認できる。</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">2</div>
+      <div class="flow-content">
+        <div class="flow-title">TELECOMの決済画面へ遷移</div>
+        <div class="flow-desc">TELECOMの決済フローへリダイレクト。</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">3</div>
+      <div class="flow-content">
+        <div class="flow-title">決済完了 → ポイント付与</div>
+        <div class="flow-desc">TELECOMからのコールバックを受け取り、自動でプロフィールにポイントを加算。取引履歴にも記録。</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">4</div>
+      <div class="flow-content">
+        <div class="flow-title">ポイントページにリダイレクト</div>
+        <div class="flow-desc">「〇〇ポイントが追加されました」と表示される。</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 5. チャット機能 -->
+<div class="section" id="chat">
+  <h2>7. チャット機能</h2>
+  <ul>
+    <li>メッセージ送信ごとに15pt消費（ポイント不足だと送れない）</li>
+    <li>AIが自動返信（OpenRouterを経由してLLMモデルを使用）</li>
+    <li>会話履歴はDBに保存され、次回ログイン時も続きから</li>
+    <li>スタッフが管理画面からすべての会話を閲覧・返信可能</li>
+    <li>未読メッセージがあると管理画面の受信トレイに通知</li>
+    <li>アルバム（写真）はキャラクターごとに設定、閲覧に300pt</li>
+    <li>ギフト機能：アイテムをキャラクターに送れる（ポイント消費）</li>
+  </ul>
+
+  <div class="note">
+    AIはスタッフが返信することもでき、AIとスタッフの切り替えが可能。スタッフ返信時はメールで通知が届く仕様（Resend経由）。
+  </div>
+</div>
+
+<!-- 6. キャラクター -->
+<div class="section" id="characters">
+  <h2>8. キャラクター</h2>
+  <ul>
+    <li>複数のキャラクターから選んでチャット</li>
+    <li>キャラクターごとにプロフィール・性格・アルバムを設定</li>
+    <li>管理画面から追加・編集・削除が可能</li>
+    <li>同報スケジュール機能：特定のキャラから全ユーザーに自動メッセージ送信</li>
+  </ul>
+</div>
+
+<!-- 7. 友達紹介 -->
+<div class="section" id="referral">
+  <h2>9. 友達紹介</h2>
+  <div class="flow">
+    <div class="flow-step">
+      <div class="flow-num">1</div>
+      <div class="flow-content">
+        <div class="flow-title">紹介コードを共有</div>
+        <div class="flow-desc">ポイントページに自分の紹介コードが表示される。コピーしてLINE等で友達に送る。</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">2</div>
+      <div class="flow-content">
+        <div class="flow-title">友達が登録時にコードを入力</div>
+        <div class="flow-desc">オンボーディング画面で紹介コードを入力して登録。</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">3</div>
+      <div class="flow-content">
+        <div class="flow-title">両者に1,000ptボーナス付与</div>
+        <div class="flow-desc">紹介した人・された人それぞれに1,000ptが付与される。</div>
+      </div>
+    </div>
+  </div>
+  <div class="note">
+    <strong>不正対策：</strong>自己紹介不可・同一IPアドレスからの紹介は無効・管理者アカウントは対象外。
+  </div>
+</div>
+
+<!-- 8. 管理者機能 -->
+<div class="section" id="admin">
+  <h2>10. 管理者機能</h2>
+  <p>管理者（role = admin）のみアクセスできる /admin ページ群。</p>
+  <table>
+    <tbody><tr><th>ページ</th><th>できること</th></tr>
+    <tr><td>概要</td><td>売上・ユーザー数などのKPI確認</td></tr>
+    <tr><td>受信トレイ</td><td>ユーザーからの会話一覧、未読バッジ付き</td></tr>
+    <tr><td>やり取り検索</td><td>会話内容を検索</td></tr>
+    <tr><td>ユーザー管理</td><td>ユーザー一覧・詳細・ポイント操作</td></tr>
+    <tr><td>キャラ管理</td><td>キャラクターの追加・編集・削除</td></tr>
+    <tr><td>同報スケジュール</td><td>全ユーザーへの自動メッセージ配信設定</td></tr>
+    <tr><td>アイテム</td><td>ギフトアイテムの管理</td></tr>
+    <tr><td>集計</td><td>売上・利用状況の集計データ</td></tr>
+    <tr><td>AI学習データ</td><td>会話データの確認・エクスポート</td></tr>
+    <tr><td>お問い合わせ</td><td>ユーザーからの問い合わせ管理</td></tr>
+  </tbody></table>
+  <div class="note">
+    管理画面は新着メッセージがあるとSupabase Realtimeでリアルタイム検知し、受信トレイのカウントが更新される。
+  </div>
+</div>
+
+<!-- 9. 技術 -->
+<div class="section" id="tech">
+  <h2>11. 技術・インフラ（概要）</h2>
+  <table>
+    <tbody><tr><th>役割</th><th>使っているもの</th></tr>
+    <tr><td>フロントエンド・サーバー</td><td>Next.js 14（React）</td></tr>
+    <tr><td>データベース・認証</td><td>Supabase（PostgreSQL）</td></tr>
+    <tr><td>決済</td><td>TELECOM</td></tr>
+    <tr><td>AIモデル</td><td>OpenRouter経由でLLM</td></tr>
+    <tr><td>メール通知</td><td>Resend（noreply@aikano.chat）</td></tr>
+    <tr><td>ホスティング</td><td>Vultr VPS（Docker + nginx）</td></tr>
+    <tr><td>CI/CD</td><td>GitHub Actions → ghcr.io → VPS自動デプロイ</td></tr>
+  </tbody></table>
+</div>
+
+<p class="updated" style="margin-top:8px;">アイカノ仕様書 v1.0 — 2026年5月24日</p>
+
+
+

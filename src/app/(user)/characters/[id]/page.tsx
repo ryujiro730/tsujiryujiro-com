@@ -33,7 +33,7 @@ export default function CharacterDetailPage({ params }: { params: { id: string }
   const allPhotos = [character.avatar_url, ...photos.map(p => p.url)]
 
   return (
-    <div className="pb-24">
+    <div className="pb-36">
       {/* ヘッダー */}
       <div className="flex items-center gap-3 mb-4 pt-1">
         <button onClick={() => router.back()} className="p-1 -ml-1 text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors">
@@ -98,7 +98,7 @@ export default function CharacterDetailPage({ params }: { params: { id: string }
       )}
 
       {/* チャットボタン（固定） */}
-      <div className="fixed bottom-0 left-0 right-0 p-4" style={{ background: 'linear-gradient(to top, var(--color-bg) 60%, transparent)' }}>
+      <div className="fixed left-0 right-0 p-4" style={{ bottom: '56px', background: 'linear-gradient(to top, var(--color-bg) 60%, transparent)' }}>
         <Link
           href={`/chat?character=${character.id}`}
           className="btn-cta block text-center py-4 rounded-2xl text-base font-semibold"

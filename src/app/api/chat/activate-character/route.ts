@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { createClient } from '@supabase/supabase-js'
 
-const BASE_CHARACTER_LIMIT = 3
+const BASE_CHARACTER_LIMIT = 1
 
 export async function POST(req: NextRequest) {
   const authClient = createServerClient()

@@ -53,6 +53,12 @@ export default function OnboardingPage() {
       if (profile?.age) setAge(String(profile.age))
       if (profile?.gender) setGender(profile.gender)
 
+      // プロフィールが完成済みならキャラ選択へスキップ
+      if (profile?.display_name && profile?.age && profile?.gender) {
+        setStep(3)
+        loadCharacters()
+      }
+
       setLoading(false)
     }
     init()
@@ -116,8 +122,10 @@ export default function OnboardingPage() {
     loadCharacters()
   }
 
-  const selectCharacter = async (charId: string) => {
-    router.push(`/chat?character=${charId}`)
+  const selectCharacter = (charId: string) => {
+    // router.push だとNext.jsキャッシュで古いプロファイルが返ることがあるため
+    // フルリロードして確実に最新DBを読ませる
+    window.location.href = `/chat?character=${charId}`
   }
 
   const nextChar = () => {

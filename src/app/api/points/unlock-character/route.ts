@@ -4,7 +4,7 @@ import { createClient as createServerClient } from '@/lib/supabase/server'
 import { createClient } from '@supabase/supabase-js'
 import { getAuthUser } from '@/lib/supabase/get-auth-user'
 
-const UNLOCK_COST = 3000
+const UNLOCK_COST = 300
 
 export async function POST() {
   const authClient = createServerClient()

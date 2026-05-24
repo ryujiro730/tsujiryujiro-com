@@ -12,7 +12,7 @@ export default async function CharactersPage() {
   const { data: { session } } = await supabase.auth.getSession()
   const userId = session?.user?.id
 
-  const BASE_CHARACTER_LIMIT = 3
+  const BASE_CHARACTER_LIMIT = 1
 
   // Fetch characters, conversations, and PLG data in parallel
   const [{ data: characters }, { data: convData }, { data: userCharsData }, { data: shareLogsData }] = await Promise.all([

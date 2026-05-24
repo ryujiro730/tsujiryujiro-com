@@ -5,9 +5,8 @@ import { createClient } from '@supabase/supabase-js'
 import { getAuthUser } from '@/lib/supabase/get-auth-user'
 
 const REGISTRATION_BONUS = 60
-const EARLY_BONUS = 200
 const IP_WINDOW_DAYS = 30
-const REFERRAL_BONUS = 1000
+const REFERRAL_BONUS = 100
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function applyReferralBonus(adminClient: any, newUserId: string, refCode: string, newUserIp: string) {
@@ -84,20 +83,6 @@ export async function POST(req: NextRequest) {
     const ip = getClientIp(req)
     const ua = req.headers.get('user-agent') ?? ''
 
-    // 同IPで既存アカウントがあればボーナスなし
-    let giveBonus = true
-    if (ip !== 'unknown') {
-      const since = new Date(Date.now() - IP_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString()
-      const { count } = await adminClient
-        .from('profiles')
-        .select('id', { count: 'exact', head: true })
-        .eq('registration_ip', ip)
-        .gte('created_at', since)
-      if ((count ?? 0) > 1) giveBonus = false  // 自分自身のスケルトンが1件あるので>1
-    }
-
-    const totalPoints = giveBonus ? REGISTRATION_BONUS + EARLY_BONUS : 0
-
     if (!existing) {
       // スケルトンなし（旧フロー）→ insert
       const { error: insertError } = await adminClient.from('profiles').insert({
@@ -105,7 +90,7 @@ export async function POST(req: NextRequest) {
         email: user.email ?? '',
         user_code: Math.random().toString(36).substring(2, 10).toUpperCase(),
         role: 'user',
-        points: totalPoints,
+        points: REGISTRATION_BONUS,
         display_name: name.trim(),
         age: parseInt(age),
         gender,
@@ -117,7 +102,7 @@ export async function POST(req: NextRequest) {
     } else {
       // スケルトンあり（callbackで作成済み）→ update
       const { error: updateError } = await adminClient.from('profiles').update({
-        points: totalPoints,
+        points: REGISTRATION_BONUS,
         display_name: name.trim(),
         age: parseInt(age),
         gender,
@@ -128,15 +113,12 @@ export async function POST(req: NextRequest) {
       if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
     }
 
-    if (giveBonus) {
-      await adminClient.from('point_transactions').insert([
-        { user_id: user.id, amount: REGISTRATION_BONUS, type: 'purchase', description: '新規登録ボーナス' },
-        { user_id: user.id, amount: EARLY_BONUS, type: 'purchase', description: '早期登録ボーナス' },
-      ])
-    }
+    await adminClient.from('point_transactions').insert({
+      user_id: user.id, amount: REGISTRATION_BONUS, type: 'purchase', description: '新規登録ボーナス',
+    })
 
     // 紹介ボーナス処理
-    if (referralByCode && giveBonus) {
+    if (referralByCode) {
       await applyReferralBonus(adminClient, user.id, referralByCode, ip)
     }
 

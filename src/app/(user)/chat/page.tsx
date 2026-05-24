@@ -3,13 +3,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Send, ChevronLeft, Images, X, Gift } from 'lucide-react'
+import { Send, ChevronLeft, Images, X, Gift, ImagePlus } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import type { Character, Message, Profile, CharacterPhoto, UserItem } from '@/types'
 import Link from 'next/link'
 import Lightbox from '@/components/Lightbox'
-import { UnlockWithPointsButton } from '@/components/UnlockWithPointsButton'
+import { PointsShortageDialog } from '@/components/PointsShortageDialog'
 
 const MAX_CACHED_MSGS = 60
 const CHAT_ENABLED = process.env.NEXT_PUBLIC_CHAT_ENABLED !== 'false'
@@ -45,9 +45,12 @@ export default function ChatPage() {
   const [showItemPromoDialog, setShowItemPromoDialog] = useState(false)
   const [showSharePromoDialog, setShowSharePromoDialog] = useState(false)
   const [imageLightboxUrl, setImageLightboxUrl] = useState<string | null>(null)
+  const [sendingPhoto, setSendingPhoto] = useState(false)
+  const [pointsShortage, setPointsShortage] = useState<{ current: number; required: number } | null>(null)
 
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const photoInputRef = useRef<HTMLInputElement>(null)
   const supabaseRef = useRef(createClient())
   const channelRef = useRef<ReturnType<typeof supabaseRef.current.channel> | null>(null)
   const typingTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -244,7 +247,7 @@ export default function ChatPage() {
         : 0
     const totalPoints = profile.points + bonusAvailable
     if (totalPoints < SEND_COST) {
-      alert(`メッセージ送信には${SEND_COST}ポイント必要です。ポイントを購入してください。`)
+      setPointsShortage({ current: totalPoints, required: SEND_COST })
       return
     }
 
@@ -418,7 +421,7 @@ export default function ChatPage() {
   const openAlbumLightbox = async (index: number) => {
     if (!character || !profile) return
 
-    const VIEW_COST = 300
+    const VIEW_COST = 30
     const nowV = new Date()
     const bonusAvailableV =
       profile.bonus_points_expires_at && new Date(profile.bonus_points_expires_at) > nowV
@@ -426,7 +429,7 @@ export default function ChatPage() {
         : 0
     const totalPointsV = profile.points + bonusAvailableV
     if (totalPointsV < VIEW_COST) {
-      alert(`画像閲覧には${VIEW_COST}ポイント必要です。ポイントを購入してください。`)
+      setPointsShortage({ current: totalPointsV, required: VIEW_COST })
       return
     }
 
@@ -452,6 +455,68 @@ export default function ChatPage() {
     setLightboxPhotos(all)
     setLightboxIndex(index)
     setShowAlbum(false)
+  }
+
+  const sendPhoto = async (file: File) => {
+    if (sendingPhoto || !conversationId || !profile || !character) return
+
+    const PHOTO_COST = 15
+    const now = new Date()
+    const bonusAvailable =
+      profile.bonus_points_expires_at && new Date(profile.bonus_points_expires_at) > now
+        ? (profile.bonus_points ?? 0)
+        : 0
+    const totalPoints = profile.points + bonusAvailable
+    if (totalPoints < PHOTO_COST) {
+      setPointsShortage({ current: totalPoints, required: PHOTO_COST })
+      return
+    }
+
+    setSendingPhoto(true)
+    const supabase = supabaseRef.current
+
+    // Supabase Storageにアップロード
+    const ext = file.name.split('.').pop() ?? 'jpg'
+    const path = `user-photos/${profile.id}/${Date.now()}.${ext}`
+    const { error: uploadError } = await supabase.storage.from('chat-images').upload(path, file, { upsert: false })
+    if (uploadError) {
+      alert('画像のアップロードに失敗しました')
+      setSendingPhoto(false)
+      return
+    }
+    const { data: { publicUrl } } = supabase.storage.from('chat-images').getPublicUrl(path)
+
+    // ポイント消費
+    const bonusDeduct = Math.min(bonusAvailable, PHOTO_COST)
+    const regularDeduct = PHOTO_COST - bonusDeduct
+    const newBonusPoints = bonusAvailable - bonusDeduct
+    const newPoints = profile.points - regularDeduct
+    const updatePayload: Record<string, number> = { points: newPoints }
+    if (bonusDeduct > 0) updatePayload.bonus_points = newBonusPoints
+    await Promise.all([
+      supabase.from('profiles').update(updatePayload).eq('id', profile.id),
+      supabase.from('point_transactions').insert({
+        user_id: profile.id, amount: -PHOTO_COST, type: 'spend', description: '写真送信',
+      }),
+    ])
+    setProfile(prev => prev ? { ...prev, points: newPoints, bonus_points: newBonusPoints } : prev)
+    window.dispatchEvent(new CustomEvent('pointsUpdated', { detail: { points: newPoints + newBonusPoints } }))
+
+    // メッセージとして保存
+    const { data: msg } = await supabase.from('messages').insert({
+      conversation_id: conversationId,
+      sender_role: 'user',
+      content: '',
+      points_used: PHOTO_COST,
+      metadata: { image_url: publicUrl },
+    }).select().single()
+
+    if (msg) {
+      setMessages(prev => [...prev.slice(-MAX_CACHED_MSGS + 1), msg])
+      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
+    }
+
+    setSendingPhoto(false)
   }
 
   if (loading) {
@@ -539,25 +604,55 @@ export default function ChatPage() {
             <div className="rounded-2xl px-4 py-4" style={{ background: 'linear-gradient(135deg, rgba(249,168,184,0.12), rgba(232,121,160,0.06))', border: '1px solid var(--color-border-warm)' }}>
               <p className="text-sm font-bold mb-1 text-center" style={{ color: 'var(--color-text)' }}>🔒 キャラクター枠が上限です</p>
               <p className="text-xs text-center mb-3" style={{ color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
-                Xで <strong style={{ color: 'var(--color-primary)' }}>#アイカノ</strong> を含む投稿をシェアすると枠を追加解放できます
+                300ptで開放するか、Xでシェアすると無料で追加解放できます
               </p>
+              <button
+                type="button"
+                onClick={async () => {
+                  const res = await fetch('/api/points/unlock-character', { method: 'POST' })
+                  const data = await res.json()
+                  if (data.ok) {
+                    setCharLimitReached(false)
+                    router.refresh()
+                  } else {
+                    alert(data.message ?? 'ポイントが不足しています（必要: 300pt）')
+                  }
+                }}
+                className="btn-primary w-full py-3 mb-2 flex items-center justify-center gap-2"
+                style={{ fontSize: '14px' }}
+              >
+                🔓 300ptで開放する
+              </button>
               <a
                 href={`https://twitter.com/intent/tweet?text=${encodeURIComponent('AIと本当のカップルみたいに話せる！#アイカノ を試してみたよ → https://aikano.chat')}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn-cta w-full py-3 flex items-center justify-center gap-2"
-                style={{ textDecoration: 'none', fontSize: '14px' }}
+                className="w-full py-2.5 flex items-center justify-center gap-2 rounded-xl text-sm"
+                style={{ textDecoration: 'none', color: 'var(--color-text-muted)', border: '1px solid var(--color-border)' }}
               >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
-                Xでシェアして枠を解放する
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
+                Xでシェアして無料解放
               </a>
-              <p className="text-[11px] text-center mt-2" style={{ color: 'var(--color-text-muted)' }}>シェア後、設定ページからURLを送信してください</p>
-              <div style={{ borderTop: '1px solid var(--color-border)', marginTop: '10px', paddingTop: '10px' }}>
-                <UnlockWithPointsButton />
-              </div>
+              <p className="text-[11px] text-center mt-1.5" style={{ color: 'var(--color-text-muted)' }}>シェア後、設定ページからURLを送信してください</p>
             </div>
           ) : (
           <form autoComplete="off" onSubmit={e => e.preventDefault()} className="flex gap-2 items-end">
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={e => { const f = e.target.files?.[0]; if (f) { sendPhoto(f); e.target.value = '' } }}
+            />
+            <button
+              type="button"
+              onClick={() => photoInputRef.current?.click()}
+              disabled={sendingPhoto}
+              className="p-2.5 flex-shrink-0 rounded-[10px] transition-colors text-[var(--color-text-muted)] hover:text-[var(--color-text)] disabled:opacity-40"
+              title="写真を送る (15pt)"
+            >
+              <ImagePlus size={17} />
+            </button>
             <button
               type="button"
               onClick={openGiftPanel}
@@ -997,6 +1092,14 @@ export default function ChatPage() {
         </div>
       )}
 
+      {/* ポイント不足ダイアログ */}
+      {pointsShortage && (
+        <PointsShortageDialog
+          currentPoints={pointsShortage.current}
+          requiredPoints={pointsShortage.required}
+          onClose={() => setPointsShortage(null)}
+        />
+      )}
     </div>
   )
 }
