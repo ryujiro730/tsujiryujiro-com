@@ -8,12 +8,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   noStore()
   const supabase = createClient() // 認証チェックはanonクライアントで
 
-  // getUser() makes a network call — fall back to getSession() (cookie-only) if unreachable
+  // getUser() makes a network call — 5秒でタイムアウト、失敗時はgetSession()にフォールバック
   let user
   let networkError = false
   try {
-    const { data } = await supabase.auth.getUser()
-    user = data.user
+    const result = await Promise.race([
+      supabase.auth.getUser(),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000)),
+    ]) as Awaited<ReturnType<typeof supabase.auth.getUser>>
+    user = result.data.user
   } catch { networkError = true }
 
   if (!user) {

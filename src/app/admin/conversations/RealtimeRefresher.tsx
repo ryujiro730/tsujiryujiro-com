@@ -21,12 +21,8 @@ export default function RealtimeRefresher() {
       }, () => { router.refresh() })
       .subscribe()
 
-    // ポーリング（リアルタイムが来なくても10秒ごとに必ず更新）
-    const interval = setInterval(() => { router.refresh() }, 15000)
-
     return () => {
       supabase.removeChannel(channel)
-      clearInterval(interval)
     }
   }, [router])
 
