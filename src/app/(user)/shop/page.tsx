@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { ShoppingBag, Loader2, Gift, Check } from 'lucide-react'
 import type { Item, ItemCategory, UserItem } from '@/types'
 import Link from 'next/link'
+import Image from 'next/image'
 
 export default function ShopPage() {
   const [items, setItems] = useState<Item[]>([])
@@ -184,8 +185,9 @@ function ItemCard({ item, qty, buying, bought, points, onBuy }: {
   return (
     <div className="glass rounded-2xl overflow-hidden flex flex-col">
       {item.image_url ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={item.image_url} alt={item.name} className="w-full object-cover" style={{ aspectRatio: '1' }} />
+        <div className="relative w-full" style={{ aspectRatio: '1' }}>
+          <Image src={item.image_url} alt={item.name} fill className="object-cover" sizes="50vw" />
+        </div>
       ) : (
         <div className="w-full flex items-center justify-center bg-[var(--color-surface-2)]" style={{ aspectRatio: '1' }}>
           <Gift size={36} className="text-[var(--color-text-muted)] opacity-40" />

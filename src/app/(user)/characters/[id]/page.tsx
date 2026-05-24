@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { ChevronLeft, Images } from 'lucide-react'
 import Link from 'next/link'
+import Image from 'next/image'
 import Lightbox from '@/components/Lightbox'
 import type { Character, CharacterPhoto } from '@/types'
 
@@ -48,8 +49,7 @@ export default function CharacterDetailPage({ params }: { params: { id: string }
         style={{ aspectRatio: '3/4' }}
         onClick={() => setLightboxIndex(0)}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={character.avatar_url} alt={character.name} className="w-full h-full object-cover" />
+        <Image src={character.avatar_url} alt={character.name} fill className="object-cover" sizes="100vw" priority />
         <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.65) 0%, transparent 55%)' }} />
         <div className="absolute bottom-4 left-4 right-4">
           <p className="text-white font-bold text-2xl leading-tight">
@@ -81,16 +81,11 @@ export default function CharacterDetailPage({ params }: { params: { id: string }
             {photos.map((photo, i) => (
               <div
                 key={photo.id}
-                className="overflow-hidden rounded-xl cursor-pointer"
+                className="relative overflow-hidden rounded-xl cursor-pointer"
                 style={{ aspectRatio: '1' }}
                 onClick={() => setLightboxIndex(i + 1)}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={photo.url}
-                  alt=""
-                  className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                />
+                <Image src={photo.url} alt="" fill className="object-cover hover:scale-105 transition-transform duration-300" sizes="33vw" />
               </div>
             ))}
           </div>

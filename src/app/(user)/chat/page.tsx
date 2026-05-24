@@ -8,6 +8,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import type { Character, Message, Profile, CharacterPhoto, UserItem } from '@/types'
 import Link from 'next/link'
+import Image from 'next/image'
 import Lightbox from '@/components/Lightbox'
 import { PointsShortageDialog } from '@/components/PointsShortageDialog'
 
@@ -541,9 +542,8 @@ export default function ChatPage() {
           <ChevronLeft size={22} />
         </Link>
         <Link href={`/characters/${character.id}`}>
-          <div className="w-9 h-9 rounded-full overflow-hidden border border-[var(--color-border-warm)] flex-shrink-0">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={character.avatar_url} alt={character.name} className="w-full h-full object-cover" />
+          <div className="relative w-9 h-9 rounded-full overflow-hidden border border-[var(--color-border-warm)] flex-shrink-0">
+            <Image src={character.avatar_url} alt={character.name} fill className="object-cover" sizes="36px" />
           </div>
         </Link>
         <div className="flex-1">
@@ -569,9 +569,8 @@ export default function ChatPage() {
       <div className="flex-1 overflow-y-auto px-4 py-4" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {messages.length === 0 && (
           <div className="flex-1 flex flex-col items-center justify-center py-12 animate-fade-in text-center">
-            <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-[var(--color-border-warm)] mb-4">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={character.avatar_url} alt={character.name} className="w-full h-full object-cover" />
+            <div className="relative w-20 h-20 rounded-full overflow-hidden border-2 border-[var(--color-border-warm)] mb-4">
+              <Image src={character.avatar_url} alt={character.name} fill className="object-cover" sizes="80px" />
             </div>
             <p className="font-medium mb-1">{character.name}</p>
             <p className="text-[var(--color-text-muted)] text-sm">最初のメッセージを送ってみましょう</p>
@@ -582,9 +581,8 @@ export default function ChatPage() {
         ))}
         {isTyping && (
           <div className="flex items-end gap-2 animate-fade-in">
-            <div className="w-7 h-7 rounded-full overflow-hidden border border-[var(--color-border)] flex-shrink-0">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={character.avatar_url} alt="" className="w-full h-full object-cover" />
+            <div className="relative w-7 h-7 rounded-full overflow-hidden border border-[var(--color-border)] flex-shrink-0">
+              <Image src={character.avatar_url} alt="" fill className="object-cover" sizes="28px" />
             </div>
             <div className="bubble-operator px-4 py-3 flex items-center gap-2">
               <div className="flex gap-1">
@@ -748,9 +746,8 @@ export default function ChatPage() {
         <div className="fixed inset-0 z-40 flex flex-col" style={{ background: 'rgba(0,0,0,0.85)' }}>
           <div className="flex items-center justify-between px-4 py-4">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full overflow-hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={character.avatar_url} alt="" className="w-full h-full object-cover" />
+              <div className="relative w-8 h-8 rounded-full overflow-hidden">
+                <Image src={character.avatar_url} alt="" fill className="object-cover" sizes="32px" />
               </div>
               <p className="text-white font-semibold text-sm">{character.name}のフォト</p>
             </div>
@@ -762,22 +759,20 @@ export default function ChatPage() {
             <div className="grid grid-cols-3 gap-1.5">
               {/* アバターも含む */}
               <div
-                className="overflow-hidden rounded-xl cursor-pointer"
+                className="relative overflow-hidden rounded-xl cursor-pointer"
                 style={{ aspectRatio: '1' }}
                 onClick={() => openAlbumLightbox(0)}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={character.avatar_url} alt="" className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
+                <Image src={character.avatar_url} alt="" fill className="object-cover hover:scale-105 transition-transform duration-300" sizes="33vw" />
               </div>
               {photos.map((photo, i) => (
                 <div
                   key={photo.id}
-                  className="overflow-hidden rounded-xl cursor-pointer"
+                  className="relative overflow-hidden rounded-xl cursor-pointer"
                   style={{ aspectRatio: '1' }}
                   onClick={() => openAlbumLightbox(i + 1)}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={photo.url} alt="" className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
+                  <Image src={photo.url} alt="" fill className="object-cover hover:scale-105 transition-transform duration-300" sizes="33vw" />
                 </div>
               ))}
             </div>
@@ -879,14 +874,13 @@ export default function ChatPage() {
                 }}>✕</button>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   <div style={{
-                    width: '72px', height: '72px', borderRadius: '50%', overflow: 'hidden',
+                    position: 'relative', width: '72px', height: '72px', borderRadius: '50%', overflow: 'hidden',
                     border: '3px solid rgba(255,255,255,0.85)',
                     boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
                     marginBottom: '10px',
                     animation: 'promoPulseRing 1.8s ease-out infinite',
                   }}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={character?.avatar_url} alt={character?.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    {character?.avatar_url && <Image src={character.avatar_url} alt={character.name ?? ''} fill className="object-cover" sizes="72px" />}
                   </div>
                   <p style={{ color: 'rgba(255,255,255,0.9)', fontSize: '12px', fontWeight: 600 }}>
                     {character?.name}からのお願い 💕
@@ -1114,21 +1108,17 @@ function MessageBubble({ message, characterName, characterAvatar, onImageClick }
   return (
     <div className={`flex items-end gap-2 animate-fade-up ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
       {!isUser && (
-        <div className="w-7 h-7 rounded-full overflow-hidden border border-[var(--color-border)] flex-shrink-0 mb-4">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={characterAvatar} alt={characterName} className="w-full h-full object-cover" />
+        <div className="relative w-7 h-7 rounded-full overflow-hidden border border-[var(--color-border)] flex-shrink-0 mb-4">
+          <Image src={characterAvatar} alt={characterName} fill className="object-cover" sizes="28px" />
         </div>
       )}
       <div className={`max-w-[78%] flex flex-col gap-1 ${isUser ? 'items-end' : 'items-start'}`}>
         {isItem ? (
           <div className={`px-3 py-2.5 rounded-2xl flex items-center gap-2.5 ${isUser ? 'bubble-user' : 'bubble-operator'}`}>
             {message.metadata?.item_image_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={message.metadata.item_image_url}
-                alt={message.metadata.item_name ?? ''}
-                className="w-12 h-12 object-cover rounded-xl flex-shrink-0"
-              />
+              <div className="relative w-12 h-12 rounded-xl overflow-hidden flex-shrink-0">
+                <Image src={message.metadata.item_image_url} alt={message.metadata.item_name ?? ''} fill className="object-cover" sizes="48px" />
+              </div>
             ) : (
               <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
                 style={{ background: 'rgba(255,255,255,0.2)' }}>
@@ -1143,8 +1133,9 @@ function MessageBubble({ message, characterName, characterAvatar, onImageClick }
           </div>
         ) : hasBroadcastImage ? (
           <div className={`rounded-2xl overflow-hidden ${isUser ? 'bubble-user' : 'bubble-operator'}`}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={message.metadata!.image_url!} alt="" className="w-full max-w-[240px] object-cover block cursor-pointer" onClick={() => onImageClick?.(message.metadata!.image_url!)} />
+            <div className="relative w-[240px] cursor-pointer" style={{ aspectRatio: '4/3' }} onClick={() => onImageClick?.(message.metadata!.image_url!)}>
+              <Image src={message.metadata!.image_url!} alt="" fill className="object-cover" sizes="240px" />
+            </div>
             {message.content && (
               <p className="px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
             )}
