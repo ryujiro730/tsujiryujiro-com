@@ -54,6 +54,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     { href: '/admin/characters', label: 'キャラ管理' },
     { href: '/admin/auto-broadcast-schedule', label: '同報スケジュール' },
     { href: '/admin/items', label: 'アイテム' },
+    { href: '/admin/videos', label: '動画販売' },
     { href: '/admin/analytics', label: '集計' },
     { href: '/admin/training', label: 'AI学習データ' },
     { href: '/admin/inquiries', label: 'お問い合わせ' },

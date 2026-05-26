@@ -69,7 +69,7 @@ export interface Message {
   created_at: string
   is_deleted: boolean
   edited_at?: string | null
-  metadata?: { item_id?: string; item_name?: string; item_image_url?: string; image_url?: string } | null
+  metadata?: { item_id?: string; item_name?: string; item_image_url?: string; image_url?: string; video_url?: string; locked?: boolean } | null
 }
 
 export interface ItemCategory {

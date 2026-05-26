@@ -51,9 +51,6 @@ export default function StaffConversationDetailPage() {
 
     setMessages(msgs || [])
 
-    // 既読にする
-    await supabase.from('conversations').update({ is_unread_staff: false }).eq('id', id)
-
     // リアルタイム
     supabase
       .channel(`staff-conv:${id}`)

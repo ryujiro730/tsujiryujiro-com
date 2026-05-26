@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Send, ChevronLeft, Images, X, Gift, ImagePlus } from 'lucide-react'
+import { Send, ChevronLeft, Images, X, Gift, ImagePlus, VideoIcon } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import type { Character, Message, Profile, CharacterPhoto, UserItem } from '@/types'
@@ -47,11 +47,15 @@ export default function ChatPage() {
   const [showSharePromoDialog, setShowSharePromoDialog] = useState(false)
   const [imageLightboxUrl, setImageLightboxUrl] = useState<string | null>(null)
   const [sendingPhoto, setSendingPhoto] = useState(false)
+  const [sendingVideo, setSendingVideo] = useState(false)
+  const [pendingMedia, setPendingMedia] = useState<{ file: File; mediaType: 'photo' | 'video'; previewUrl: string } | null>(null)
   const [pointsShortage, setPointsShortage] = useState<{ current: number; required: number } | null>(null)
+  const [unlockedVideos, setUnlockedVideos] = useState<Set<string>>(new Set())
 
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const photoInputRef = useRef<HTMLInputElement>(null)
+  const videoInputRef = useRef<HTMLInputElement>(null)
   const supabaseRef = useRef(createClient())
   const channelRef = useRef<ReturnType<typeof supabaseRef.current.channel> | null>(null)
   const typingTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -216,6 +220,10 @@ export default function ChatPage() {
       setupRealtimeAndPolling(newConvId, userId)
       setLoading(false)
     }
+
+    // 解錠済み動画を取得
+    const { data: unlocks } = await supabase.from('video_unlocks').select('message_id').eq('user_id', userId)
+    if (unlocks) setUnlockedVideos(new Set(unlocks.map(u => u.message_id)))
 
     // user_characters を retroactively populate（カウント表示の正規化・fire-and-forget）
     if (characterId) {
@@ -458,66 +466,106 @@ export default function ChatPage() {
     setShowAlbum(false)
   }
 
-  const sendPhoto = async (file: File) => {
-    if (sendingPhoto || !conversationId || !profile || !character) return
+  const sendMedia = async (file: File, mediaType: 'photo' | 'video') => {
+    if (!conversationId || !profile || !character) return
+    if (mediaType === 'photo' && sendingPhoto) return
+    if (mediaType === 'video' && sendingVideo) return
 
-    const PHOTO_COST = 15
+    const cost = mediaType === 'video' ? 30 : 15
     const now = new Date()
     const bonusAvailable =
       profile.bonus_points_expires_at && new Date(profile.bonus_points_expires_at) > now
         ? (profile.bonus_points ?? 0)
         : 0
     const totalPoints = profile.points + bonusAvailable
-    if (totalPoints < PHOTO_COST) {
-      setPointsShortage({ current: totalPoints, required: PHOTO_COST })
+    if (totalPoints < cost) {
+      setPointsShortage({ current: totalPoints, required: cost })
       return
     }
 
-    setSendingPhoto(true)
-    const supabase = supabaseRef.current
+    if (mediaType === 'photo') setSendingPhoto(true)
+    else setSendingVideo(true)
 
-    // Supabase Storageにアップロード
-    const ext = file.name.split('.').pop() ?? 'jpg'
-    const path = `user-photos/${profile.id}/${Date.now()}.${ext}`
-    const { error: uploadError } = await supabase.storage.from('chat-images').upload(path, file, { upsert: false })
+    const supabase = supabaseRef.current
+    const ext = file.name.split('.').pop() ?? (mediaType === 'video' ? 'mp4' : 'jpg')
+    const folder = mediaType === 'video' ? 'user-videos' : 'user-photos'
+    const path = `${folder}/${profile.id}/${Date.now()}.${ext}`
+
+    const { error: uploadError } = await supabase.storage.from('chat-images').upload(path, file, { upsert: false, contentType: file.type })
     if (uploadError) {
-      alert('画像のアップロードに失敗しました')
-      setSendingPhoto(false)
+      alert(mediaType === 'video' ? '動画のアップロードに失敗しました' : '画像のアップロードに失敗しました')
+      if (mediaType === 'photo') setSendingPhoto(false)
+      else setSendingVideo(false)
       return
     }
     const { data: { publicUrl } } = supabase.storage.from('chat-images').getPublicUrl(path)
 
-    // ポイント消費
-    const bonusDeduct = Math.min(bonusAvailable, PHOTO_COST)
-    const regularDeduct = PHOTO_COST - bonusDeduct
-    const newBonusPoints = bonusAvailable - bonusDeduct
-    const newPoints = profile.points - regularDeduct
-    const updatePayload: Record<string, number> = { points: newPoints }
-    if (bonusDeduct > 0) updatePayload.bonus_points = newBonusPoints
-    await Promise.all([
-      supabase.from('profiles').update(updatePayload).eq('id', profile.id),
-      supabase.from('point_transactions').insert({
-        user_id: profile.id, amount: -PHOTO_COST, type: 'spend', description: '写真送信',
-      }),
-    ])
-    setProfile(prev => prev ? { ...prev, points: newPoints, bonus_points: newBonusPoints } : prev)
-    window.dispatchEvent(new CustomEvent('pointsUpdated', { detail: { points: newPoints + newBonusPoints } }))
+    // メッセージ保存・ポイント消費をサーバーサイドAPIで実行（service roleでmetadataを確実に保存）
+    const res = await fetch('/api/chat/send-media', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ conversationId, mediaUrl: publicUrl, mediaType }),
+    })
+    const data = await res.json()
 
-    // メッセージとして保存
-    const { data: msg } = await supabase.from('messages').insert({
-      conversation_id: conversationId,
-      sender_role: 'user',
-      content: '',
-      points_used: PHOTO_COST,
-      metadata: { image_url: publicUrl },
-    }).select().single()
-
-    if (msg) {
+    if (res.status === 402) {
+      setPointsShortage({ current: data.current, required: data.required })
+    } else if (res.ok && data.message) {
+      const msg = data.message
       setMessages(prev => [...prev.slice(-MAX_CACHED_MSGS + 1), msg])
       setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
+      if (data.newPoints !== undefined) {
+        setProfile(prev => prev ? { ...prev, points: data.newPoints } : prev)
+        window.dispatchEvent(new CustomEvent('pointsUpdated', { detail: { points: data.newPoints } }))
+      }
+      channelRef.current?.send({ type: 'broadcast', event: 'new_message', payload: { message: msg } })
+    } else {
+      alert('送信に失敗しました')
     }
 
-    setSendingPhoto(false)
+    if (mediaType === 'photo') setSendingPhoto(false)
+    else setSendingVideo(false)
+  }
+
+  const stageMedia = (file: File, mediaType: 'photo' | 'video') => {
+    const previewUrl = URL.createObjectURL(file)
+    setPendingMedia({ file, mediaType, previewUrl })
+  }
+
+  const cancelPendingMedia = () => {
+    if (pendingMedia) URL.revokeObjectURL(pendingMedia.previewUrl)
+    setPendingMedia(null)
+  }
+
+  const sendPendingOrText = async () => {
+    if (pendingMedia) {
+      const { file, mediaType, previewUrl } = pendingMedia
+      setPendingMedia(null)
+      URL.revokeObjectURL(previewUrl)
+      await sendMedia(file, mediaType)
+    } else {
+      await sendMessage()
+    }
+  }
+
+  const unlockVideo = async (messageId: string) => {
+    const res = await fetch('/api/chat/unlock-video', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messageId }),
+    })
+    const data = await res.json()
+    if (res.ok) {
+      setUnlockedVideos(prev => { const s = new Set(prev); s.add(messageId); return s })
+      if (data.newPoints !== undefined) {
+        setProfile(prev => prev ? { ...prev, points: data.newPoints } : prev)
+        window.dispatchEvent(new CustomEvent('pointsUpdated', { detail: { points: data.newPoints } }))
+      }
+    } else if (res.status === 402) {
+      setPointsShortage({ current: data.current, required: data.required })
+    } else {
+      alert('解錠に失敗しました')
+    }
   }
 
   if (loading) {
@@ -577,7 +625,7 @@ export default function ChatPage() {
           </div>
         )}
         {messages.map((msg) => (
-          <MessageBubble key={msg.id} message={msg} characterName={character.name} characterAvatar={character.avatar_url} onImageClick={setImageLightboxUrl} />
+          <MessageBubble key={msg.id} message={msg} characterName={character.name} characterAvatar={character.avatar_url} onImageClick={setImageLightboxUrl} unlockedVideos={unlockedVideos} onUnlockVideo={unlockVideo} />
         ))}
         {isTyping && (
           <div className="flex items-end gap-2 animate-fade-in">
@@ -634,56 +682,105 @@ export default function ChatPage() {
               <p className="text-[11px] text-center mt-1.5" style={{ color: 'var(--color-text-muted)' }}>シェア後、設定ページからURLを送信してください</p>
             </div>
           ) : (
-          <form autoComplete="off" onSubmit={e => e.preventDefault()} className="flex gap-2 items-end">
+          <div className="flex flex-col gap-2">
             <input
               ref={photoInputRef}
               type="file"
               accept="image/*"
               className="hidden"
-              onChange={e => { const f = e.target.files?.[0]; if (f) { sendPhoto(f); e.target.value = '' } }}
+              onChange={e => { const f = e.target.files?.[0]; if (f) { stageMedia(f, 'photo'); e.target.value = '' } }}
             />
-            <button
-              type="button"
-              onClick={() => photoInputRef.current?.click()}
-              disabled={sendingPhoto}
-              className="p-2.5 flex-shrink-0 rounded-[10px] transition-colors text-[var(--color-text-muted)] hover:text-[var(--color-text)] disabled:opacity-40"
-              title="写真を送る (15pt)"
-            >
-              <ImagePlus size={17} />
-            </button>
-            <button
-              type="button"
-              onClick={openGiftPanel}
-              className={`p-2.5 flex-shrink-0 rounded-[10px] transition-colors ${showGiftPanel ? 'text-white' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}`}
-              style={showGiftPanel ? { background: 'var(--color-primary)' } : {}}
-              title="ギフトを贈る"
-            >
-              <Gift size={17} />
-            </button>
-            <textarea
-              ref={textareaRef}
-              value={input}
-              onChange={handleTextareaChange}
-              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() } }}
-              placeholder="メッセージを送る…"
-              rows={1}
-              name="message"
-              autoComplete="off"
-              autoCorrect="off"
-              autoCapitalize="off"
-              className="flex-1 input-warm px-4 py-2.5 resize-none"
-              style={{ minHeight: '42px', maxHeight: '120px', lineHeight: '1.5', fontSize: '16px' }}
+            <input
+              ref={videoInputRef}
+              type="file"
+              accept="video/*"
+              className="hidden"
+              onChange={e => { const f = e.target.files?.[0]; if (f) { stageMedia(f, 'video'); e.target.value = '' } }}
             />
-            <button
-              type="button"
-              onClick={sendMessage}
-              disabled={!input.trim() || sending}
-              className="btn-primary p-2.5 flex-shrink-0 disabled:opacity-40"
-              style={{ borderRadius: '10px' }}
-            >
-              <Send size={17} />
-            </button>
-          </form>
+            {/* メディアプレビュー */}
+            {pendingMedia && (
+              <div className="flex items-center gap-2 px-1">
+                <div className="relative rounded-xl overflow-hidden flex-shrink-0" style={{ width: 64, height: 64 }}>
+                  {pendingMedia.mediaType === 'photo' ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={pendingMedia.previewUrl} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center" style={{ background: 'var(--color-surface-2)' }}>
+                      <VideoIcon size={24} className="text-[var(--color-text-muted)]" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium truncate">{pendingMedia.file.name}</p>
+                  <p className="text-[11px] text-[var(--color-text-muted)]">
+                    {pendingMedia.mediaType === 'photo' ? '15pt' : '30pt'} · 送信ボタンで送る
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={cancelPendingMedia}
+                  className="p-1.5 rounded-full flex-shrink-0 text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+                  style={{ background: 'var(--color-surface-2)' }}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+            <form autoComplete="off" onSubmit={e => e.preventDefault()} className="flex gap-2 items-end">
+              <button
+                type="button"
+                onClick={() => photoInputRef.current?.click()}
+                disabled={!!pendingMedia || sendingPhoto || sendingVideo}
+                className="p-2.5 flex-shrink-0 rounded-[10px] transition-colors text-[var(--color-text-muted)] hover:text-[var(--color-text)] disabled:opacity-40"
+                title="写真を送る (15pt)"
+              >
+                <ImagePlus size={17} />
+              </button>
+              <button
+                type="button"
+                onClick={() => videoInputRef.current?.click()}
+                disabled={!!pendingMedia || sendingPhoto || sendingVideo}
+                className="p-2.5 flex-shrink-0 rounded-[10px] transition-colors text-[var(--color-text-muted)] hover:text-[var(--color-text)] disabled:opacity-40"
+                title="動画を送る (30pt)"
+              >
+                <VideoIcon size={17} />
+              </button>
+              <button
+                type="button"
+                onClick={openGiftPanel}
+                disabled={!!pendingMedia}
+                className={`p-2.5 flex-shrink-0 rounded-[10px] transition-colors disabled:opacity-40 ${showGiftPanel ? 'text-white' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}`}
+                style={showGiftPanel ? { background: 'var(--color-primary)' } : {}}
+                title="ギフトを贈る"
+              >
+                <Gift size={17} />
+              </button>
+              <textarea
+                ref={textareaRef}
+                value={input}
+                onChange={handleTextareaChange}
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendPendingOrText() } }}
+                placeholder={pendingMedia ? '（メディアを送信します）' : 'メッセージを送る…'}
+                disabled={!!pendingMedia}
+                rows={1}
+                name="message"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                className="flex-1 input-warm px-4 py-2.5 resize-none disabled:opacity-60"
+                style={{ minHeight: '42px', maxHeight: '120px', lineHeight: '1.5', fontSize: '16px' }}
+              />
+              <button
+                type="button"
+                onClick={sendPendingOrText}
+                disabled={(!input.trim() && !pendingMedia) || sending || sendingPhoto || sendingVideo}
+                className="btn-primary p-2.5 flex-shrink-0 disabled:opacity-40"
+                style={{ borderRadius: '10px' }}
+              >
+                <Send size={17} />
+              </button>
+            </form>
+          </div>
           )
         ) : (
           <div className="rounded-2xl px-4 py-3 text-center"
@@ -1098,12 +1195,25 @@ export default function ChatPage() {
   )
 }
 
-function MessageBubble({ message, characterName, characterAvatar, onImageClick }: {
-  message: Message; characterName: string; characterAvatar: string; onImageClick?: (url: string) => void
+function MessageBubble({ message, characterName, characterAvatar, onImageClick, unlockedVideos, onUnlockVideo }: {
+  message: Message; characterName: string; characterAvatar: string
+  onImageClick?: (url: string) => void
+  unlockedVideos?: Set<string>
+  onUnlockVideo?: (messageId: string) => Promise<void>
 }) {
+  const [unlocking, setUnlocking] = useState(false)
   const isUser = message.sender_role === 'user'
   const isItem = !!message.metadata?.item_id
   const hasBroadcastImage = !isItem && !!message.metadata?.image_url
+  const hasVideo = !isItem && !!message.metadata?.video_url
+  const isVideoUnlocked = !isUser ? (unlockedVideos?.has(message.id) ?? false) : true
+
+  const handleUnlockVideo = async () => {
+    if (!onUnlockVideo) return
+    setUnlocking(true)
+    await onUnlockVideo(message.id)
+    setUnlocking(false)
+  }
 
   return (
     <div className={`flex items-end gap-2 animate-fade-up ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
@@ -1130,6 +1240,33 @@ function MessageBubble({ message, characterName, characterAvatar, onImageClick }
               <p className="text-sm font-semibold">{message.metadata?.item_name}</p>
               <p className="text-[11px] opacity-70 mt-0.5">を贈りました</p>
             </div>
+          </div>
+        ) : hasVideo ? (
+          <div className={`rounded-2xl overflow-hidden ${isUser ? 'bubble-user' : 'bubble-operator'}`} style={{ maxWidth: '240px' }}>
+            {isVideoUnlocked ? (
+              <video
+                src={message.metadata!.video_url!}
+                controls
+                playsInline
+                className="w-full block rounded-2xl"
+                style={{ maxHeight: '320px' }}
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center gap-2 px-5 py-6"
+                style={{ background: 'var(--color-surface-2)', minWidth: '180px' }}>
+                <div className="text-3xl">🎬</div>
+                <p className="text-xs font-semibold text-center" style={{ color: 'var(--color-text)' }}>動画メッセージ</p>
+                <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>50ptで視聴できます</p>
+                <button
+                  onClick={handleUnlockVideo}
+                  disabled={unlocking}
+                  className="mt-1 px-4 py-1.5 rounded-full text-xs font-bold text-white disabled:opacity-50"
+                  style={{ background: 'var(--color-primary)' }}
+                >
+                  {unlocking ? '処理中…' : '50ptで視聴する'}
+                </button>
+              </div>
+            )}
           </div>
         ) : hasBroadcastImage ? (
           <div className={`rounded-2xl overflow-hidden ${isUser ? 'bubble-user' : 'bubble-operator'}`}>

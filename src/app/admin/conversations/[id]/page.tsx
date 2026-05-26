@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { Send, ChevronLeft, Loader2, FileText, Save, Tag, Pencil, Trash2, Check, X, ImagePlus } from 'lucide-react'
+import { Send, ChevronLeft, Loader2, FileText, Save, Tag, Pencil, Trash2, Check, X, ImagePlus, VideoIcon } from 'lucide-react'
 import { formatDistanceToNow, format } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import type { Message, Character, Profile } from '@/types'
@@ -35,11 +35,14 @@ export default function AdminConversationDetailPage() {
   const [editingMsgId, setEditingMsgId] = useState<string | null>(null)
   const [editingContent, setEditingContent] = useState('')
   const [uploadingImage, setUploadingImage] = useState(false)
+  const [uploadingVideo, setUploadingVideo] = useState(false)
+  const [pendingMedia, setPendingMedia] = useState<{ file: File; mediaType: 'image' | 'video'; previewUrl: string } | null>(null)
 
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const sendBtnRef = useRef<HTMLButtonElement>(null)
   const imageInputRef = useRef<HTMLInputElement>(null)
+  const videoInputRef = useRef<HTMLInputElement>(null)
 
   const supabaseRef = useRef(createClient())
   const channelRef = useRef<ReturnType<typeof supabaseRef.current.channel> | null>(null)
@@ -108,8 +111,6 @@ export default function AdminConversationDetailPage() {
       setAssignedLabelIds(new Set(((assignRes as any).data ?? []).map((a: any) => a.label_id)))
       setAdminNote((noteRes as any)?.admin_note ?? '')
     }
-
-    await supabase.from('conversations').update({ is_unread_staff: false }).eq('id', id)
 
     const channel = supabase.channel(`chat:${id}`)
     channel.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${id}` }, (payload) => {
@@ -286,31 +287,71 @@ export default function AdminConversationDetailPage() {
     }
   }
 
-  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
     e.target.value = ''
+    const previewUrl = URL.createObjectURL(file)
+    setPendingMedia({ file, mediaType: 'image', previewUrl })
+  }
 
-    setUploadingImage(true)
-    const ext = file.name.split('.').pop()
-    const path = `admin-chat/${id}/${Date.now()}.${ext}`
-    const { error: uploadErr } = await supabase.storage.from('chat-images').upload(path, file, { upsert: true })
-    if (uploadErr) { alert('画像のアップロードに失敗しました: ' + uploadErr.message); setUploadingImage(false); return }
+  const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
+    const previewUrl = URL.createObjectURL(file)
+    setPendingMedia({ file, mediaType: 'video', previewUrl })
+  }
 
-    const { data: urlData } = supabase.storage.from('chat-images').getPublicUrl(path)
-    const imageUrl = urlData.publicUrl
-    setUploadingImage(false)
+  const cancelPendingMedia = () => {
+    if (pendingMedia) URL.revokeObjectURL(pendingMedia.previewUrl)
+    setPendingMedia(null)
+  }
 
-    const res = await fetch('/api/admin/staff-reply', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ conversationId: id, content: '', imageUrl }),
-    })
-    if (!res.ok) { alert('画像メッセージの送信に失敗しました'); return }
-    const { message: msg } = await res.json()
-    if (msg) {
-      setMessages(prev => prev.find(p => p.id === msg.id) ? prev : [...prev, msg])
-      channelRef.current?.send({ type: 'broadcast', event: 'new_message', payload: { message: msg } })
+  const sendPendingMedia = async () => {
+    if (!pendingMedia) return
+    const { file, mediaType, previewUrl } = pendingMedia
+    setPendingMedia(null)
+    URL.revokeObjectURL(previewUrl)
+
+    if (mediaType === 'image') {
+      setUploadingImage(true)
+      const ext = file.name.split('.').pop()
+      const path = `admin-chat/${id}/${Date.now()}.${ext}`
+      const { error: uploadErr } = await supabase.storage.from('chat-images').upload(path, file, { upsert: true, contentType: file.type })
+      if (uploadErr) { alert('画像のアップロードに失敗しました: ' + uploadErr.message); setUploadingImage(false); return }
+      const { data: urlData } = supabase.storage.from('chat-images').getPublicUrl(path)
+      setUploadingImage(false)
+      const res = await fetch('/api/admin/staff-reply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversationId: id, content: '', imageUrl: urlData.publicUrl }),
+      })
+      if (!res.ok) { alert('画像メッセージの送信に失敗しました'); return }
+      const { message: msg } = await res.json()
+      if (msg) {
+        setMessages(prev => prev.find(p => p.id === msg.id) ? prev : [...prev, msg])
+        channelRef.current?.send({ type: 'broadcast', event: 'new_message', payload: { message: msg } })
+      }
+    } else {
+      setUploadingVideo(true)
+      const ext = file.name.split('.').pop()
+      const path = `admin-videos/${id}/${Date.now()}.${ext}`
+      const { error: uploadErr } = await supabase.storage.from('chat-images').upload(path, file, { upsert: true, contentType: file.type })
+      if (uploadErr) { alert('動画のアップロードに失敗しました: ' + uploadErr.message); setUploadingVideo(false); return }
+      const { data: urlData } = supabase.storage.from('chat-images').getPublicUrl(path)
+      setUploadingVideo(false)
+      const res = await fetch('/api/admin/staff-reply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversationId: id, content: '', videoUrl: urlData.publicUrl }),
+      })
+      if (!res.ok) { alert('動画メッセージの送信に失敗しました'); return }
+      const { message: msg } = await res.json()
+      if (msg) {
+        setMessages(prev => prev.find(p => p.id === msg.id) ? prev : [...prev, msg])
+        channelRef.current?.send({ type: 'broadcast', event: 'new_message', payload: { message: msg } })
+      }
     }
   }
 
@@ -534,6 +575,11 @@ export default function AdminConversationDetailPage() {
                           </button>
                         </div>
                       </div>
+                    ) : msg.metadata?.video_url ? (
+                      <div className={`overflow-hidden rounded-2xl ${isOp ? 'rounded-br-sm' : 'rounded-bl-sm'}`} style={{ maxWidth: 240 }}>
+                        <video src={msg.metadata.video_url} controls playsInline style={{ display: 'block', width: '100%', maxHeight: 320 }} />
+                        {isOp && <p className="text-[10px] px-2 pb-1" style={{ color: 'var(--color-text-muted)' }}>🔒 ユーザーは50ptで視聴</p>}
+                      </div>
                     ) : msg.metadata?.image_url ? (
                       <div className={`overflow-hidden rounded-2xl ${isOp ? 'rounded-br-sm' : 'rounded-bl-sm'}`} style={{ maxWidth: 240 }}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -577,6 +623,30 @@ export default function AdminConversationDetailPage() {
               {character.name} として返信 · <kbd className="px-1 py-0.5 rounded text-[10px]" style={{ background: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}>Tab</kbd> で送信ボタンへ移動
             </p>
           )}
+          {/* メディアプレビュー */}
+          {pendingMedia && (
+            <div className="flex items-center gap-3 mb-2 p-2 rounded-xl" style={{ background: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}>
+              <div className="relative rounded-lg overflow-hidden flex-shrink-0" style={{ width: 56, height: 56 }}>
+                {pendingMedia.mediaType === 'image' ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={pendingMedia.previewUrl} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center" style={{ background: 'var(--color-surface)' }}>
+                    <VideoIcon size={22} className="text-[var(--color-text-muted)]" />
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium truncate text-[var(--color-text)]">{pendingMedia.file.name}</p>
+                <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
+                  {pendingMedia.mediaType === 'video' ? '🔒 ユーザーは50ptで視聴' : '画像'}　·　送信ボタンで確定
+                </p>
+              </div>
+              <button onClick={cancelPendingMedia} className="p-1.5 rounded-full text-[var(--color-text-muted)] hover:text-[var(--color-text)] flex-shrink-0" style={{ background: 'var(--color-surface)' }}>
+                <X size={14} />
+              </button>
+            </div>
+          )}
           <div className="flex gap-2">
             <textarea
               ref={textareaRef}
@@ -586,29 +656,41 @@ export default function AdminConversationDetailPage() {
               onBlur={handleBlur}
               onKeyDown={handleKeyDown}
               rows={3}
-              placeholder={`${character?.name}として返信… (Shift+Enterで改行、Tabで送信へ)`}
-              className="flex-1 input-warm px-4 py-2.5 text-sm resize-none"
+              disabled={!!pendingMedia}
+              placeholder={pendingMedia ? '（メディアを送信します）' : `${character?.name}として返信… (Shift+Enterで改行、Tabで送信へ)`}
+              className="flex-1 input-warm px-4 py-2.5 text-sm resize-none disabled:opacity-50"
             />
             <div className="flex flex-col gap-2">
               {/* 画像送信 */}
               <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
               <button
                 onClick={() => imageInputRef.current?.click()}
-                disabled={uploadingImage || sending}
+                disabled={!!pendingMedia || uploadingImage || sending}
                 title="画像を送信"
                 className="px-3 flex items-center justify-center gap-1.5 text-sm rounded-lg disabled:opacity-40 transition-colors"
                 style={{ background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)', height: '40px' }}
               >
                 {uploadingImage ? <Loader2 size={15} className="animate-spin" /> : <ImagePlus size={15} />}
               </button>
-              {/* テキスト送信 */}
+              {/* 動画送信 */}
+              <input ref={videoInputRef} type="file" accept="video/*" className="hidden" onChange={handleVideoSelect} />
+              <button
+                onClick={() => videoInputRef.current?.click()}
+                disabled={!!pendingMedia || uploadingVideo || sending}
+                title="動画を送信（ユーザーは50ptで視聴）"
+                className="px-3 flex items-center justify-center gap-1.5 text-sm rounded-lg disabled:opacity-40 transition-colors"
+                style={{ background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)', height: '40px' }}
+              >
+                {uploadingVideo ? <Loader2 size={15} className="animate-spin" /> : <VideoIcon size={15} />}
+              </button>
+              {/* 送信ボタン */}
               <button
                 ref={sendBtnRef}
-                onClick={sendReply}
-                disabled={!input.trim() || sending}
+                onClick={pendingMedia ? sendPendingMedia : sendReply}
+                disabled={(!input.trim() && !pendingMedia) || sending || uploadingImage || uploadingVideo}
                 className="btn-primary px-4 flex items-center gap-1.5 text-sm disabled:opacity-40 flex-1"
               >
-                {sending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
+                {sending || uploadingImage || uploadingVideo ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
                 送信
               </button>
             </div>

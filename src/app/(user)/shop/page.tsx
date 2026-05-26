@@ -99,6 +99,23 @@ export default function ShopPage() {
         </div>
       </div>
 
+      {/* キャラ動画バナー */}
+      <Link href="/videos" className="block mb-5 rounded-2xl overflow-hidden"
+        style={{ background: 'linear-gradient(135deg, #ec4899 0%, #f97316 100%)', textDecoration: 'none' }}>
+        <div className="flex items-center justify-between px-5 py-4">
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">🎬</span>
+            <div>
+              <p className="font-bold text-white text-base leading-tight">キャラ動画</p>
+              <p className="text-white/80 text-xs mt-0.5">人気キャラの限定動画を視聴しよう</p>
+            </div>
+          </div>
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.9 }}>
+            <path d="M9 18l6-6-6-6" />
+          </svg>
+        </div>
+      </Link>
+
       {/* カテゴリータブ */}
       {categories.length > 0 && (
         <div className="flex gap-2 overflow-x-auto pb-1 mb-5" style={{ scrollbarWidth: 'none' }}>
