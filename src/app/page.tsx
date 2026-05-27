@@ -410,9 +410,20 @@ export default async function HomePage() {
             <p style={{ fontSize: 'clamp(20px, 3vw, 28px)', fontWeight: 800, lineHeight: 1.4, marginBottom: '24px', color: 'var(--color-text)' }}>
               誰にも言えない話を<br />してみませんか？
             </p>
-            <Link href={ctaHref} className="btn-cta" style={{ padding: '14px 32px', fontSize: '15px', borderRadius: '10px', display: 'inline-block', textDecoration: 'none' }}>
-              {ctaText}
-            </Link>
+            {user ? (
+              <Link href="/characters" className="btn-cta" style={{ padding: '12px 28px', fontSize: '14px', borderRadius: '10px', display: 'inline-block', textDecoration: 'none' }}>
+                つづきを話す →
+              </Link>
+            ) : (
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <Link href="/auth/register" className="btn-cta" style={{ padding: '12px 24px', fontSize: '14px', borderRadius: '10px', display: 'inline-block', textDecoration: 'none' }}>
+                  新規登録
+                </Link>
+                <Link href="/auth/login" className="btn-ghost" style={{ padding: '12px 24px', fontSize: '14px', borderRadius: '10px', display: 'inline-block', textDecoration: 'none' }}>
+                  ログイン
+                </Link>
+              </div>
+            )}
           </div>
           <div style={{ flexShrink: 0, width: 'clamp(220px, 35%, 360px)', height: '320px', overflow: 'hidden' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
