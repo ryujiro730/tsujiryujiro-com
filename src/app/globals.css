@@ -279,6 +279,11 @@ body {
   .hero-chat {
     display: none;
   }
+
+  /* 横長画像の右上の顔をスマホで見切れないよう右上基準に */
+  .hero-bg {
+    object-position: right top !important;
+  }
 }
 
 /* Blog layout: pure white, clean */

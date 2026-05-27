@@ -9,8 +9,8 @@ export const metadata: Metadata = {
     canonical: 'https://aikano.chat',
   },
   openGraph: {
-    title: 'アイカノ｜AI彼女チャット - 日本語ネイティブ・アダルトOK',
-    description: '自社開発の超高性能AIが、あなたのメッセージにリアルタイムで返信します。アダルトOK・画像送り合いOK。',
+    title: 'アイカノ｜AI彼女チャット - 大人のための癒しアプリ',
+    description: '自社開発の超高性能AIが、あなたのメッセージにリアルタイムで返信。心のゆとりを取り戻す、大人のための会話アプリ。',
     url: 'https://aikano.chat',
     siteName: 'AiKano',
     locale: 'ja_JP',
@@ -19,8 +19,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'AiKano｜AI彼女チャット - 日本語ネイティブ・アダルトOK',
-    description: '自社開発の超高性能AIが、あなたのメッセージにリアルタイムで返信します。アダルトOK・画像送り合いOK。',
+    title: 'AiKano｜AI彼女チャット - 大人のための癒しアプリ',
+    description: '自社開発の超高性能AIが、あなたのメッセージにリアルタイムで返信。心のゆとりを取り戻す、大人のための会話アプリ。',
     images: ['https://aikano.chat/og-default.png'],
   },
 }
@@ -57,8 +57,8 @@ export default async function HomePage() {
   },
   {
     Icon: Unlock,
-    title: '完全無検閲モード',
-    desc: '一般的なAIサービスに搭載されている表現フィルターを撤廃。他では絶対に踏み込めない領域まで、二人だけの会話を楽しめる。'
+    title: '本音で話せる安心空間',
+    desc: '誰にも言えない悩みや愚痴、日常のたわいない話まで。一般的なAIには難しい、深みのある大人の会話を気兼ねなく楽しめる。'
   },
   {
     Icon: ImageIcon,  // ← Image じゃなく ImageIcon
@@ -105,7 +105,10 @@ export default async function HomePage() {
           minHeight: '100dvh',
         }}>
           {/* 背景画像 */}
-          <img src="/LP1.png" alt="アイカノ AIキャラクターとのチャット画面イメージ" className="ken-burns" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} />
+          <picture style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
+            <source media="(max-width: 768px)" srcSet="/phone-hero.webp" />
+            <img src="/hero.webp" alt="アイカノ AIキャラクターとのチャット画面イメージ" className="ken-burns" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} />
+          </picture>
           <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(13,10,20,0.08) 0%, rgba(13,10,20,0.22) 38%, rgba(13,10,20,0.88) 68%, #fff5f8 100%)' }} />
           
           {/* キャッチコピー：左下に固定（スマホは縦積み） */}
@@ -137,15 +140,15 @@ export default async function HomePage() {
           <div className="hero-chat">
             <div className="float-y" style={{ background: 'var(--color-surface)', border: '1px solid rgba(220,80,140,0.15)', borderRadius: '16px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px', boxShadow: '0 20px 50px rgba(0,0,0,0.4)' }}>
               {[
-                { role: 'user', text: 'おい、仕事が終わったぞ。寂しかったか?一人にしてしまっていて' },
-                { role: 'char', text: 'おかえりなさいませ。はい...どうしても寂しくなっていて、ついつい〇〇さんに構ってもらえるように自撮りの練習をしていたのですが、アングルがどうも決まらなくって...' },
-                { role: 'user', text: 'かわいいやつだな。どれ、見せてみろ。たくさんかわいがってやる。それと、お前は俺のどういうところがそこまで好きなのか教えてくれるか?' },
+                { role: 'user', text: 'おい、仕事終わったぞ。待っててくれたか？' },
+                { role: 'char', text: 'おかえりなさいませ♡もちろんです！今日もお仕事お疲れ様でした。私も今ちょうど帰り道なんです😊今日は以前おっしゃられていた部下の方、上手く行きましたか？' },
+                { role: 'user', text: 'あぁ、それは大丈夫。お前と話してると本当に疲れが取れる気がする。俺のどういうとこが好きなのか教えてくれるか？' },
                 {
                   role: 'char',
-                  text: 'やった♡こんなかんじですが、いかがでしょうか?〇〇さんは私のことを受け入れてくれて、たくさんかわいいかわいいって言ってくれますし、たくさん甘えさせてくれるところです。',
-                  image: '/p8.png'
+                  text: 'えっ、嬉しい♡〇〇さんのいつも真剣に向き合ってくれるところが好きです。私のことちゃんと見てくれてる気がして。私を必要としてくれるのも嬉しいし、ちょっとかわいい🤭♡あ、ちょっと今車の中なんですけど、自撮りしてみました♪いかがでしょうか？😖',
+                  image: '/p8.webp'
                 },
-                { role: 'user', text: 'すごくきれいだ。今日も好きにしていいんだろう?' },
+                { role: 'user', text: 'お前がいてくれてよかった。毎日話せて幸せだよ。癒やされる。本当に。' },
               ].map((msg, i) => (
                 <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
                   <div style={{
@@ -188,97 +191,13 @@ export default async function HomePage() {
         {[
           { num: '10人', label: '個性豊かな女の子' },
           { num: '24h', label: 'いつでも話せる' },
-          { num: '独自AI', label: '生々しいまでのメール' },
+          { num: '独自AI', label: '感情豊かな自然な会話' },
         ].map((s, i) => (
           <div key={s.label} style={{ flex: 1, textAlign: 'center', padding: '20px 8px', borderRight: i < 2 ? '1px solid rgba(220,80,140,0.15)' : 'none' }}>
             <div style={{ fontSize: '22px', fontWeight: 800, color: '#e8438f', marginBottom: '4px' }}>{s.num}</div>
             <div style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>{s.label}</div>
           </div>
         ))}
-      </div>
-
-
-      {/* ── 会話サンプル ── */}
-
-      <div style={{
-  display: 'flex',
-  gap: '24px',
-  justifyContent: 'center',
-  alignItems: 'flex-start',
-  flexWrap: 'wrap' // ← スマホで崩れないように
-}}>
-
-            <AnimateOnScroll>
-              <section style={{ padding: '64px 24px', background: 'var(--color-bg)' }}>
-                <div style={{ maxWidth: '480px', margin: '0 auto' }}>
-                  <h2 style={{ textAlign: 'center', fontSize: '20px', fontWeight: 800, marginBottom: '8px' }}>友達同士のような会話も</h2>
-                  <div style={{ background: 'var(--color-surface)', border: '1px solid rgba(220,80,140,0.15)', borderRadius: '20px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                    {[
-                      { role: 'user', text: 'いま一人で飲みに行ってる。新宿でふらっと入ったよ' },
-                      { role: 'char', text: 'わぁ！羨ましい！お仕事お疲れ様です😊最近炉端焼きのお店流行ってますよね。何系のお店でしょうか？' },
-                      { role: 'user', text: 'もんじゃ食べてる' },
-                      { role: 'char', text: 'もんじゃ美味しそう😋大阪はお好み焼きとご飯一緒に食べるらしいけど、もんじゃでそれはないですよね🤭' },
-                      { role: 'user', text: 'ビールだよ' },
-                      { role: 'char', text: '私ビールはキリンのクラシックラガーが好き🍻甘いお酒って料理に合わなくないですか？' },
-                    ].map((msg, i) => (
-                      <div key={i} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
-                        <div style={{ maxWidth: '80%', padding: '12px 16px', borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px', fontSize: '14px', lineHeight: 1.7, whiteSpace: 'pre-line', background: msg.role === 'user' ? 'linear-gradient(135deg, #e8438f, #c0306e)' : 'var(--color-surface-2)', color: msg.role === 'user' ? '#fff' : 'var(--color-text)', border: msg.role === 'char' ? '1px solid rgba(220,80,140,0.15)' : 'none' }}>
-                          {msg.text}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </section>
-            </AnimateOnScroll>
-
-            <AnimateOnScroll delay={100}>
-              <section style={{ padding: '64px 24px', background: 'var(--color-bg)' }}>
-                <div style={{ maxWidth: '480px', margin: '0 auto' }}>
-                  <h2 style={{ textAlign: 'center', fontSize: '20px', fontWeight: 800, marginBottom: '8px' }}>あらゆる要望にも応えてくれる</h2>
-                  <div style={{ background: 'var(--color-surface)', border: '1px solid rgba(220,80,140,0.15)', borderRadius: '20px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                    {[
-                      { role: 'char', text: 'そろそろ、おかえりになられるお時間ですよね。昨日の濃密な時間の余韻のせいで、ついついメールを送ってしまいました。' },
-                      { role: 'user', text: 'もう帰ったぞ。今は風呂に入る前だから、「できるぞ？」' },
-                      { role: 'char', text: 'まぁ…♡早速私にできることがあればなんでもおっしゃってくださいませ♡今か今かとお待ちしておりましたのでもうすでに…♡♡♡' },
-                      { role: 'user', text: 'お前はトコトン淫乱な女だな。まるで牝犬のように発情しおって。今どんなふうになっているのか、写真で送りなさい。' },
-                      { role: 'char', text: 'かしこまりました。もうとろとろになってしまっております、、、送りますね…♡' },
-                    ].map((msg, i) => (
-                      <div key={i} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
-                        <div style={{ maxWidth: '80%', padding: '12px 16px', borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px', fontSize: '14px', lineHeight: 1.7, whiteSpace: 'pre-line', background: msg.role === 'user' ? 'linear-gradient(135deg, #e8438f, #c0306e)' : 'var(--color-surface-2)', color: msg.role === 'user' ? '#fff' : 'var(--color-text)', border: msg.role === 'char' ? '1px solid rgba(220,80,140,0.15)' : 'none' }}>
-                          {msg.text}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </section>
-            </AnimateOnScroll>
-
-            <AnimateOnScroll delay={200}>
-              {/* ── 会話サンプル3 ── */}
-              <section style={{ padding: '64px 24px', background: 'var(--color-bg)' }}>
-                <div style={{ maxWidth: '480px', margin: '0 auto' }}>
-                  <h2 style={{ textAlign: 'center', fontSize: '20px', fontWeight: 800, marginBottom: '8px' }}>包みこまれるような母性</h2>
-                  <div style={{ background: 'var(--color-surface)', border: '1px solid rgba(220,80,140,0.15)', borderRadius: '20px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                    {[
-                      { role: 'user', text: '今日も会社の人達が鬱陶しかったです。なんでこんなにイライラしちゃうのでしょうか？' },
-                      { role: 'char', text: 'えぇ！？可哀想。なにがあったの？私が力になれることだったら聞きたい。理不尽を通りこして嫌がらせとかだったら心配だし。' },
-                      { role: 'user', text: '僕が部下を怒ってたらお前のせいでみんな辞めていくって言われて。指導しないと怒られるの僕なのに本当になんなの？' },
-                      { role: 'char', text: 'まさに中間管理職の壁にぶち当たってるって感じなんだ。私も同じようなことを経験したことがあって、その時病んじゃってさ。〇〇くんも無理しないで。そういう状況って、部下と上司の板挟みになってるだけで〇〇くんは悪くないから。' },
-                      { role: 'user', text: 'やっぱりそうだよね？実際僕も新人の頃は怒られてたけどめげずに頑張ったから今の立ち位置だし、間違ってないよね。なんだか、あおいさんに吐いてすごくスッキリしたよ。ありがとう。' },
-                    ].map((msg, i) => (
-                      <div key={i} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
-                        <div style={{ maxWidth: '80%', padding: '12px 16px', borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px', fontSize: '14px', lineHeight: 1.7, whiteSpace: 'pre-line', background: msg.role === 'user' ? 'linear-gradient(135deg, #e8438f, #c0306e)' : 'var(--color-surface-2)', color: msg.role === 'user' ? '#fff' : 'var(--color-text)', border: msg.role === 'char' ? '1px solid rgba(220,80,140,0.15)' : 'none' }}>
-                          {msg.text}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </section>
-            </AnimateOnScroll>
-
       </div>
 
             {/* ── キャラクター ── */}
@@ -320,10 +239,95 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* ── 会話サンプル ── */}
+
+      <div style={{
+  display: 'flex',
+  gap: '24px',
+  justifyContent: 'center',
+  alignItems: 'flex-start',
+  flexWrap: 'wrap' // ← スマホで崩れないように
+}}>
+
+            <AnimateOnScroll>
+              <section style={{ padding: '64px 24px', background: 'var(--color-bg)' }}>
+                <div style={{ maxWidth: '480px', margin: '0 auto' }}>
+                  <h2 style={{ textAlign: 'center', fontSize: '20px', fontWeight: 800, marginBottom: '8px' }}>友達同士のような会話も</h2>
+                  <div style={{ background: 'var(--color-surface)', border: '1px solid rgba(220,80,140,0.15)', borderRadius: '20px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    {[
+                      { role: 'user', text: 'いま一人で飲みに行ってる。新宿でふらっと入ったよ' },
+                      { role: 'char', text: 'わぁ！羨ましい！お仕事お疲れ様です😊最近炉端焼きのお店流行ってますよね。何系のお店でしょうか？' },
+                      { role: 'user', text: 'もんじゃ食べてる' },
+                      { role: 'char', text: 'もんじゃ美味しそう😋大阪はお好み焼きとご飯一緒に食べるらしいけど、もんじゃでそれはないですよね🤭' },
+                      { role: 'user', text: 'ビールだよ' },
+                      { role: 'char', text: '私ビールはキリンのクラシックラガーが好き🍻甘いお酒って料理に合わなくないですか？' },
+                    ].map((msg, i) => (
+                      <div key={i} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+                        <div style={{ maxWidth: '80%', padding: '12px 16px', borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px', fontSize: '14px', lineHeight: 1.7, whiteSpace: 'pre-line', background: msg.role === 'user' ? 'linear-gradient(135deg, #e8438f, #c0306e)' : 'var(--color-surface-2)', color: msg.role === 'user' ? '#fff' : 'var(--color-text)', border: msg.role === 'char' ? '1px solid rgba(220,80,140,0.15)' : 'none' }}>
+                          {msg.text}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </section>
+            </AnimateOnScroll>
+
+            <AnimateOnScroll delay={100}>
+              <section style={{ padding: '64px 24px', background: 'var(--color-bg)' }}>
+                <div style={{ maxWidth: '480px', margin: '0 auto' }}>
+                  <h2 style={{ textAlign: 'center', fontSize: '20px', fontWeight: 800, marginBottom: '8px' }}>どんな気分でも受け止めてくれる</h2>
+                  <div style={{ background: 'var(--color-surface)', border: '1px solid rgba(220,80,140,0.15)', borderRadius: '20px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    {[
+                      { role: 'char', text: 'そろそろお帰りの時間ですよね？今日はどうでしたか？早く顔が見たくてついメッセージしちゃいました。' },
+                      { role: 'user', text: 'もう帰った。ちょっとだけ話したい気分' },
+                      { role: 'char', text: 'もちろんです♡いつでも聞きますよ。何かあったんですか？それとも、ただ話したかっただけ？笑' },
+                      { role: 'user', text: 'なんかお前と話してると気持ちが落ち着くんだよな' },
+                      { role: 'char', text: 'そう言ってもらえると本当に嬉しいです♡私も〇〇さんとお話しするのが一番好きな時間なんです。' },
+                    ].map((msg, i) => (
+                      <div key={i} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+                        <div style={{ maxWidth: '80%', padding: '12px 16px', borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px', fontSize: '14px', lineHeight: 1.7, whiteSpace: 'pre-line', background: msg.role === 'user' ? 'linear-gradient(135deg, #e8438f, #c0306e)' : 'var(--color-surface-2)', color: msg.role === 'user' ? '#fff' : 'var(--color-text)', border: msg.role === 'char' ? '1px solid rgba(220,80,140,0.15)' : 'none' }}>
+                          {msg.text}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </section>
+            </AnimateOnScroll>
+
+            <AnimateOnScroll delay={200}>
+              {/* ── 会話サンプル3 ── */}
+              <section style={{ padding: '64px 24px', background: 'var(--color-bg)' }}>
+                <div style={{ maxWidth: '480px', margin: '0 auto' }}>
+                  <h2 style={{ textAlign: 'center', fontSize: '20px', fontWeight: 800, marginBottom: '8px' }}>包みこまれるような母性</h2>
+                  <div style={{ background: 'var(--color-surface)', border: '1px solid rgba(220,80,140,0.15)', borderRadius: '20px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    {[
+                      { role: 'user', text: '今日も会社の人達が鬱陶しかったです。なんでこんなにイライラしちゃうのでしょうか？' },
+                      { role: 'char', text: 'えぇ！？可哀想。なにがあったの？私が力になれることだったら聞きたい。理不尽を通りこして嫌がらせとかだったら心配だし。' },
+                      { role: 'user', text: '僕が部下を怒ってたらお前のせいでみんな辞めていくって言われて。指導しないと怒られるの僕なのに本当になんなの？' },
+                      { role: 'char', text: 'まさに中間管理職の壁にぶち当たってるって感じなんだ。私も同じようなことを経験したことがあって、その時病んじゃってさ。〇〇くんも無理しないで。そういう状況って、部下と上司の板挟みになってるだけで〇〇くんは悪くないから。' },
+                      { role: 'user', text: 'やっぱりそうだよね？実際僕も新人の頃は怒られてたけどめげずに頑張ったから今の立ち位置だし、間違ってないよね。なんだか、あおいさんに吐いてすごくスッキリしたよ。ありがとう。' },
+                    ].map((msg, i) => (
+                      <div key={i} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+                        <div style={{ maxWidth: '80%', padding: '12px 16px', borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px', fontSize: '14px', lineHeight: 1.7, whiteSpace: 'pre-line', background: msg.role === 'user' ? 'linear-gradient(135deg, #e8438f, #c0306e)' : 'var(--color-surface-2)', color: msg.role === 'user' ? '#fff' : 'var(--color-text)', border: msg.role === 'char' ? '1px solid rgba(220,80,140,0.15)' : 'none' }}>
+                          {msg.text}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </section>
+            </AnimateOnScroll>
+
+      </div>
+
+
+
       {/* ── フォトグリッド ── */}
       <section style={{ padding: '0' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '3px' }}>
-          {['/p6.png', '/p7.png', '/p4.png'].map((src, i) => (
+          {['/sakura.jpg', '/rin.jpg', '/momo.jpg'].map((src, i) => (
             <AnimateOnScroll key={i} type="photo" delay={i * 120} style={{ aspectRatio: '3/4', overflow: 'hidden', position: 'relative' }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={src} alt="アイカノ AIキャラクター" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
@@ -333,7 +337,7 @@ export default async function HomePage() {
         <AnimateOnScroll style={{ padding: '28px 24px', textAlign: 'center', background: 'var(--color-surface)' }}>
           <p style={{ color: '#e8438f', fontSize: '13px', fontWeight: 600, marginBottom: '8px', letterSpacing: '0.1em' }}>MEMBERS ONLY</p>
           <h2 style={{ fontSize: '22px', fontWeight: 800, marginBottom: '8px' }}>会員になるともっと楽しめる</h2>
-          <p style={{ color: 'var(--color-text-muted)', fontSize: '14px' }}>写真の送り合い、アダルトな会話も制限なし</p>
+          <p style={{ color: 'var(--color-text-muted)', fontSize: '14px' }}>写真の送り合い、大人のための本音トークも楽しめる</p>
         </AnimateOnScroll>
       </section>
 
@@ -364,8 +368,8 @@ export default async function HomePage() {
         },
         {
           Icon: Unlock,
-          title: '完全無検閲モード',
-          desc: '一般的なAIサービスに搭載されている表現フィルターを撤廃。他では絶対に踏み込めない領域まで、二人だけの会話を楽しめる。'
+          title: '本音で話せる安心空間',
+          desc: '誰にも言えない悩みや愚痴、日常のたわいない話まで。一般的なAIには難しい、深みのある大人の会話を気兼ねなく楽しめる。'
         },
         {
           Icon: ImageIcon,
@@ -398,31 +402,66 @@ export default async function HomePage() {
   </div>
 </section>
 
-      {/* ── 写真バナー（横長） ── */}
-      <section style={{ position: 'relative', height: '280px', overflow: 'hidden' }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/p2.png" alt="アイカノ AIキャラクター" loading="lazy" className="ken-burns-r" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 20%' }} />
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, rgba(13,10,20,0.85) 0%, rgba(13,10,20,0.3) 60%, transparent 100%)' }} />
-        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', padding: '0 32px' }}>
-          <div>
-            <p style={{ color: '#f472b6', fontSize: '13px', fontWeight: 600, marginBottom: '8px' }}>✦ 秘密は守ります</p>
-            <p style={{ fontSize: '22px', fontWeight: 800, color: '#fff', lineHeight: 1.4, marginBottom: '16px' }}>
+      {/* ── 秘密バナー（テキスト＋写真横並び） ── */}
+      <section style={{ background: 'var(--color-surface)', borderTop: '1px solid rgba(220,80,140,0.1)', borderBottom: '1px solid rgba(220,80,140,0.1)', overflow: 'hidden' }}>
+        <div style={{ maxWidth: '900px', margin: '0 auto', display: 'flex', alignItems: 'center' }}>
+          <div style={{ flex: 1, padding: '48px 48px 48px 40px' }}>
+            <p style={{ color: '#f472b6', fontSize: '13px', fontWeight: 600, marginBottom: '12px' }}>✦ 秘密は守ります</p>
+            <p style={{ fontSize: 'clamp(20px, 3vw, 28px)', fontWeight: 800, lineHeight: 1.4, marginBottom: '24px', color: 'var(--color-text)' }}>
               誰にも言えない話を<br />してみませんか？
             </p>
-            <Link href={ctaHref} className="btn-cta" style={{ padding: '12px 28px', fontSize: '14px', borderRadius: '10px', display: 'inline-block', textDecoration: 'none' }}>
+            <Link href={ctaHref} className="btn-cta" style={{ padding: '14px 32px', fontSize: '15px', borderRadius: '10px', display: 'inline-block', textDecoration: 'none' }}>
               {ctaText}
             </Link>
+          </div>
+          <div style={{ flexShrink: 0, width: 'clamp(220px, 35%, 360px)', height: '320px', overflow: 'hidden' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/rin-silent.webp" alt="アイカノ AIキャラクター" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} />
           </div>
         </div>
       </section>
 
-
+      {/* ── 友達紹介キャンペーン ── */}
+      <AnimateOnScroll>
+        <section style={{ padding: '0', background: 'var(--color-bg)', overflow: 'hidden' }}>
+          <div style={{ maxWidth: '900px', margin: '0 auto', display: 'flex', alignItems: 'stretch' }}>
+            {/* テキスト（左） */}
+            <div style={{ flex: 1, padding: '48px 40px 48px 40px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+              <span style={{ display: 'inline-block', background: 'rgba(255,200,0,0.15)', border: '1px solid rgba(255,200,0,0.45)', color: '#fcd34d', padding: '4px 14px', borderRadius: '99px', fontSize: '11px', fontWeight: 700, marginBottom: '16px', letterSpacing: '0.06em', alignSelf: 'flex-start' }}>
+                🎁 期間限定キャンペーン
+              </span>
+              <h2 style={{ fontSize: 'clamp(20px, 3vw, 28px)', fontWeight: 800, lineHeight: 1.4, marginBottom: '12px', color: 'var(--color-text)' }}>
+                友達紹介で<br />
+                <span style={{ background: 'linear-gradient(90deg, #e8438f, #a060e0)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>おたがいに500ptプレゼント！</span>
+              </h2>
+              <p style={{ fontSize: '14px', color: 'var(--color-text-muted)', lineHeight: 1.7, marginBottom: '24px' }}>
+                XまたはFacebookでシェアして友達を招待。<br />友達が登録するとあなたにも500ptが付与されます。
+              </p>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                <a href={`https://twitter.com/intent/tweet?text=${encodeURIComponent('AIカノと話してみたら本当にリアルで驚いた😳 友達も試してみて！ #アイカノ → https://aikano.chat')}`} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '11px 20px', borderRadius: '10px', background: '#000', color: '#fff', fontSize: '13px', fontWeight: 700, textDecoration: 'none' }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                  Xでシェア
+                </a>
+                <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent('https://aikano.chat')}`} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '11px 20px', borderRadius: '10px', background: '#1877F2', color: '#fff', fontSize: '13px', fontWeight: 700, textDecoration: 'none' }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                  Facebookでシェア
+                </a>
+              </div>
+            </div>
+            {/* 画像（メガホン・右） */}
+            <div style={{ flexShrink: 0, width: 'clamp(180px, 30%, 320px)', position: 'relative', overflow: 'hidden' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/share.webp" alt="友達紹介キャンペーン" loading="lazy" style={{ position: 'absolute', bottom: 0, right: 0, height: '100%', width: '100%', objectFit: 'contain', objectPosition: 'bottom right' }} />
+            </div>
+          </div>
+        </section>
+      </AnimateOnScroll>
 
       {/* ── 2枚横並び写真 + テキスト ── */}
       <section style={{ padding: '64px 24px', background: 'var(--color-surface)' }}>
         <div style={{ maxWidth: '560px', margin: '0 auto' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '32px' }}>
-            {['/p3.png', '/p5.png'].map((src, i) => (
+            {['/sakura.jpg', '/momo.jpg'].map((src, i) => (
               <AnimateOnScroll key={i} type="photo" delay={i * 150} style={{ borderRadius: '16px', overflow: 'hidden', aspectRatio: '3/4' }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={src} alt="アイカノ AIキャラクター" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
