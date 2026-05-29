@@ -1,9 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
-import { Search, MessageSquare, FileText } from 'lucide-react'
-import Link from 'next/link'
-import { formatDistanceToNow } from 'date-fns'
-import { ja } from 'date-fns/locale'
-import { ConvQueueLink } from '@/components/admin/ConvQueueLink'
+import { Search, MessageSquare } from 'lucide-react'
+import { SavedTemplateList, SaveTemplateButton } from '@/components/admin/SearchTemplates'
+import { SearchResults } from '@/components/admin/SearchResults'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
 
 type SP = {
   // やり取り条件
@@ -34,14 +33,13 @@ type SP = {
   spend_to?: string
   charged_min?: string
   charged_max?: string
+  // 積み数
+  stack_min?: string
+  stack_max?: string
   // 表示設定
   dedup?: string
   sort?: string
   order?: string
-}
-
-const GENDER_LABEL: Record<string, string> = {
-  male: '男性', female: '女性', other: 'その他',
 }
 
 function intersectArrays(first: string[], ...rest: string[][]): string[] {
@@ -49,15 +47,6 @@ function intersectArrays(first: string[], ...rest: string[][]): string[] {
   return first.filter(id => sets.every(s => s.has(id)))
 }
 
-function daysAgo(n: number): string {
-  const d = new Date()
-  d.setDate(d.getDate() - n)
-  return d.toISOString().split('T')[0]
-}
-
-function buildPresetUrl(params: Record<string, string>): string {
-  return `/admin/conversations/search?${new URLSearchParams(params)}`
-}
 
 export default async function AdminConversationsSearchPage({
   searchParams: sp,
@@ -69,17 +58,16 @@ export default async function AdminConversationsSearchPage({
   const { data: characters } = await supabase
     .from('characters').select('id, name').order('name')
 
-  // プリセット定義（日付はサーバーサイドで計算）
-  const PRESETS = [
-    { label: '未返信3日以上', url: buildPresetUrl({ unread: 'unread', last_msg_to: daysAgo(3), sort: 'last_message_at', order: 'asc' }) },
-    { label: 'ユーザー休眠14日', url: buildPresetUrl({ user_sent_to: daysAgo(14), sort: 'last_message_at', order: 'asc' }) },
-    { label: '高課金（¥5,000+）', url: buildPresetUrl({ charged_min: '5000', sort: 'last_message_at', order: 'desc' }) },
-    { label: '新規今週（重複なし）', url: buildPresetUrl({ registered_from: daysAgo(7), dedup: 'yes', sort: 'last_message_at', order: 'desc' }) },
-    { label: 'ポイント切れ×未返信', url: buildPresetUrl({ points_max: '0', unread: 'unread' }) },
-    { label: '今日のやり取り', url: buildPresetUrl({ last_msg_from: daysAgo(0), last_msg_to: daysAgo(0) }) },
-    { label: 'スタッフメモあり', url: buildPresetUrl({ has_note: '1', sort: 'last_message_at', order: 'desc' }) },
-    { label: 'OP未送信（3日）', url: buildPresetUrl({ op_sent_to: daysAgo(3), unread: 'unread', sort: 'last_message_at', order: 'asc' }) },
-  ]
+  // 保存済みテンプレート
+  const adminDb = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  )
+  const { data: savedTemplates } = await adminDb
+    .from('search_templates')
+    .select('id, name, params, created_at, admin_id')
+    .order('created_at', { ascending: false })
+
 
   const isSearching = Object.entries(sp).some(
     ([k, v]) => !['sort', 'order', 'dedup'].includes(k) && !!v,
@@ -103,7 +91,7 @@ export default async function AdminConversationsSearchPage({
 
     let profileIncludeIds: string[] | null = null
     if (hasProfileFilter) {
-      let pq = supabase.from('admin_users_view').select('id')
+      let pq = supabase.from('profiles').select('id').not('role', 'in', '(admin,staff)')
       if (sp.user_code?.trim())       pq = pq.ilike('user_code', `%${sp.user_code.trim()}%`)
       if (sp.user_name?.trim())       pq = pq.ilike('display_name', `%${sp.user_name.trim()}%`)
       if (sp.gender)                  pq = pq.eq('gender', sp.gender)
@@ -208,17 +196,21 @@ export default async function AdminConversationsSearchPage({
       const fetchLimit = sp.dedup === 'yes' ? 500 : 100
 
       let query = supabase.from('conversations').select(`
-        id, last_message_at, is_unread_staff, staff_note,
+        id, last_message_at, is_unread_staff, staff_note, last_message_sender_role, stack_count,
         characters ( id, name, avatar_url ),
         profiles ( id, user_code, display_name, email, age, gender, points )
       `)
 
-      if (sp.unread === 'unread')  query = query.eq('is_unread_staff', true)
-      if (sp.unread === 'read')    query = query.eq('is_unread_staff', false)
+      query = query.eq('has_user_reply', true)   // ユーザーが1通でも返信した会話のみ
+      // 返信済み/未返信は last_message_sender_role で判定（is_unread_staffは一括送信等でズレる）
+      if (sp.unread === 'unread')  query = query.eq('last_message_sender_role', 'user')
+      if (sp.unread === 'read')    query = query.eq('last_message_sender_role', 'character')
       if (sp.has_note === '1')     query = query.not('staff_note', 'is', null).neq('staff_note', '')
       if (sp.character_id)         query = query.eq('character_id', sp.character_id)
       if (sp.last_msg_from)        query = query.gte('last_message_at', sp.last_msg_from)
       if (sp.last_msg_to)          query = query.lte('last_message_at', `${sp.last_msg_to}T23:59:59`)
+      if (sp.stack_min)            query = query.gte('stack_count', parseInt(sp.stack_min))
+      if (sp.stack_max)            query = query.lte('stack_count', parseInt(sp.stack_max))
       if (finalUserIds !== null)   query = query.in('user_id', finalUserIds)
       if (finalConvIds !== null)   query = query.in('id', finalConvIds)
 
@@ -271,21 +263,12 @@ export default async function AdminConversationsSearchPage({
         <p className="text-[var(--color-text-muted)] text-sm">最大100件表示</p>
       </div>
 
-      {/* プリセット */}
-      <div className="mb-4">
-        <p className="text-xs text-[var(--color-text-muted)] mb-2">クイック検索</p>
-        <div className="flex flex-wrap gap-2">
-          {PRESETS.map(preset => (
-            <Link
-              key={preset.label}
-              href={preset.url}
-              className="px-3 py-1 rounded-full text-xs border border-[var(--color-border)] bg-[var(--color-surface-2)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] transition-colors"
-            >
-              {preset.label}
-            </Link>
-          ))}
+      {/* 保存済みテンプレート */}
+      {(savedTemplates ?? []).length > 0 && (
+        <div className="mb-4">
+          <SavedTemplateList templates={(savedTemplates ?? []) as any} />
         </div>
-      </div>
+      )}
 
       {/* 検索フォーム */}
       <form method="GET" className="glass rounded-2xl p-5 mb-6 space-y-4">
@@ -322,7 +305,7 @@ export default async function AdminConversationsSearchPage({
                 </select>
               </div>
             </div>
-            {/* スタッフメモ */}
+            {/* スタッフメモ・積み数 */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={labelCls}>スタッフメモ</label>
@@ -330,6 +313,17 @@ export default async function AdminConversationsSearchPage({
                   <option value="">すべて</option>
                   <option value="1">メモあり</option>
                 </select>
+              </div>
+            </div>
+            {/* 積み数 */}
+            <div>
+              <label className={labelCls}>積み数（キャラの未返信連続送信数）</label>
+              <div className="flex items-center gap-2">
+                <input type="number" name="stack_min" defaultValue={sp.stack_min}
+                  placeholder="1" min="0" className={inputCls} />
+                <span className="text-[var(--color-text-muted)] text-xs flex-shrink-0">〜</span>
+                <input type="number" name="stack_max" defaultValue={sp.stack_max}
+                  placeholder="5" min="0" className={inputCls} />
               </div>
             </div>
             {/* 最終メッセージ日時 */}
@@ -492,11 +486,12 @@ export default async function AdminConversationsSearchPage({
           </div>
         </div>
 
-        <div className="flex gap-2 pt-1">
+        <div className="flex gap-2 pt-1 flex-wrap">
           <button type="submit" className="btn-primary px-5 py-2 text-sm">検索</button>
           {isSearching && (
             <a href="/admin/conversations/search" className="btn-ghost px-5 py-2 text-sm">リセット</a>
           )}
+          {isSearching && <SaveTemplateButton />}
         </div>
       </form>
 
@@ -508,95 +503,19 @@ export default async function AdminConversationsSearchPage({
         </div>
       )}
 
-      {/* 件数 */}
-      {isSearching && (
-        <div className="text-xs text-[var(--color-text-muted)] mb-3">
-          {conversations.length}件
-          {conversations.length === 100 && '（上限100件）'}
-          {sp.dedup === 'yes' && ' · 重複なし'}
-        </div>
-      )}
-
       {queryError && (
         <div className="text-red-400 text-sm mb-4">エラー: {queryError}</div>
       )}
 
-      {/* 結果一覧 */}
+      {/* 結果一覧（チェックボックス・一括送信含む） */}
       {isSearching && (
-        <div className="space-y-2">
-          {conversations.map((conv: any) => {
-            const profile = conv.profiles
-            const character = conv.characters
-            return (
-              <ConvQueueLink
-                key={conv.id}
-                convId={conv.id}
-                allConvIds={conversations.map((c: any) => c.id)}
-                returnTo={`/admin/conversations/search?${new URLSearchParams(
-                  Object.fromEntries(Object.entries(sp).filter(([, v]) => v != null) as [string, string][])
-                )}`}
-                className={`block glass rounded-xl px-5 py-4 hover:border-[var(--color-primary-light)]/40 transition-all ${
-                  conv.is_unread_staff ? 'border-[var(--color-primary)]/40 ring-1 ring-[var(--color-primary)]/20' : ''
-                }`}
-              >
-                <div className="flex items-start gap-4">
-                  <div className="relative flex-shrink-0">
-                    <div className="w-12 h-12 rounded-full overflow-hidden border border-[var(--color-border)]">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={character?.avatar_url} alt={character?.name} className="w-full h-full object-cover" />
-                    </div>
-                    {conv.is_unread_staff && (
-                      <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-red-400 border-2 border-[var(--color-bg)]" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-sm">
-                          {profile?.display_name || profile?.email || '匿名ユーザー'}
-                        </span>
-                        {profile?.user_code && (
-                          <span className="font-mono text-xs text-[var(--color-text-muted)] bg-[var(--color-surface-2)] px-1.5 py-0.5 rounded">
-                            {profile.user_code}
-                          </span>
-                        )}
-                        {profile?.gender && (
-                          <span className="text-xs text-[var(--color-text-muted)] bg-[var(--color-surface-2)] px-1.5 py-0.5 rounded">
-                            {GENDER_LABEL[profile.gender]}
-                          </span>
-                        )}
-                        {profile?.age != null && (
-                          <span className="text-xs text-[var(--color-text-muted)]">{profile.age}歳</span>
-                        )}
-                        <span className="text-xs text-[var(--color-text-muted)]">→ {character?.name}</span>
-                      </div>
-                      <span className="text-xs text-[var(--color-text-muted)] flex-shrink-0">
-                        {formatDistanceToNow(new Date(conv.last_message_at), { addSuffix: true, locale: ja })}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3 mt-1">
-                      <span className="text-xs text-[var(--color-text-muted)]">残り: {profile?.points ?? 0}T</span>
-                      {conv.staff_note && (
-                        <span className="flex items-center gap-1 text-xs text-amber-400">
-                          <FileText size={11} />メモあり
-                        </span>
-                      )}
-                      {conv.is_unread_staff && (
-                        <span className="text-xs text-red-400 font-medium">● 未返信</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </ConvQueueLink>
-            )
-          })}
-          {conversations.length === 0 && (
-            <div className="text-center py-20 text-[var(--color-text-muted)]">
-              <p>該当するやり取りがありません</p>
-            </div>
-          )}
-
-        </div>
+        <SearchResults
+          conversations={conversations as any}
+          isDedup={sp.dedup === 'yes'}
+          returnTo={`/admin/conversations/search?${new URLSearchParams(
+            Object.fromEntries(Object.entries(sp).filter(([, v]) => v != null) as [string, string][])
+          )}`}
+        />
       )}
     </div>
   )

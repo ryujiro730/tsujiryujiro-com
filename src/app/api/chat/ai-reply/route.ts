@@ -13,6 +13,7 @@ import { createClient as createServerClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { getAuthUser } from '@/lib/supabase/get-auth-user'
 import { generateReply, type LLMMessage } from '@/lib/llm-service'
+import { sendNotificationEmail } from '@/lib/send-notification-email'
 
 /** サービスロールクライアント（RLS無視でinsert可能） */
 function adminSupabase() {
@@ -39,6 +40,9 @@ export async function POST(req: NextRequest) {
   const { conversationId, characterId, userMessage } = body
   if (!conversationId || !characterId || !userMessage?.trim()) {
     return NextResponse.json({ error: 'conversationId, characterId, userMessage are required' }, { status: 400 })
+  }
+  if (userMessage.trim().length > 300) {
+    return NextResponse.json({ error: 'メッセージは300文字以内にしてください' }, { status: 400 })
   }
 
   const admin = adminSupabase()
@@ -102,6 +106,21 @@ export async function POST(req: NextRequest) {
     .from('conversations')
     .update({ last_message_at: now, is_unread_staff: false })
     .eq('id', conversationId)
+
+  // メール通知（非同期・非クリティカル）
+  Promise.all([
+    admin.auth.admin.getUserById(user.id),
+  ]).then(([{ data: authData }]) => {
+    const email = authData?.user?.email
+    if (email) {
+      sendNotificationEmail({
+        toEmail: email,
+        characterName: character.name,
+        messageContent: replyText,
+        conversationId,
+      })
+    }
+  }).catch(() => {})
 
   return NextResponse.json({ message: newMsg })
 }

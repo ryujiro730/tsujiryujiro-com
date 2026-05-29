@@ -1,99 +1,80 @@
-import { createClient as createAdminClient } from '@supabase/supabase-js'
-import { unstable_noStore as noStore } from 'next/cache'
-import Link from 'next/link'
-import { format } from 'date-fns'
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { Loader2, MessageSquare, User } from 'lucide-react'
+import { formatDistanceToNow } from 'date-fns'
 import { ja } from 'date-fns/locale'
 
-function admin() {
-  return createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+type InquiryUser = {
+  userId: string
+  displayName: string
+  email: string
+  userCode: string | null
+  openCount: number
+  lastActivity: string
+  lastPreview: string
 }
 
-const STATUS_LABEL: Record<string, { label: string; color: string }> = {
-  open:     { label: '未回答', color: '#e87980' },
-  answered: { label: '回答済み', color: '#7ec850' },
-  closed:   { label: 'クローズ', color: '#aaa' },
-}
+export default function AdminInquiriesPage() {
+  const router = useRouter()
+  const [users, setUsers] = useState<InquiryUser[]>([])
+  const [loading, setLoading] = useState(true)
 
-export default async function AdminInquiriesPage() {
-  noStore()
+  useEffect(() => {
+    fetch('/api/admin/inquiries/users')
+      .then(r => r.json())
+      .then(d => { setUsers(d.users ?? []); setLoading(false) })
+  }, [])
 
-  const { data: inquiries } = await admin()
-    .from('inquiries')
-    .select(`
-      id, subject, status, created_at,
-      profiles!user_id(display_name, email),
-      inquiry_replies(id)
-    `)
-    .order('created_at', { ascending: false })
-
-  const open = inquiries?.filter(i => i.status === 'open').length ?? 0
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="animate-spin" style={{ color: 'var(--color-primary)' }} size={22} />
+      </div>
+    )
+  }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-xl font-bold">お問い合わせ管理</h1>
-          {open > 0 && (
-            <p className="text-sm mt-1" style={{ color: '#e87980' }}>未回答 {open}件</p>
-          )}
-        </div>
+    <div className="p-6 max-w-3xl mx-auto">
+      <div className="mb-6">
+        <h1 className="text-xl font-bold">お問い合わせ</h1>
+        <p className="text-sm text-[var(--color-text-muted)] mt-0.5">ユーザーごとのサポートスレッド</p>
       </div>
 
-      {!inquiries || inquiries.length === 0 ? (
-        <div className="card p-10 text-center">
-          <p className="text-[var(--color-text-muted)] text-sm">お問い合わせはありません</p>
+      {users.length === 0 ? (
+        <div className="text-center py-20 text-[var(--color-text-muted)]">
+          <MessageSquare size={40} className="mx-auto mb-3 opacity-30" />
+          <p className="text-sm">問い合わせはありません</p>
         </div>
       ) : (
-        <div className="card overflow-hidden">
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-                {['日時', 'ユーザー', '件名', '返信', 'ステータス', ''].map(h => (
-                  <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontSize: '12px', color: 'var(--color-text-muted)', fontWeight: 600 }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {inquiries.map((inq, i) => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const profile = inq.profiles as any
-                const replyCount = (inq.inquiry_replies as { id: string }[]).length
-                return (
-                  <tr key={inq.id} style={{ borderBottom: i < inquiries.length - 1 ? '1px solid var(--color-border)' : 'none' }}>
-                    <td style={{ padding: '12px 14px', fontSize: '12px', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
-                      {format(new Date(inq.created_at), 'MM/dd HH:mm', { locale: ja })}
-                    </td>
-                    <td style={{ padding: '12px 14px', fontSize: '13px', maxWidth: '140px' }}>
-                      <p className="truncate font-medium">{profile?.display_name ?? '—'}</p>
-                      <p className="truncate text-[11px] text-[var(--color-text-muted)]">{profile?.email ?? ''}</p>
-                    </td>
-                    <td style={{ padding: '12px 14px', fontSize: '13px', maxWidth: '200px' }}>
-                      <p className="truncate">{inq.subject}</p>
-                    </td>
-                    <td style={{ padding: '12px 14px', fontSize: '13px', textAlign: 'center' }}>
-                      {replyCount > 0 ? replyCount : '—'}
-                    </td>
-                    <td style={{ padding: '12px 14px' }}>
-                      <span style={{
-                        fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '99px',
-                        background: `${STATUS_LABEL[inq.status]?.color}22`,
-                        color: STATUS_LABEL[inq.status]?.color,
-                      }}>
-                        {STATUS_LABEL[inq.status]?.label}
-                      </span>
-                    </td>
-                    <td style={{ padding: '12px 14px' }}>
-                      <Link href={`/admin/inquiries/${inq.id}`}
-                        className="text-xs px-3 py-1.5 rounded-lg hover:bg-[var(--color-surface-2)] transition-colors"
-                        style={{ color: 'var(--color-primary)' }}>
-                        詳細 →
-                      </Link>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+        <div className="space-y-2">
+          {users.map(u => (
+            <button
+              key={u.userId}
+              onClick={() => router.push(`/admin/inquiries/user/${u.userId}`)}
+              className="w-full text-left card hover:border-[var(--color-border-warm)] transition-all p-4 flex items-center gap-4"
+            >
+              <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'var(--color-surface-2)' }}>
+                <User size={18} style={{ color: 'var(--color-text-muted)' }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="font-medium text-sm">{u.displayName}</span>
+                  {u.userCode && <span className="text-[11px] text-[var(--color-text-muted)] font-mono">{u.userCode}</span>}
+                  {u.openCount > 0 && (
+                    <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold text-white" style={{ background: 'var(--color-primary)' }}>
+                      未回答 {u.openCount}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-[var(--color-text-muted)] truncate">{u.lastPreview}</p>
+              </div>
+              <div className="text-[11px] text-[var(--color-text-muted)] flex-shrink-0">
+                {formatDistanceToNow(new Date(u.lastActivity), { addSuffix: true, locale: ja })}
+              </div>
+            </button>
+          ))}
         </div>
       )}
     </div>

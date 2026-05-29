@@ -102,8 +102,11 @@ export async function POST(req: NextRequest) {
     Promise.all([
       admin.auth.admin.getUserById(conv.user_id),
       admin.from('characters').select('name').eq('id', conv.character_id).single(),
-    ]).then(([{ data: authData }, { data: charData }]) => {
+    ]).then(([{ data: authData, error: authErr }, { data: charData, error: charErr }]) => {
+      if (authErr) console.error('[staff-reply] getUserById error:', authErr.message)
+      if (charErr) console.error('[staff-reply] getCharacter error:', charErr.message)
       const email = authData?.user?.email
+      console.log('[staff-reply] sending email to:', email, 'char:', charData?.name)
       if (email && charData?.name) {
         sendNotificationEmail({
           toEmail: email,
@@ -112,7 +115,9 @@ export async function POST(req: NextRequest) {
           conversationId,
         })
       }
-    }).catch(() => {/* 通知失敗は無視 */})
+    }).catch((err) => { console.error('[staff-reply] email notification error:', err) })
+  } else {
+    console.warn('[staff-reply] skipping email: user_id=', conv?.user_id, 'character_id=', conv?.character_id)
   }
 
   // 学習データを保存（人間スタッフ返信のみ）

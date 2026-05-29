@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Edit2, Trash2, Loader2, Check, X, Upload, Video } from 'lucide-react'
+import { compressImage } from '@/lib/compress-image'
 
 interface Character {
   id: string
@@ -166,10 +167,11 @@ export default function AdminVideosPage() {
     const file = e.target.files?.[0]
     if (!file) return
     setUploadingThumb(true)
+    const { blob: compressed } = await compressImage(file)
     const thumbName = `video-thumbnails/${Date.now()}.webp`
     const { error } = await supabase.storage
       .from('chat-images')
-      .upload(thumbName, file, { upsert: true, contentType: file.type })
+      .upload(thumbName, compressed, { upsert: true, contentType: 'image/webp' })
     if (error) { alert('サムネイルアップロード失敗: ' + error.message); setUploadingThumb(false); return }
     const { data: { publicUrl } } = supabase.storage.from('chat-images').getPublicUrl(thumbName)
     setForm(f => ({ ...f, thumbnail_url: publicUrl }))

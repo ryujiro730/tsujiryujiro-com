@@ -2,7 +2,6 @@ import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 
 type Period = 'hourly' | 'daily' | 'monthly'
-
 type SearchParams = { period?: string }
 
 function getPeriodRange(period: Period): { from: Date; to: Date } {
@@ -54,242 +53,207 @@ function generateBuckets(period: Period): string[] {
 }
 
 function formatBucketLabel(bucket: string, period: Period): string {
-  if (period === 'hourly') return bucket.slice(11, 16) // HH:MM
+  if (period === 'hourly') return bucket.slice(5, 16).replace('-', '/').replace('-', '/') // MM/DD HH:00
   if (period === 'daily') {
-    const [, m, d] = bucket.split('-')
-    return `${parseInt(m)}/${parseInt(d)}`
+    const [y, m, d] = bucket.split('-')
+    return `${y}/${parseInt(m)}/${parseInt(d)}`
   }
   const [y, m] = bucket.split('-')
-  return `${y}/${parseInt(m)}`
+  return `${y}/${parseInt(m)}月`
 }
 
 export default async function AdminAnalyticsPage({ searchParams }: { searchParams: SearchParams }) {
   const period: Period = (searchParams.period as Period) ?? 'daily'
   const supabase = createClient()
-  const { from, to } = getPeriodRange(period)
+  const { from } = getPeriodRange(period)
   const fromISO = from.toISOString()
 
-  // Fetch all data for the period + all-time paying user IDs
+  // admin/staffのuser_idを除外リストとして取得
+  const { data: staffProfiles } = await supabase
+    .from('profiles')
+    .select('id')
+    .in('role', ['admin', 'staff'])
+  const excludeIds = (staffProfiles ?? []).map(p => p.id)
+
   const [txRes, profilesRes, loginRes, allPayersRes] = await Promise.all([
-    supabase
-      .from('point_transactions')
-      .select('user_id, amount, type, price_yen, created_at')
-      .gte('created_at', fromISO)
-      .order('created_at', { ascending: true }),
-    supabase
-      .from('profiles')
-      .select('id, created_at')
-      .gte('created_at', fromISO),
-    supabase
-      .from('profiles')
-      .select('last_login_at')
-      .gte('last_login_at', fromISO)
-      .not('last_login_at', 'is', null),
-    supabase
-      .from('point_transactions')
-      .select('user_id')
-      .eq('type', 'purchase'),
+    excludeIds.length > 0
+      ? supabase.from('point_transactions').select('user_id, amount, type, price_yen, created_at').gte('created_at', fromISO).not('user_id', 'in', `(${excludeIds.join(',')})`).order('created_at', { ascending: true })
+      : supabase.from('point_transactions').select('user_id, amount, type, price_yen, created_at').gte('created_at', fromISO).order('created_at', { ascending: true }),
+    supabase.from('profiles').select('id, created_at').gte('created_at', fromISO).not('role', 'in', '(admin,staff)'),
+    supabase.from('profiles').select('last_login_at').gte('last_login_at', fromISO).not('last_login_at', 'is', null).not('role', 'in', '(admin,staff)'),
+    excludeIds.length > 0
+      ? supabase.from('point_transactions').select('user_id').eq('type', 'purchase').not('user_id', 'in', `(${excludeIds.join(',')})`)
+      : supabase.from('point_transactions').select('user_id').eq('type', 'purchase'),
   ])
 
   const transactions = txRes.data ?? []
   const newProfiles = profilesRes.data ?? []
   const logins = loginRes.data ?? []
-
-  // All-time paying user IDs (regardless of current period)
   const payingUserIds = new Set((allPayersRes.data ?? []).map(t => t.user_id))
 
-  // Build bucket maps
   const buckets = generateBuckets(period)
-  type BucketData = {
-    revenue: number
-    allPointsSpent: number
-    payingPointsSpent: number
-    freePointsSpent: number
-    registrations: number
-    logins: number
-  }
+  type BucketData = { revenue: number; allPointsSpent: number; payingPointsSpent: number; freePointsSpent: number; registrations: number; logins: number }
   const bucketMap = new Map<string, BucketData>()
   buckets.forEach(b => bucketMap.set(b, { revenue: 0, allPointsSpent: 0, payingPointsSpent: 0, freePointsSpent: 0, registrations: 0, logins: 0 }))
 
-  // Aggregate transactions
   for (const tx of transactions) {
     const key = getBucketKey(tx.created_at, period)
     const bucket = bucketMap.get(key)
     if (!bucket) continue
-    if (tx.type === 'purchase' && tx.price_yen != null) {
-      bucket.revenue += tx.price_yen
-    }
+    if (tx.type === 'purchase' && tx.price_yen != null) bucket.revenue += tx.price_yen
     if (tx.type === 'spend') {
       bucket.allPointsSpent += Math.abs(tx.amount)
-      if (payingUserIds.has(tx.user_id)) {
-        bucket.payingPointsSpent += Math.abs(tx.amount)
-      } else {
-        bucket.freePointsSpent += Math.abs(tx.amount)
-      }
+      if (payingUserIds.has(tx.user_id)) bucket.payingPointsSpent += Math.abs(tx.amount)
+      else bucket.freePointsSpent += Math.abs(tx.amount)
     }
   }
-
-  // Aggregate registrations
   for (const p of newProfiles) {
-    const key = getBucketKey(p.created_at, period)
-    const bucket = bucketMap.get(key)
+    const bucket = bucketMap.get(getBucketKey(p.created_at, period))
     if (bucket) bucket.registrations++
   }
-
-  // Aggregate logins
   for (const p of logins) {
     if (!p.last_login_at) continue
-    const key = getBucketKey(p.last_login_at, period)
-    const bucket = bucketMap.get(key)
+    const bucket = bucketMap.get(getBucketKey(p.last_login_at, period))
     if (bucket) bucket.logins++
   }
 
-  // Totals
   const totals = buckets.reduce((acc, b) => {
     const d = bucketMap.get(b)!
-    return {
-      revenue: acc.revenue + d.revenue,
-      allPointsSpent: acc.allPointsSpent + d.allPointsSpent,
-      payingPointsSpent: acc.payingPointsSpent + d.payingPointsSpent,
-      freePointsSpent: acc.freePointsSpent + d.freePointsSpent,
-      registrations: acc.registrations + d.registrations,
-      logins: acc.logins + d.logins,
-    }
+    return { revenue: acc.revenue + d.revenue, allPointsSpent: acc.allPointsSpent + d.allPointsSpent, payingPointsSpent: acc.payingPointsSpent + d.payingPointsSpent, freePointsSpent: acc.freePointsSpent + d.freePointsSpent, registrations: acc.registrations + d.registrations, logins: acc.logins + d.logins }
   }, { revenue: 0, allPointsSpent: 0, payingPointsSpent: 0, freePointsSpent: 0, registrations: 0, logins: 0 })
 
-  // Max values for bar scaling
   const maxRevenue = Math.max(...buckets.map(b => bucketMap.get(b)!.revenue), 1)
-  const maxAllSpent = Math.max(...buckets.map(b => bucketMap.get(b)!.allPointsSpent), 1)
-  const maxPayingSpent = Math.max(...buckets.map(b => bucketMap.get(b)!.payingPointsSpent), 1)
-  const maxFreeSpent = Math.max(...buckets.map(b => bucketMap.get(b)!.freePointsSpent), 1)
-  const maxReg = Math.max(...buckets.map(b => bucketMap.get(b)!.registrations), 1)
-  const maxLogins = Math.max(...buckets.map(b => bucketMap.get(b)!.logins), 1)
+  const reversedBuckets = [...buckets].reverse()
 
   const periodTabs: { value: Period; label: string }[] = [
-    { value: 'hourly', label: '時間別（直近24時間）' },
-    { value: 'daily', label: '日別（直近30日）' },
-    { value: 'monthly', label: '月別（直近12ヶ月）' },
+    { value: 'hourly', label: '時間別（24h）' },
+    { value: 'daily', label: '日別（30日）' },
+    { value: 'monthly', label: '月別（12ヶ月）' },
   ]
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold mb-1">集計</h1>
+    <div className="p-6 max-w-6xl mx-auto space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-bold">集計</h1>
+        <div className="flex gap-1.5">
+          {periodTabs.map(tab => (
+            <Link key={tab.value} href={`?period=${tab.value}`}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${period === tab.value ? 'text-white' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}`}
+              style={{ background: period === tab.value ? 'var(--color-primary)' : 'var(--color-surface-2)' }}
+            >
+              {tab.label}
+            </Link>
+          ))}
+        </div>
       </div>
 
-      {/* Period tabs */}
-      <div className="flex gap-2">
-        {periodTabs.map(tab => (
-          <Link
-            key={tab.value}
-            href={`?period=${tab.value}`}
-            className={`px-4 py-2 rounded-lg text-sm transition-colors ${
-              period === tab.value
-                ? 'bg-[var(--color-primary)] text-white'
-                : 'glass text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
-            }`}
-          >
-            {tab.label}
-          </Link>
-        ))}
-      </div>
-
-      {/* Summary cards */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      {/* サマリーカード */}
+      <div className="grid grid-cols-3 gap-3 lg:grid-cols-6">
         {[
-          { label: '課金額', value: `¥${totals.revenue.toLocaleString()}`, color: '#10b981' },
-          { label: 'ポイント消費（全体）', value: `${totals.allPointsSpent.toLocaleString()}T`, color: '#6366f1' },
-          { label: 'ポイント消費（課金ユーザー）', value: `${totals.payingPointsSpent.toLocaleString()}T`, color: '#8b5cf6' },
-          { label: 'ポイント消費（無料ユーザー）', value: `${totals.freePointsSpent.toLocaleString()}T`, color: '#ec4899' },
-          { label: '新規登録', value: `${totals.registrations}人`, color: '#f59e0b' },
-          { label: 'ログイン', value: `${totals.logins}人`, color: '#3b82f6' },
+          { label: '課金額', value: `¥${totals.revenue.toLocaleString()}`, color: '#10b981', bg: 'rgba(16,185,129,0.08)' },
+          { label: 'PT消費（全体）', value: `${totals.allPointsSpent.toLocaleString()}`, unit: 'T', color: '#6366f1', bg: 'rgba(99,102,241,0.08)' },
+          { label: 'PT消費（課金）', value: `${totals.payingPointsSpent.toLocaleString()}`, unit: 'T', color: '#8b5cf6', bg: 'rgba(139,92,246,0.08)' },
+          { label: 'PT消費（無料）', value: `${totals.freePointsSpent.toLocaleString()}`, unit: 'T', color: '#ec4899', bg: 'rgba(236,72,153,0.08)' },
+          { label: '新規登録', value: `${totals.registrations}`, unit: '人', color: '#f59e0b', bg: 'rgba(245,158,11,0.08)' },
+          { label: 'ログイン', value: `${totals.logins}`, unit: '人', color: '#3b82f6', bg: 'rgba(59,130,246,0.08)' },
         ].map(card => (
-          <div key={card.label} className="glass rounded-xl px-4 py-3">
-            <p className="text-[var(--color-text-muted)] text-xs mb-1">{card.label}</p>
-            <p className="text-xl font-bold" style={{ color: card.color }}>{card.value}</p>
+          <div key={card.label} className="rounded-xl px-4 py-3 border" style={{ background: card.bg, borderColor: card.color + '33' }}>
+            <p className="text-[11px] text-[var(--color-text-muted)] mb-1">{card.label}</p>
+            <p className="text-lg font-bold leading-tight" style={{ color: card.color }}>
+              {card.value}<span className="text-sm font-normal ml-0.5">{card.unit}</span>
+            </p>
           </div>
         ))}
       </div>
 
-      {/* Charts */}
-      {[
-        { label: '課金額（円）', key: 'revenue' as const, max: maxRevenue, color: '#10b981', fmt: (v: number) => `¥${v.toLocaleString()}` },
-        { label: 'ポイント消費・全ユーザー', key: 'allPointsSpent' as const, max: maxAllSpent, color: '#6366f1', fmt: (v: number) => `${v}T` },
-        { label: 'ポイント消費・課金ユーザー', key: 'payingPointsSpent' as const, max: maxPayingSpent, color: '#8b5cf6', fmt: (v: number) => `${v}T` },
-        { label: 'ポイント消費・無料ユーザー', key: 'freePointsSpent' as const, max: maxFreeSpent, color: '#ec4899', fmt: (v: number) => `${v}T` },
-        { label: '新規登録者数', key: 'registrations' as const, max: maxReg, color: '#f59e0b', fmt: (v: number) => `${v}人` },
-        { label: 'ログイン数', key: 'logins' as const, max: maxLogins, color: '#3b82f6', fmt: (v: number) => `${v}人` },
-      ].map(chart => (
-        <div key={chart.key} className="glass rounded-2xl p-5">
-          <h2 className="text-sm font-semibold mb-4 text-[var(--color-text-muted)]">{chart.label}</h2>
-          <div className="flex items-end gap-px" style={{ height: 80 }}>
+      {/* 収益ミニチャート */}
+      {totals.revenue > 0 && (
+        <div className="card p-4">
+          <p className="text-xs text-[var(--color-text-muted)] mb-3 font-medium">課金額推移</p>
+          <div className="flex items-end gap-px" style={{ height: 56 }}>
             {buckets.map(bucket => {
-              const val = bucketMap.get(bucket)![chart.key]
-              const pct = chart.max > 0 ? (val / chart.max) * 100 : 0
+              const val = bucketMap.get(bucket)!.revenue
+              const pct = (val / maxRevenue) * 100
               return (
-                <div
-                  key={bucket}
-                  className="flex-1 flex flex-col justify-end group relative"
-                  style={{ minWidth: 0 }}
-                >
-                  <div
-                    style={{
-                      height: `${Math.max(pct, val > 0 ? 2 : 0)}%`,
-                      background: chart.color,
-                      opacity: 0.8,
-                      borderRadius: '2px 2px 0 0',
-                      minHeight: val > 0 ? 2 : 0,
-                    }}
-                  />
-                  {/* Tooltip */}
+                <div key={bucket} className="flex-1 flex flex-col justify-end group relative" style={{ minWidth: 0 }}>
+                  <div style={{ height: `${Math.max(pct, val > 0 ? 4 : 0)}%`, background: '#10b981', opacity: 0.75, borderRadius: '2px 2px 0 0', minHeight: val > 0 ? 3 : 0 }} />
                   <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 hidden group-hover:block z-10 pointer-events-none">
-                    <div className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded px-2 py-1 text-xs whitespace-nowrap">
+                    <div className="card px-2 py-1 text-xs whitespace-nowrap">
                       <div className="text-[var(--color-text-muted)]">{formatBucketLabel(bucket, period)}</div>
-                      <div className="font-semibold">{chart.fmt(val)}</div>
+                      <div className="font-bold text-green-400">¥{val.toLocaleString()}</div>
                     </div>
                   </div>
                 </div>
               )
             })}
           </div>
-          {/* X-axis labels: show only first, middle, last */}
           <div className="flex justify-between mt-1 text-[10px] text-[var(--color-text-muted)]">
             <span>{formatBucketLabel(buckets[0], period)}</span>
             <span>{formatBucketLabel(buckets[Math.floor(buckets.length / 2)], period)}</span>
             <span>{formatBucketLabel(buckets[buckets.length - 1], period)}</span>
           </div>
         </div>
-      ))}
+      )}
 
-      {/* Data table */}
-      <div className="glass rounded-2xl p-5">
-        <h2 className="text-sm font-semibold mb-4 text-[var(--color-text-muted)]">詳細データ</h2>
+      {/* メインテーブル */}
+      <div className="card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm border-collapse">
             <thead>
-              <tr className="text-[var(--color-text-muted)] text-xs border-b border-[var(--color-border)]">
-                <th className="text-left pb-2 pr-4">期間</th>
-                <th className="text-right pb-2 px-4">課金額</th>
-                <th className="text-right pb-2 px-4">消費(全体)</th>
-                <th className="text-right pb-2 px-4">消費(課金)</th>
-                <th className="text-right pb-2 px-4">消費(無料)</th>
-                <th className="text-right pb-2 px-4">登録</th>
-                <th className="text-right pb-2 pl-4">ログイン</th>
+              <tr style={{ background: 'var(--color-surface-2)', borderBottom: '2px solid var(--color-border)' }}>
+                <th className="text-left text-xs font-semibold text-[var(--color-text-muted)] px-4 py-3 whitespace-nowrap">期間</th>
+                <th className="text-right text-xs font-semibold px-4 py-3 whitespace-nowrap" style={{ color: '#10b981' }}>課金額</th>
+                <th className="text-right text-xs font-semibold px-4 py-3 whitespace-nowrap" style={{ color: '#6366f1' }}>PT消費<span className="text-[10px] font-normal ml-1">全体</span></th>
+                <th className="text-right text-xs font-semibold px-4 py-3 whitespace-nowrap" style={{ color: '#8b5cf6' }}>PT消費<span className="text-[10px] font-normal ml-1">課金</span></th>
+                <th className="text-right text-xs font-semibold px-4 py-3 whitespace-nowrap" style={{ color: '#ec4899' }}>PT消費<span className="text-[10px] font-normal ml-1">無料</span></th>
+                <th className="text-right text-xs font-semibold px-4 py-3 whitespace-nowrap" style={{ color: '#f59e0b' }}>新規登録</th>
+                <th className="text-right text-xs font-semibold px-4 py-3 whitespace-nowrap" style={{ color: '#3b82f6' }}>ログイン</th>
               </tr>
             </thead>
             <tbody>
-              {[...buckets].reverse().map(bucket => {
+              {/* 合計行 */}
+              <tr style={{ background: 'rgba(232,67,143,0.05)', borderBottom: '2px solid var(--color-border)' }}>
+                <td className="px-4 py-2.5 font-bold text-xs">合計</td>
+                <td className="px-4 py-2.5 text-right font-bold" style={{ color: '#10b981' }}>¥{totals.revenue.toLocaleString()}</td>
+                <td className="px-4 py-2.5 text-right font-bold" style={{ color: '#6366f1' }}>{totals.allPointsSpent.toLocaleString()}T</td>
+                <td className="px-4 py-2.5 text-right font-bold" style={{ color: '#8b5cf6' }}>{totals.payingPointsSpent.toLocaleString()}T</td>
+                <td className="px-4 py-2.5 text-right font-bold" style={{ color: '#ec4899' }}>{totals.freePointsSpent.toLocaleString()}T</td>
+                <td className="px-4 py-2.5 text-right font-bold" style={{ color: '#f59e0b' }}>{totals.registrations}人</td>
+                <td className="px-4 py-2.5 text-right font-bold" style={{ color: '#3b82f6' }}>{totals.logins}人</td>
+              </tr>
+              {reversedBuckets.map((bucket, i) => {
                 const d = bucketMap.get(bucket)!
                 const hasData = d.revenue > 0 || d.allPointsSpent > 0 || d.registrations > 0 || d.logins > 0
                 return (
-                  <tr key={bucket} className={`border-b border-[var(--color-border)]/40 ${!hasData ? 'opacity-30' : ''}`}>
-                    <td className="py-1.5 pr-4 font-mono text-xs text-[var(--color-text-muted)]">{formatBucketLabel(bucket, period)}</td>
-                    <td className="py-1.5 px-4 text-right text-green-400 font-medium">{d.revenue > 0 ? `¥${d.revenue.toLocaleString()}` : '—'}</td>
-                    <td className="py-1.5 px-4 text-right">{d.allPointsSpent > 0 ? `${d.allPointsSpent}T` : '—'}</td>
-                    <td className="py-1.5 px-4 text-right">{d.payingPointsSpent > 0 ? `${d.payingPointsSpent}T` : '—'}</td>
-                    <td className="py-1.5 px-4 text-right" style={{ color: '#ec4899' }}>{d.freePointsSpent > 0 ? `${d.freePointsSpent}T` : '—'}</td>
-                    <td className="py-1.5 px-4 text-right">{d.registrations > 0 ? `${d.registrations}人` : '—'}</td>
-                    <td className="py-1.5 pl-4 text-right">{d.logins > 0 ? `${d.logins}人` : '—'}</td>
+                  <tr
+                    key={bucket}
+                    style={{
+                      borderBottom: '1px solid var(--color-border)',
+                      background: i % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.01)',
+                      opacity: hasData ? 1 : 0.35,
+                    }}
+                  >
+                    <td className="px-4 py-2.5 font-mono text-xs text-[var(--color-text-muted)] whitespace-nowrap">
+                      {formatBucketLabel(bucket, period)}
+                    </td>
+                    <td className="px-4 py-2.5 text-right font-medium whitespace-nowrap" style={{ color: d.revenue > 0 ? '#10b981' : 'var(--color-text-muted)' }}>
+                      {d.revenue > 0 ? `¥${d.revenue.toLocaleString()}` : '—'}
+                    </td>
+                    <td className="px-4 py-2.5 text-right whitespace-nowrap" style={{ color: d.allPointsSpent > 0 ? '#6366f1' : 'var(--color-text-muted)' }}>
+                      {d.allPointsSpent > 0 ? `${d.allPointsSpent.toLocaleString()}T` : '—'}
+                    </td>
+                    <td className="px-4 py-2.5 text-right whitespace-nowrap" style={{ color: d.payingPointsSpent > 0 ? '#8b5cf6' : 'var(--color-text-muted)' }}>
+                      {d.payingPointsSpent > 0 ? `${d.payingPointsSpent.toLocaleString()}T` : '—'}
+                    </td>
+                    <td className="px-4 py-2.5 text-right whitespace-nowrap" style={{ color: d.freePointsSpent > 0 ? '#ec4899' : 'var(--color-text-muted)' }}>
+                      {d.freePointsSpent > 0 ? `${d.freePointsSpent.toLocaleString()}T` : '—'}
+                    </td>
+                    <td className="px-4 py-2.5 text-right whitespace-nowrap" style={{ color: d.registrations > 0 ? '#f59e0b' : 'var(--color-text-muted)' }}>
+                      {d.registrations > 0 ? `${d.registrations}人` : '—'}
+                    </td>
+                    <td className="px-4 py-2.5 text-right whitespace-nowrap" style={{ color: d.logins > 0 ? '#3b82f6' : 'var(--color-text-muted)' }}>
+                      {d.logins > 0 ? `${d.logins}人` : '—'}
+                    </td>
                   </tr>
                 )
               })}

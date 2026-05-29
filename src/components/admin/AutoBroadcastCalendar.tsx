@@ -48,10 +48,66 @@ async function compressImage(file: File, maxSize = 1200, quality = 0.85): Promis
 
 function formatDelay(minutes: number) {
   if (minutes === 0) return '登録直後'
-  if (minutes < 60) return `${minutes}分後`
-  if (minutes < 1440) return `${Math.floor(minutes / 60)}時間後`
-  const d = Math.floor(minutes / 1440), h = Math.floor((minutes % 1440) / 60)
-  return h > 0 ? `Day${d} +${h}h` : `Day${d}`
+  const d = Math.floor(minutes / 1440)
+  const h = Math.floor((minutes % 1440) / 60)
+  const m = minutes % 60
+  const parts = []
+  if (d > 0) parts.push(`${d}日後`)
+  if (h > 0) parts.push(`${h}時間`)
+  if (m > 0) parts.push(`${m}分`)
+  return parts.join('') || '0分'
+}
+
+function minutesToParts(total: number) {
+  const days = Math.floor(total / 1440)
+  const hours = Math.floor((total % 1440) / 60)
+  const mins = total % 60
+  return { days, hours, mins }
+}
+
+function partsToMinutes(days: number, hours: number, mins: number) {
+  return days * 1440 + hours * 60 + mins
+}
+
+// 日・時・分で指定するピッカー
+function DelayInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const total = parseInt(value) || 0
+  const { days, hours, mins } = minutesToParts(total)
+
+  const update = (d: number, h: number, m: number) => {
+    onChange(String(partsToMinutes(d, h, m)))
+  }
+
+  const sel = 'w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-[var(--color-primary)] text-center'
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-0.5">
+        <input
+          type="number" min={0} max={365} value={days}
+          onChange={e => update(Math.max(0, parseInt(e.target.value) || 0), hours, mins)}
+          className={sel} style={{ width: 52 }}
+        />
+        <span className="text-xs text-[var(--color-text-muted)] flex-shrink-0">日</span>
+      </div>
+      <div className="flex items-center gap-0.5">
+        <input
+          type="number" min={0} max={23} value={hours}
+          onChange={e => update(days, Math.min(23, Math.max(0, parseInt(e.target.value) || 0)), mins)}
+          className={sel} style={{ width: 44 }}
+        />
+        <span className="text-xs text-[var(--color-text-muted)] flex-shrink-0">時間</span>
+      </div>
+      <div className="flex items-center gap-0.5">
+        <input
+          type="number" min={0} max={59} value={mins}
+          onChange={e => update(days, hours, Math.min(59, Math.max(0, parseInt(e.target.value) || 0)))}
+          className={sel} style={{ width: 44 }}
+        />
+        <span className="text-xs text-[var(--color-text-muted)] flex-shrink-0">分後</span>
+      </div>
+    </div>
+  )
 }
 
 // ── メインコンポーネント ─────────────────────────────────
@@ -568,16 +624,12 @@ function SequenceDetailPanel({ sequence, palette, onUpdate, onDelete, onClose }:
           <div key={step.id} className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
             {editingStepId === step.id ? (
               <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-[var(--color-text-muted)] flex-shrink-0">登録後</span>
-                  <input
-                    type="number"
+                <div>
+                  <p className="text-xs text-[var(--color-text-muted)] mb-1">登録後</p>
+                  <DelayInput
                     value={stepForm.delay_minutes}
-                    onChange={e => setStepForm(f => ({ ...f, delay_minutes: e.target.value }))}
-                    min={0}
-                    className="w-20 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-[var(--color-primary)]"
+                    onChange={v => setStepForm(f => ({ ...f, delay_minutes: v }))}
                   />
-                  <span className="text-xs text-[var(--color-text-muted)] flex-shrink-0">分後</span>
                 </div>
                 <textarea
                   value={stepForm.message}
@@ -647,17 +699,12 @@ function SequenceDetailPanel({ sequence, palette, onUpdate, onDelete, onClose }:
         {/* ステップ追加フォーム */}
         <div className="rounded-xl border border-dashed border-[var(--color-border)] p-3 space-y-2 mt-2">
           <p className="text-xs font-medium text-[var(--color-text-muted)]">ステップを追加</p>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-[var(--color-text-muted)] flex-shrink-0">登録後</span>
-            <input
-              type="number"
+          <div>
+            <p className="text-xs text-[var(--color-text-muted)] mb-1">登録後</p>
+            <DelayInput
               value={newStepForm.delay_minutes}
-              onChange={e => setNewStepForm(f => ({ ...f, delay_minutes: e.target.value }))}
-              placeholder="30"
-              min={0}
-              className="w-20 bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-[var(--color-primary)]"
+              onChange={v => setNewStepForm(f => ({ ...f, delay_minutes: v }))}
             />
-            <span className="text-xs text-[var(--color-text-muted)] flex-shrink-0">分後</span>
           </div>
           <textarea
             value={newStepForm.message}

@@ -32,8 +32,10 @@ export default async function AdminConversationsPage({ searchParams }: { searchP
     .order('last_message_at', { ascending: false })
     .range(from, to)
 
+  query = query.eq('has_user_reply', true)   // ユーザーが1通でも返信した会話のみ
   if (unreadOnly) {
-    query = query.eq('is_unread_staff', true)
+    // last_message_sender_role で判定（is_unread_staffは一括送信でズレるため）
+    query = query.eq('last_message_sender_role', 'user')
   }
 
   const { data: conversations, count } = await query

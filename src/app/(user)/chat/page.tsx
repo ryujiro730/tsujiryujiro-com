@@ -10,6 +10,7 @@ import type { Character, Message, Profile, CharacterPhoto, UserItem } from '@/ty
 import Link from 'next/link'
 import Image from 'next/image'
 import Lightbox from '@/components/Lightbox'
+import { compressImage } from '@/lib/compress-image'
 import { PointsShortageDialog } from '@/components/PointsShortageDialog'
 
 const MAX_CACHED_MSGS = 60
@@ -487,11 +488,22 @@ export default function ChatPage() {
     else setSendingVideo(true)
 
     const supabase = supabaseRef.current
-    const ext = file.name.split('.').pop() ?? (mediaType === 'video' ? 'mp4' : 'jpg')
     const folder = mediaType === 'video' ? 'user-videos' : 'user-photos'
-    const path = `${folder}/${profile.id}/${Date.now()}.${ext}`
 
-    const { error: uploadError } = await supabase.storage.from('chat-images').upload(path, file, { upsert: false, contentType: file.type })
+    let uploadBlob: Blob = file
+    let uploadContentType = file.type
+    let uploadExt = file.name.split('.').pop() ?? (mediaType === 'video' ? 'mp4' : 'jpg')
+
+    if (mediaType === 'photo') {
+      const { blob } = await compressImage(file)
+      uploadBlob = blob
+      uploadContentType = 'image/webp'
+      uploadExt = 'webp'
+    }
+
+    const path = `${folder}/${profile.id}/${Date.now()}.${uploadExt}`
+
+    const { error: uploadError } = await supabase.storage.from('chat-images').upload(path, uploadBlob, { upsert: false, contentType: uploadContentType })
     if (uploadError) {
       alert(mediaType === 'video' ? '動画のアップロードに失敗しました' : '画像のアップロードに失敗しました')
       if (mediaType === 'photo') setSendingPhoto(false)
@@ -755,25 +767,33 @@ export default function ChatPage() {
               >
                 <Gift size={17} />
               </button>
-              <textarea
-                ref={textareaRef}
-                value={input}
-                onChange={handleTextareaChange}
-                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendPendingOrText() } }}
-                placeholder={pendingMedia ? '（メディアを送信します）' : 'メッセージを送る…'}
-                disabled={!!pendingMedia}
-                rows={1}
-                name="message"
-                autoComplete="off"
-                autoCorrect="off"
-                autoCapitalize="off"
-                className="flex-1 input-warm px-4 py-2.5 resize-none disabled:opacity-60"
-                style={{ minHeight: '42px', maxHeight: '120px', lineHeight: '1.5', fontSize: '16px' }}
-              />
+              <div className="flex-1 flex flex-col min-w-0">
+                <textarea
+                  ref={textareaRef}
+                  value={input}
+                  onChange={handleTextareaChange}
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendPendingOrText() } }}
+                  placeholder={pendingMedia ? '（メディアを送信します）' : 'メッセージを送る…'}
+                  disabled={!!pendingMedia}
+                  rows={1}
+                  maxLength={300}
+                  name="message"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  className="flex-1 input-warm px-4 py-2.5 resize-none disabled:opacity-60"
+                  style={{ minHeight: '42px', maxHeight: '120px', lineHeight: '1.5', fontSize: '16px' }}
+                />
+                {input.length > 0 && (
+                  <p className="text-right text-[11px] mt-0.5 mr-1" style={{ color: input.length >= 300 ? '#e8438f' : 'var(--color-text-muted)' }}>
+                    {input.length}/300
+                  </p>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={sendPendingOrText}
-                disabled={(!input.trim() && !pendingMedia) || sending || sendingPhoto || sendingVideo}
+                disabled={(!input.trim() && !pendingMedia) || input.length > 300 || sending || sendingPhoto || sendingVideo}
                 className="btn-primary p-2.5 flex-shrink-0 disabled:opacity-40"
                 style={{ borderRadius: '10px' }}
               >

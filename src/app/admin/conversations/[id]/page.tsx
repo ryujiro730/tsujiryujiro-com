@@ -4,7 +4,8 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { Send, ChevronLeft, Loader2, FileText, Save, Tag, Pencil, Trash2, Check, X, ImagePlus, VideoIcon } from 'lucide-react'
+import { Send, ChevronLeft, Loader2, FileText, Save, Tag, Pencil, Trash2, Check, X, ImagePlus, VideoIcon, Library } from 'lucide-react'
+import { compressImage } from '@/lib/compress-image'
 import { formatDistanceToNow, format } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import type { Message, Character, Profile } from '@/types'
@@ -37,6 +38,17 @@ export default function AdminConversationDetailPage() {
   const [uploadingImage, setUploadingImage] = useState(false)
   const [uploadingVideo, setUploadingVideo] = useState(false)
   const [pendingMedia, setPendingMedia] = useState<{ file: File; mediaType: 'image' | 'video'; previewUrl: string } | null>(null)
+
+  // オペグラ
+  const [opegraOpen, setOpegraOpen] = useState(false)
+  const [opegraPhotos, setOpegraPhotos] = useState<any[]>([])
+  const [opegraConvCharId, setOpegraConvCharId] = useState<string | null>(null)
+  const [opegraLoading, setOpegraLoading] = useState(false)
+  const [opegraFilter, setOpegraFilter] = useState<'all' | 'char' | 'generic'>('all')
+  const [selectedPhotoId, setSelectedPhotoId] = useState<string | null>(null)
+  const [sendingOpegra, setSendingOpegra] = useState(false)
+  // ステージング中のオペグラ写真
+  const [pendingOpegra, setPendingOpegra] = useState<{ photoId: string; imageUrl: string; title: string } | null>(null)
 
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -303,6 +315,58 @@ export default function AdminConversationDetailPage() {
     setPendingMedia({ file, mediaType: 'video', previewUrl })
   }
 
+  const openOpegra = async () => {
+    setOpegraOpen(true)
+    setOpegraLoading(true)
+    setSelectedPhotoId(null)
+    setOpegraFilter('all')
+    const res = await fetch(`/api/opegra?conversationId=${id}`)
+    const { photos, characterId } = await res.json()
+    setOpegraPhotos(photos ?? [])
+    setOpegraConvCharId(characterId ?? null)
+    setOpegraLoading(false)
+  }
+
+  // ダイアログで選択 → ステージングに入れて閉じる
+  const stageOpegraPhoto = () => {
+    if (!selectedPhotoId) return
+    const photo = opegraPhotos.find(p => p.id === selectedPhotoId)
+    if (!photo) return
+    setPendingOpegra({ photoId: photo.id, imageUrl: photo.image_url, title: photo.title ?? '' })
+    setPendingMedia(null) // 通常のメディアステージをクリア
+    setSelectedPhotoId(null)
+    setOpegraOpen(false)
+  }
+
+  // 送信ボタン押下 → 実際に送信
+  const sendOpegraPhoto = async () => {
+    if (!pendingOpegra || sendingOpegra) return
+    setSendingOpegra(true)
+    const { photoId } = pendingOpegra
+    setPendingOpegra(null)
+
+    const res = await fetch('/api/opegra/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ photoId, conversationId: id }),
+    })
+    if (!res.ok) {
+      const { error } = await res.json().catch(() => ({ error: '送信に失敗しました' }))
+      alert(error ?? '送信に失敗しました')
+      setSendingOpegra(false)
+      return
+    }
+    const { message: msg } = await res.json()
+    if (msg) {
+      setMessages(prev => prev.find(p => p.id === msg.id) ? prev : [...prev, msg])
+      channelRef.current?.send({ type: 'broadcast', event: 'new_message', payload: { message: msg } })
+    }
+    setOpegraPhotos(prev => prev.map(p => p.id === photoId ? { ...p, already_sent: true } : p))
+    setSendingOpegra(false)
+    if (sessionStorage.getItem('convQueue')) advanceToNext()
+    else router.refresh()
+  }
+
   const cancelPendingMedia = () => {
     if (pendingMedia) URL.revokeObjectURL(pendingMedia.previewUrl)
     setPendingMedia(null)
@@ -316,9 +380,9 @@ export default function AdminConversationDetailPage() {
 
     if (mediaType === 'image') {
       setUploadingImage(true)
-      const ext = file.name.split('.').pop()
-      const path = `admin-chat/${id}/${Date.now()}.${ext}`
-      const { error: uploadErr } = await supabase.storage.from('chat-images').upload(path, file, { upsert: true, contentType: file.type })
+      const { blob: compressed } = await compressImage(file)
+      const path = `admin-chat/${id}/${Date.now()}.webp`
+      const { error: uploadErr } = await supabase.storage.from('chat-images').upload(path, compressed, { upsert: true, contentType: 'image/webp' })
       if (uploadErr) { alert('画像のアップロードに失敗しました: ' + uploadErr.message); setUploadingImage(false); return }
       const { data: urlData } = supabase.storage.from('chat-images').getPublicUrl(path)
       setUploadingImage(false)
@@ -364,6 +428,7 @@ export default function AdminConversationDetailPage() {
   }
 
   return (
+    <>
     <div className="flex h-[calc(100vh-48px)] -my-6 overflow-hidden">
 
       {/* 左サイドバー：ユーザー情報 ＋ テンプレート */}
@@ -623,7 +688,7 @@ export default function AdminConversationDetailPage() {
               {character.name} として返信 · <kbd className="px-1 py-0.5 rounded text-[10px]" style={{ background: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}>Tab</kbd> で送信ボタンへ移動
             </p>
           )}
-          {/* メディアプレビュー */}
+          {/* メディアプレビュー（通常アップロード） */}
           {pendingMedia && (
             <div className="flex items-center gap-3 mb-2 p-2 rounded-xl" style={{ background: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}>
               <div className="relative rounded-lg overflow-hidden flex-shrink-0" style={{ width: 56, height: 56 }}>
@@ -647,6 +712,22 @@ export default function AdminConversationDetailPage() {
               </button>
             </div>
           )}
+          {/* オペグラ写真プレビュー */}
+          {pendingOpegra && (
+            <div className="flex items-center gap-3 mb-2 p-2 rounded-xl" style={{ background: 'var(--color-primary-glow)', border: '1px solid var(--color-border-warm)' }}>
+              <div className="relative rounded-lg overflow-hidden flex-shrink-0" style={{ width: 56, height: 56 }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={pendingOpegra.imageUrl} alt="" className="w-full h-full object-cover" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium truncate" style={{ color: 'var(--color-primary)' }}>オペグラ · {pendingOpegra.title || '写真'}</p>
+                <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">送信ボタンで確定</p>
+              </div>
+              <button onClick={() => setPendingOpegra(null)} className="p-1.5 rounded-full text-[var(--color-text-muted)] hover:text-[var(--color-text)] flex-shrink-0" style={{ background: 'var(--color-surface)' }}>
+                <X size={14} />
+              </button>
+            </div>
+          )}
           <div className="flex gap-2">
             <textarea
               ref={textareaRef}
@@ -656,8 +737,8 @@ export default function AdminConversationDetailPage() {
               onBlur={handleBlur}
               onKeyDown={handleKeyDown}
               rows={3}
-              disabled={!!pendingMedia}
-              placeholder={pendingMedia ? '（メディアを送信します）' : `${character?.name}として返信… (Shift+Enterで改行、Tabで送信へ)`}
+              disabled={!!pendingMedia || !!pendingOpegra}
+              placeholder={pendingMedia || pendingOpegra ? '（メディアを送信します）' : `${character?.name}として返信… (Shift+Enterで改行、Tabで送信へ)`}
               className="flex-1 input-warm px-4 py-2.5 text-sm resize-none disabled:opacity-50"
             />
             <div className="flex flex-col gap-2">
@@ -665,7 +746,7 @@ export default function AdminConversationDetailPage() {
               <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
               <button
                 onClick={() => imageInputRef.current?.click()}
-                disabled={!!pendingMedia || uploadingImage || sending}
+                disabled={!!pendingMedia || !!pendingOpegra || uploadingImage || sending}
                 title="画像を送信"
                 className="px-3 flex items-center justify-center gap-1.5 text-sm rounded-lg disabled:opacity-40 transition-colors"
                 style={{ background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)', height: '40px' }}
@@ -676,22 +757,32 @@ export default function AdminConversationDetailPage() {
               <input ref={videoInputRef} type="file" accept="video/*" className="hidden" onChange={handleVideoSelect} />
               <button
                 onClick={() => videoInputRef.current?.click()}
-                disabled={!!pendingMedia || uploadingVideo || sending}
+                disabled={!!pendingMedia || !!pendingOpegra || uploadingVideo || sending}
                 title="動画を送信（ユーザーは50ptで視聴）"
                 className="px-3 flex items-center justify-center gap-1.5 text-sm rounded-lg disabled:opacity-40 transition-colors"
                 style={{ background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)', height: '40px' }}
               >
                 {uploadingVideo ? <Loader2 size={15} className="animate-spin" /> : <VideoIcon size={15} />}
               </button>
+              {/* オペグラ */}
+              <button
+                onClick={openOpegra}
+                disabled={!!pendingMedia || !!pendingOpegra || sending}
+                title="オペグラ（写真ライブラリ）"
+                className="px-3 flex items-center justify-center gap-1.5 text-sm rounded-lg disabled:opacity-40 transition-colors"
+                style={{ background: 'var(--color-primary-glow)', border: '1px solid var(--color-border-warm)', color: 'var(--color-primary)', height: '40px' }}
+              >
+                <Library size={15} />
+              </button>
               {/* 送信ボタン */}
               <button
                 ref={sendBtnRef}
-                onClick={pendingMedia ? sendPendingMedia : sendReply}
-                disabled={(!input.trim() && !pendingMedia) || sending || uploadingImage || uploadingVideo}
+                onClick={pendingOpegra ? sendOpegraPhoto : pendingMedia ? sendPendingMedia : sendReply}
+                disabled={(!input.trim() && !pendingMedia && !pendingOpegra) || sending || sendingOpegra || uploadingImage || uploadingVideo}
                 className="btn-primary px-4 flex items-center gap-1.5 text-sm disabled:opacity-40 flex-1"
               >
-                {sending || uploadingImage || uploadingVideo ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
-                送信
+                {sending || sendingOpegra || uploadingImage || uploadingVideo ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
+                {queueInfo ? '送信して次へ' : '送信'}
               </button>
             </div>
           </div>
@@ -724,5 +815,143 @@ export default function AdminConversationDetailPage() {
         </div>
       </aside>
     </div>
+
+    {/* ===== オペグラ ダイアログ ===== */}
+    {opegraOpen && (
+      <div
+        className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
+        onClick={e => { if (e.target === e.currentTarget) setOpegraOpen(false) }}
+      >
+        <div className="bg-[var(--color-surface)] rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+          style={{ width: '720px', maxWidth: '95vw', height: '80vh' }}>
+
+          {/* ヘッダー */}
+          <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--color-border)' }}>
+            <div className="flex items-center gap-2">
+              <Library size={18} style={{ color: 'var(--color-primary)' }} />
+              <h2 className="font-bold text-base">オペグラ</h2>
+            </div>
+            <button onClick={() => setOpegraOpen(false)} className="text-[var(--color-text-muted)] hover:text-[var(--color-text)]">
+              <X size={20} />
+            </button>
+          </div>
+
+          {/* フィルタータブ */}
+          <div className="flex gap-2 px-5 py-3" style={{ borderBottom: '1px solid var(--color-border)', flexShrink: 0 }}>
+            {([
+              { key: 'all', label: 'すべて' },
+              { key: 'char', label: 'このキャラ専用' },
+              { key: 'generic', label: '汎用' },
+            ] as const).map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => setOpegraFilter(tab.key)}
+                className="px-3 py-1 rounded-full text-xs font-medium transition-all"
+                style={{
+                  background: opegraFilter === tab.key ? 'var(--color-primary)' : 'var(--color-surface-2)',
+                  color: opegraFilter === tab.key ? '#fff' : 'var(--color-text-muted)',
+                }}
+              >
+                {tab.label}
+              </button>
+            ))}
+            <span className="ml-auto text-xs text-[var(--color-text-muted)] flex items-center">
+              写真をクリックして選択
+            </span>
+          </div>
+
+          {/* 写真グリッド */}
+          <div className="flex-1 overflow-y-auto p-4">
+            {opegraLoading ? (
+              <div className="flex justify-center items-center h-full">
+                <Loader2 className="animate-spin" style={{ color: 'var(--color-primary)' }} size={24} />
+              </div>
+            ) : (() => {
+              const filtered = opegraPhotos.filter(p => {
+                if (opegraFilter === 'char') return p.character_id === opegraConvCharId
+                if (opegraFilter === 'generic') return p.character_id === null
+                return true
+              })
+              if (filtered.length === 0) {
+                return (
+                  <div className="flex flex-col items-center justify-center h-full text-[var(--color-text-muted)]">
+                    <Library size={36} className="opacity-20 mb-2" />
+                    <p className="text-sm">写真がありません</p>
+                  </div>
+                )
+              }
+              return (
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+                  {filtered.map(photo => {
+                    const isSelected = selectedPhotoId === photo.id
+                    const isSent = photo.already_sent
+                    return (
+                      <div
+                        key={photo.id}
+                        onClick={() => { if (!isSent) setSelectedPhotoId(isSelected ? null : photo.id) }}
+                        className="relative rounded-xl overflow-hidden cursor-pointer transition-all"
+                        style={{
+                          border: isSelected ? '2.5px solid var(--color-primary)' : '2px solid transparent',
+                          opacity: isSent ? 0.45 : 1,
+                          cursor: isSent ? 'not-allowed' : 'pointer',
+                          boxShadow: isSelected ? '0 0 0 3px var(--color-primary-glow)' : 'none',
+                        }}
+                      >
+                        <div className="aspect-[3/4] bg-[var(--color-surface-2)]">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={photo.image_url}
+                            alt={photo.title || '写真'}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        {isSent && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                            <span className="bg-black/70 text-white text-[10px] px-2 py-0.5 rounded-full font-medium">送信済</span>
+                          </div>
+                        )}
+                        {isSelected && (
+                          <div className="absolute top-1.5 right-1.5 bg-[var(--color-primary)] rounded-full w-5 h-5 flex items-center justify-center">
+                            <Check size={12} className="text-white" />
+                          </div>
+                        )}
+                        {photo.title && (
+                          <div className="absolute bottom-0 left-0 right-0 px-1.5 py-1 text-[10px] text-white font-medium truncate"
+                            style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.7), transparent)' }}>
+                            {photo.title}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })()}
+          </div>
+
+          {/* フッター：送信ボタン */}
+          <div className="px-5 py-3 flex items-center gap-3" style={{ borderTop: '1px solid var(--color-border)', flexShrink: 0 }}>
+            <span className="text-xs text-[var(--color-text-muted)] flex-1">
+              {selectedPhotoId ? '選択中：1枚' : '写真を選択してください'}
+            </span>
+            <button
+              onClick={() => setOpegraOpen(false)}
+              className="btn-ghost px-4 py-2 text-sm"
+            >
+              キャンセル
+            </button>
+            <button
+              onClick={stageOpegraPhoto}
+              disabled={!selectedPhotoId}
+              className="btn-cta px-5 py-2 text-sm flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <ImagePlus size={15} />
+              選択してセット
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   )
 }
