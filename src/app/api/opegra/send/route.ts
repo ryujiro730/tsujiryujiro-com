@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
   // 写真情報取得
   const { data: photo } = await admin
     .from('opegra_photos')
-    .select('id, image_url, title')
+    .select('id, image_url, title, media_type')
     .eq('id', photoId)
     .single()
   if (!photo) return NextResponse.json({ error: 'Photo not found' }, { status: 404 })
