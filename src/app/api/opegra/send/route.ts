@@ -51,18 +51,24 @@ export async function POST(req: NextRequest) {
     .single()
   if (!conv) return NextResponse.json({ error: 'Conversation not found' }, { status: 404 })
 
-  // 重複チェック（unique制約で弾かれるが先にチェックしてエラーメッセージを改善）
-  const { data: existing } = await admin
-    .from('opegra_sent_log')
-    .select('id')
-    .eq('photo_id', photoId)
-    .eq('user_id', conv.user_id)
-    .single()
-  if (existing) {
-    return NextResponse.json({ error: 'この写真はこのユーザーに送信済みです' }, { status: 409 })
+  // 送信ログをまず記録（unique制約でアトミックに重複防止）
+  // メッセージ保存より先に行うことで、ログINSERT成功した場合のみメッセージを送れる
+  const { error: logErr } = await admin.from('opegra_sent_log').insert({
+    photo_id: photoId,
+    user_id: conv.user_id,
+    conversation_id: conversationId,
+  })
+  if (logErr) {
+    // unique制約違反 = 送信済み
+    const isDuplicate = logErr.code === '23505'
+    return NextResponse.json(
+      { error: isDuplicate ? 'この写真はこのユーザーに送信済みです' : logErr.message },
+      { status: isDuplicate ? 409 : 500 }
+    )
   }
 
-  // メッセージとして送信
+  // ログ記録成功後にメッセージ保存
+  const isVideo = photo.media_type === 'video'
   const { data: msg, error: msgErr } = await admin
     .from('messages')
     .insert({
@@ -71,7 +77,9 @@ export async function POST(req: NextRequest) {
       content: '',
       points_used: 0,
       is_read: false,
-      metadata: { image_url: photo.image_url },
+      metadata: isVideo
+        ? { video_url: photo.image_url }
+        : { image_url: photo.image_url },
     })
     .select()
     .single()
@@ -79,13 +87,6 @@ export async function POST(req: NextRequest) {
   if (msgErr || !msg) {
     return NextResponse.json({ error: 'Failed to save message' }, { status: 500 })
   }
-
-  // 送信ログを記録
-  await admin.from('opegra_sent_log').insert({
-    photo_id: photoId,
-    user_id: conv.user_id,
-    conversation_id: conversationId,
-  })
 
   // 会話更新
   const now = new Date().toISOString()

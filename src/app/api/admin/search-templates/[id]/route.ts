@@ -19,7 +19,10 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   if (!profile || !['admin', 'staff'].includes(profile.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const admin = adminSupabase()
-  const { error } = await admin.from('search_templates').delete().eq('id', params.id)
+  // adminは全削除可、staffは自分が作成したものだけ削除可
+  let q = admin.from('search_templates').delete().eq('id', params.id)
+  if (profile.role !== 'admin') q = q.eq('admin_id', user.id)
+  const { error } = await q
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })
 }

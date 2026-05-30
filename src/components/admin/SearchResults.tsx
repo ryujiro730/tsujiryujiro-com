@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { FileText, CheckSquare, Square } from 'lucide-react'
@@ -31,6 +31,11 @@ export function SearchResults({
   returnTo: string
 }) {
   const [checked, setChecked] = useState<Set<string>>(() => new Set(conversations.map(c => c.id)))
+
+  // conversationsが変わったら(検索し直したら)チェック状態をリセット
+  useEffect(() => {
+    setChecked(new Set(conversations.map(c => c.id)))
+  }, [conversations])
 
   const allChecked = checked.size === conversations.length
   const allConvIds = conversations.map(c => c.id)

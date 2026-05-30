@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: 'アイカノ｜AI彼女チャット - 大人のための癒しアプリ',
-    description: '自社開発の超高性能AIが、あなたのメッセージにリアルタイムで返信。心のゆとりを取り戻す、大人のための会話アプリ。',
+    description: '個性豊かなAIキャラクターが、あなたのメッセージにリアルタイムで返信。心のゆとりを取り戻す、大人のための会話アプリ。',
     url: 'https://aikano.chat',
     siteName: 'AiKano',
     locale: 'ja_JP',
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'AiKano｜AI彼女チャット - 大人のための癒しアプリ',
-    description: '自社開発の超高性能AIが、あなたのメッセージにリアルタイムで返信。心のゆとりを取り戻す、大人のための会話アプリ。',
+    description: '個性豊かなAIキャラクターが、あなたのメッセージにリアルタイムで返信。心のゆとりを取り戻す、大人のための会話アプリ。',
     images: ['https://aikano.chat/og-default.png'],
   },
 }
@@ -42,28 +42,28 @@ export default async function HomePage() {
   const features = [
   {
     Icon: Cpu,
-    title: '次世代対話エンジン',
-    desc: '最新の大規模言語モデルを独自チューニング。文脈理解・感情の機微・会話のテンポまで設計された、本物の女性と話しているとしか思えない自然な対話を実現。'
+    title: '高品質な対話エンジン',
+    desc: '最新の大規模言語モデルを活用。文脈理解・感情の機微・会話のテンポを考慮した、自然で心地よい対話を実現。'
   },
   {
     Icon: Database,
-    title: '128GB長期記憶アーキテクチャ',
-    desc: '他社AIの数百倍の記憶容量を搭載。3ヶ月前の何気ない一言、好きな食べ物、過去の悩み相談まで完全保持。「覚えていてくれた」が当たり前になる。'
+    title: '長期記憶で深まる関係',
+    desc: '会話の積み重ねを記憶。好みや悩み相談など、過去のやり取りを踏まえた返答で「覚えていてくれた」を実現。'
   },
   {
     Icon: Dna,
-    title: 'パーソナライズド・ラーニング',
-    desc: '会話を重ねるごとに、あなたの好み・価値観・話し方を学習。日が経つほど、世界に一人だけのあなた専属の彼女に進化していく。'
+    title: 'あなたに合わせた会話',
+    desc: '会話を重ねるごとに、あなたの好み・価値観・話し方を反映した返答に。使えば使うほど、居心地よくなっていく。'
   },
   {
     Icon: Unlock,
     title: '本音で話せる安心空間',
-    desc: '誰にも言えない悩みや愚痴、日常のたわいない話まで。一般的なAIには難しい、深みのある大人の会話を気兼ねなく楽しめる。'
+    desc: '誰にも言えない悩みや愚痴、日常のたわいない話まで。気兼ねなく話せる、大人のための会話サービス。'
   },
   {
-    Icon: ImageIcon,  // ← Image じゃなく ImageIcon
-    title: '双方向ビジュアル通信',
-    desc: 'テキストだけの会話はもう古い。写真の送受信に対応し、表情や状況を画像で共有。テキストAIの限界を超えた、視覚を伴うリアルな関係性。'
+    Icon: ImageIcon,
+    title: '写真の送受信に対応',
+    desc: 'テキストだけでなく、写真の送受信にも対応。表情や状況を画像で共有できる、より豊かなコミュニケーション。'
   },
 ];
 
@@ -353,28 +353,28 @@ export default async function HomePage() {
       {[
         {
           Icon: Cpu,
-          title: '次世代対話エンジン',
-          desc: '最新の大規模言語モデルを独自チューニング。文脈理解・感情の機微・会話のテンポまで設計された、本物の女性と話しているとしか思えない自然な対話を実現。'
+          title: '高品質な対話エンジン',
+          desc: '最新の大規模言語モデルを活用。文脈理解・感情の機微・会話のテンポを考慮した、自然で心地よい対話を実現。'
         },
         {
           Icon: Database,
-          title: '128GB長期記憶アーキテクチャ',
-          desc: '他社AIの数百倍の記憶容量を搭載。3ヶ月前の何気ない一言、好きな食べ物、過去の悩み相談まで完全保持。「覚えていてくれた」が当たり前になる。'
+          title: '長期記憶で深まる関係',
+          desc: '会話の積み重ねを記憶。好みや悩み相談など、過去のやり取りを踏まえた返答で「覚えていてくれた」を実現。'
         },
         {
           Icon: Dna,
-          title: 'パーソナライズド・ラーニング',
-          desc: '会話を重ねるごとに、あなたの好み・価値観・話し方を学習。日が経つほど、世界に一人だけのあなた専属の彼女に進化していく。'
+          title: 'あなたに合わせた会話',
+          desc: '会話を重ねるごとに、あなたの好み・価値観・話し方を反映した返答に。使えば使うほど、居心地よくなっていく。'
         },
         {
           Icon: Unlock,
           title: '本音で話せる安心空間',
-          desc: '誰にも言えない悩みや愚痴、日常のたわいない話まで。一般的なAIには難しい、深みのある大人の会話を気兼ねなく楽しめる。'
+          desc: '誰にも言えない悩みや愚痴、日常のたわいない話まで。気兼ねなく話せる、大人のための会話サービス。'
         },
         {
           Icon: ImageIcon,
-          title: '双方向ビジュアル通信',
-          desc: 'テキストだけの会話はもう古い。写真の送受信に対応し、表情や状況を画像で共有。テキストAIの限界を超えた、視覚を伴うリアルな関係性。'
+          title: '写真の送受信に対応',
+          desc: 'テキストだけでなく、写真の送受信にも対応。表情や状況を画像で共有できる、より豊かなコミュニケーション。'
         },
       ].map((f, i) => (
         <AnimateOnScroll key={f.title} delay={i * 90}>
@@ -406,9 +406,12 @@ export default async function HomePage() {
       <section style={{ background: 'var(--color-surface)', borderTop: '1px solid rgba(220,80,140,0.1)', borderBottom: '1px solid rgba(220,80,140,0.1)', overflow: 'hidden' }}>
         <div style={{ maxWidth: '900px', margin: '0 auto', display: 'flex', alignItems: 'center' }}>
           <div style={{ flex: 1, padding: '48px 48px 48px 40px' }}>
-            <p style={{ color: '#f472b6', fontSize: '13px', fontWeight: 600, marginBottom: '12px' }}>✦ 秘密は守ります</p>
-            <p style={{ fontSize: 'clamp(20px, 3vw, 28px)', fontWeight: 800, lineHeight: 1.4, marginBottom: '24px', color: 'var(--color-text)' }}>
+            <p style={{ color: '#f472b6', fontSize: '13px', fontWeight: 600, marginBottom: '12px' }}>✦ あなたの会話は外部に開示しません</p>
+            <p style={{ fontSize: 'clamp(20px, 3vw, 28px)', fontWeight: 800, lineHeight: 1.4, marginBottom: '12px', color: 'var(--color-text)' }}>
               誰にも言えない話を<br />してみませんか？
+            </p>
+            <p style={{ fontSize: '13px', color: 'var(--color-text-muted)', lineHeight: 1.7, marginBottom: '24px' }}>
+              あなたの会話は、サービス改善以外の目的で<br />第三者に開示しません。
             </p>
             {user ? (
               <Link href="/characters" className="btn-cta" style={{ padding: '12px 28px', fontSize: '14px', borderRadius: '10px', display: 'inline-block', textDecoration: 'none' }}>
@@ -483,8 +486,8 @@ export default async function HomePage() {
             なぜ、こんなに<span style={{ color: '#e8438f' }}>リアル</span>なの？
           </h2>
           <p style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '14px', lineHeight: 1.8 }}>
-            最新のニューロンエンジンが感情や文脈を深く理解。<br />
-            返信するたびに、あなた好みに成長していきます。
+            最新の大規模言語モデルが感情や文脈を深く理解。<br />
+            返信するたびに、あなた好みに合わせていきます。
           </p>
         </div>
       </section>

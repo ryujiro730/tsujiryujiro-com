@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()
-  const { characterId, title, imageUrl, sortOrder } = body
+  const { characterId, title, imageUrl, sortOrder, mediaType } = body
   if (!imageUrl) return NextResponse.json({ error: 'imageUrl required' }, { status: 400 })
 
   const admin = adminSupabase()
@@ -57,6 +57,7 @@ export async function POST(req: NextRequest) {
       title: title ?? '',
       image_url: imageUrl,
       sort_order: sortOrder ?? 0,
+      media_type: mediaType === 'video' ? 'video' : 'image',
     })
     .select('*, characters(id, name)')
     .single()

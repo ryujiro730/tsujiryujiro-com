@@ -34,7 +34,9 @@ function ScheduleList({ conversationIds }: { conversationIds: string[] }) {
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [])
+  // JSON.stringifyで配列の中身が変わったときだけ再フェッチ（参照比較だと毎レンダーで無限フェッチになる）
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { load() }, [JSON.stringify(conversationIds)])
 
   const cancel = async (id: string) => {
     if (!confirm('この予約を取り消しますか？')) return
@@ -83,8 +85,12 @@ export function BulkSendSection({ conversations }: { conversations: Conv[] }) {
   const [error, setError] = useState<string | null>(null)
   const [scheduleKey, setScheduleKey] = useState(0)
 
-  // 最小日時（現在+5分）
-  const minDatetime = new Date(Date.now() + 5 * 60 * 1000).toISOString().slice(0, 16)
+  // 最小日時（現在+5分）- ブラウザのローカル時刻で計算
+  const minDatetime = (() => {
+    const d = new Date(Date.now() + 5 * 60 * 1000)
+    const offset = d.getTimezoneOffset()
+    return new Date(d.getTime() - offset * 60 * 1000).toISOString().slice(0, 16)
+  })()
 
   const handleSend = async () => {
     if (!message.trim() || sending) return

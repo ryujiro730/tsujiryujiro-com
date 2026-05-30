@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Loader2, Plus, Trash2, Image as ImageIcon, X, Upload } from 'lucide-react'
+import { Loader2, Plus, Trash2, Image as ImageIcon, X, Upload, Play } from 'lucide-react'
 import { compressImage } from '@/lib/compress-image'
 
 type Character = { id: string; name: string }
@@ -11,6 +11,7 @@ type Photo = {
   character_id: string | null
   title: string
   image_url: string
+  media_type: 'image' | 'video'
   is_active: boolean
   sort_order: number
   created_at: string
@@ -21,7 +22,7 @@ export default function OpegraPage() {
   const [photos, setPhotos] = useState<Photo[]>([])
   const [characters, setCharacters] = useState<Character[]>([])
   const [loading, setLoading] = useState(true)
-  const [filterCharId, setFilterCharId] = useState<string | null>(null)  // null = すべて
+  const [filterCharId, setFilterCharId] = useState<string | null>(null)
   const [showUpload, setShowUpload] = useState(false)
 
   // Upload form state
@@ -29,14 +30,13 @@ export default function OpegraPage() {
   const [uploadPreview, setUploadPreview] = useState<string | null>(null)
   const [uploadTitle, setUploadTitle] = useState('')
   const [uploadCharId, setUploadCharId] = useState<string>('__generic__')
+  const [uploadMediaType, setUploadMediaType] = useState<'image' | 'video'>('image')
   const [uploading, setUploading] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
 
-  useEffect(() => {
-    loadAll()
-  }, [])
+  useEffect(() => { loadAll() }, [])
 
   const loadAll = async () => {
     setLoading(true)
@@ -54,6 +54,8 @@ export default function OpegraPage() {
     const file = e.target.files?.[0]
     if (!file) return
     e.target.value = ''
+    const isVideo = file.type.startsWith('video/')
+    setUploadMediaType(isVideo ? 'video' : 'image')
     setUploadFile(file)
     const url = URL.createObjectURL(file)
     setUploadPreview(url)
@@ -64,6 +66,7 @@ export default function OpegraPage() {
     setUploadPreview(null)
     setUploadTitle('')
     setUploadCharId('__generic__')
+    setUploadMediaType('image')
     setShowUpload(true)
   }
 
@@ -78,13 +81,28 @@ export default function OpegraPage() {
     if (!uploadFile) return
     setUploading(true)
 
-    const { blob: compressed } = await compressImage(uploadFile)
-    const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.webp`
-    const path = `opegra/${filename}`
+    let uploadBlob: Blob
+    let contentType: string
+    let ext: string
+
+    if (uploadMediaType === 'video') {
+      uploadBlob = uploadFile
+      contentType = uploadFile.type || 'video/mp4'
+      ext = uploadFile.name.split('.').pop() ?? 'mp4'
+    } else {
+      const { blob: compressed } = await compressImage(uploadFile)
+      uploadBlob = compressed
+      contentType = 'image/webp'
+      ext = 'webp'
+    }
+
+    const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+    const folder = uploadMediaType === 'video' ? 'opegra-videos' : 'opegra'
+    const path = `${folder}/${filename}`
 
     const { error: storageErr } = await supabase.storage
       .from('chat-images')
-      .upload(path, compressed, { upsert: false, contentType: 'image/webp' })
+      .upload(path, uploadBlob, { upsert: false, contentType })
 
     if (storageErr) {
       alert('アップロード失敗: ' + storageErr.message)
@@ -101,6 +119,7 @@ export default function OpegraPage() {
         characterId: uploadCharId === '__generic__' ? null : uploadCharId,
         title: uploadTitle.trim(),
         imageUrl: urlData.publicUrl,
+        mediaType: uploadMediaType,
       }),
     })
 
@@ -117,7 +136,7 @@ export default function OpegraPage() {
   }
 
   const deletePhoto = async (photoId: string) => {
-    if (!confirm('この写真を削除しますか？送信済み履歴も消えます。')) return
+    if (!confirm('このメディアを削除しますか？送信済み履歴も消えます。')) return
     const res = await fetch(`/api/admin/opegra/${photoId}`, { method: 'DELETE' })
     if (!res.ok) { alert('削除に失敗しました'); return }
     setPhotos(prev => prev.filter(p => p.id !== photoId))
@@ -135,13 +154,10 @@ export default function OpegraPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-bold">オペグラ</h1>
-          <p className="text-sm text-[var(--color-text-muted)] mt-0.5">スタッフがチャットで送る写真ライブラリ</p>
+          <p className="text-sm text-[var(--color-text-muted)] mt-0.5">スタッフがチャットで送る写真・動画ライブラリ</p>
         </div>
-        <button
-          onClick={openUpload}
-          className="btn-primary flex items-center gap-2 px-4 py-2 text-sm"
-        >
-          <Plus size={15} /> 写真を追加
+        <button onClick={openUpload} className="btn-primary flex items-center gap-2 px-4 py-2 text-sm">
+          <Plus size={15} /> メディアを追加
         </button>
       </div>
 
@@ -154,7 +170,7 @@ export default function OpegraPage() {
         ))}
       </div>
 
-      {/* Photo grid */}
+      {/* Grid */}
       {loading ? (
         <div className="flex justify-center py-20">
           <Loader2 className="animate-spin text-[var(--color-primary)]" size={22} />
@@ -162,24 +178,37 @@ export default function OpegraPage() {
       ) : filteredPhotos.length === 0 ? (
         <div className="text-center py-20 text-[var(--color-text-muted)]">
           <ImageIcon size={40} className="mx-auto mb-3 opacity-30" />
-          <p className="text-sm">写真がありません</p>
+          <p className="text-sm">メディアがありません</p>
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
           {filteredPhotos.map(photo => (
             <div key={photo.id} className="card overflow-hidden group relative">
-              <div className="aspect-[3/4] bg-[var(--color-surface-2)] overflow-hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={photo.image_url}
-                  alt={photo.title || '写真'}
-                  className="w-full h-full object-cover"
-                />
+              <div className="aspect-[3/4] bg-[var(--color-surface-2)] overflow-hidden relative">
+                {photo.media_type === 'video' ? (
+                  <>
+                    <video
+                      src={photo.image_url}
+                      className="w-full h-full object-cover"
+                      muted
+                      preload="metadata"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="bg-black/50 rounded-full w-10 h-10 flex items-center justify-center">
+                        <Play size={18} className="text-white ml-0.5" />
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={photo.image_url} alt={photo.title || '写真'} className="w-full h-full object-cover" />
+                )}
               </div>
               <div className="p-2">
                 <p className="text-xs font-medium truncate">{photo.title || '（タイトルなし）'}</p>
                 <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
                   {photo.characters?.name ?? '汎用'}
+                  {photo.media_type === 'video' && <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full font-semibold" style={{ background: 'rgba(99,102,241,0.15)', color: '#818cf8' }}>動画</span>}
                 </p>
               </div>
               <button
@@ -201,31 +230,47 @@ export default function OpegraPage() {
         >
           <div className="bg-[var(--color-surface)] rounded-2xl shadow-xl w-full max-w-md p-6">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="font-bold text-lg">写真を追加</h2>
+              <h2 className="font-bold text-lg">メディアを追加</h2>
               <button onClick={closeUpload} className="text-[var(--color-text-muted)] hover:text-[var(--color-text)]">
                 <X size={20} />
               </button>
             </div>
 
-            {/* Image preview */}
+            {/* Preview area */}
             <div
-              className="aspect-[4/3] bg-[var(--color-surface-2)] border-2 border-dashed border-[var(--color-border-warm)] rounded-xl overflow-hidden flex items-center justify-center cursor-pointer mb-4"
+              className="aspect-[4/3] bg-[var(--color-surface-2)] border-2 border-dashed border-[var(--color-border-warm)] rounded-xl overflow-hidden flex items-center justify-center cursor-pointer mb-4 relative"
               onClick={() => fileInputRef.current?.click()}
             >
               {uploadPreview ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={uploadPreview} alt="preview" className="w-full h-full object-contain" />
+                uploadMediaType === 'video' ? (
+                  <video src={uploadPreview} controls className="w-full h-full object-contain" />
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={uploadPreview} alt="preview" className="w-full h-full object-contain" />
+                )
               ) : (
                 <div className="text-center text-[var(--color-text-muted)]">
                   <Upload size={32} className="mx-auto mb-2 opacity-40" />
-                  <p className="text-sm">クリックして写真を選択</p>
+                  <p className="text-sm">クリックして写真・動画を選択</p>
+                  <p className="text-xs mt-1 opacity-60">画像 / MP4・MOV 対応</p>
+                </div>
+              )}
+              {uploadPreview && uploadMediaType === 'video' && (
+                <div className="absolute top-2 right-2 text-xs px-2 py-0.5 rounded-full font-semibold pointer-events-none"
+                  style={{ background: 'rgba(99,102,241,0.85)', color: '#fff' }}>
+                  動画
                 </div>
               )}
             </div>
-            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*,video/*"
+              className="hidden"
+              onChange={handleFileSelect}
+            />
 
             <div className="space-y-3">
-              {/* Title */}
               <div>
                 <label className="text-xs text-[var(--color-text-muted)] mb-1 block">タイトル</label>
                 <input
@@ -236,8 +281,6 @@ export default function OpegraPage() {
                   className="input-warm w-full px-3 py-2 text-sm"
                 />
               </div>
-
-              {/* Character */}
               <div>
                 <label className="text-xs text-[var(--color-text-muted)] mb-1 block">キャラクター</label>
                 <select

@@ -11,6 +11,7 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [done, setDone] = useState(false)
+  const [consentChecked, setConsentChecked] = useState(false)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -92,16 +93,30 @@ export default function RegisterPage() {
 
         {error && <p className="text-red-400 text-xs">{error}</p>}
 
-        <button type="submit" disabled={loading}
+        {/* 同意チェックボックス */}
+        <label className="flex items-start gap-3 cursor-pointer select-none rounded-xl p-3"
+          style={{ background: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}>
+          <input
+            type="checkbox"
+            checked={consentChecked}
+            onChange={e => setConsentChecked(e.target.checked)}
+            className="mt-0.5 flex-shrink-0 accent-[var(--color-primary)]"
+            style={{ width: '16px', height: '16px' }}
+          />
+          <span className="text-xs text-[var(--color-text-muted)] leading-relaxed">
+            会話内容はサービス改善・AI学習のためスタッフが確認する場合があります。また、
+            <Link href="/legal/terms" className="underline" style={{ color: 'var(--color-primary)' }}>利用規約</Link>・
+            <Link href="/legal/privacy" className="underline" style={{ color: 'var(--color-primary)' }}>プライバシーポリシー</Link>
+            に同意します。
+          </span>
+        </label>
+
+        <button type="submit" disabled={loading || !consentChecked}
           className="btn-primary w-full py-3 flex items-center justify-center gap-2 disabled:opacity-60">
           {loading && <Loader2 size={15} className="animate-spin" />}
           登録して話しかける
         </button>
       </form>
-
-      <p className="text-[var(--color-text-muted)] text-xs mt-4 leading-relaxed">
-        登録することで利用規約・プライバシーポリシーに同意したことになります
-      </p>
 
       <div className="flex items-center gap-3 my-5">
         <div className="flex-1 h-px" style={{ background: 'var(--color-border)' }} />
@@ -109,8 +124,8 @@ export default function RegisterPage() {
         <div className="flex-1 h-px" style={{ background: 'var(--color-border)' }} />
       </div>
 
-      <button type="button" onClick={handleGoogle}
-        className="w-full py-3 flex items-center justify-center gap-2.5 rounded-xl text-sm font-medium transition-opacity hover:opacity-80"
+      <button type="button" onClick={handleGoogle} disabled={!consentChecked}
+        className="w-full py-3 flex items-center justify-center gap-2.5 rounded-xl text-sm font-medium transition-opacity hover:opacity-80 disabled:opacity-40"
         style={{ background: '#fff', border: '1px solid var(--color-border)', color: '#333' }}>
         <svg width="18" height="18" viewBox="0 0 24 24">
           <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>

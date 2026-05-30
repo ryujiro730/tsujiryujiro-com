@@ -16,15 +16,13 @@ export async function POST(req: NextRequest) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   )
 
-  // convがこのユーザーのものか確認しつつメッセージ更新を並列実行
-  const [{ data: conv }] = await Promise.all([
-    admin.from('conversations').select('id').eq('id', conversationId).eq('user_id', session.user.id).single(),
-    admin.from('messages').update({ is_read: true })
-      .eq('conversation_id', conversationId).eq('sender_role', 'character').eq('is_read', false),
-  ])
-
-  // convがなければ他ユーザーのものだが更新は既に走った（is_read変更のみで実害なし）
+  // 所有権を先に確認してからメッセージ更新
+  const { data: conv } = await admin
+    .from('conversations').select('id').eq('id', conversationId).eq('user_id', session.user.id).single()
   if (!conv) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  await admin.from('messages').update({ is_read: true })
+    .eq('conversation_id', conversationId).eq('sender_role', 'character').eq('is_read', false)
 
   return NextResponse.json({ ok: true })
 }

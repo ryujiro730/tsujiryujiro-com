@@ -25,14 +25,29 @@ export async function GET(req: NextRequest) {
   const now = new Date().toISOString()
 
   // 送信すべき予約を取得
-  const { data: schedules } = await admin
+  const { data: candidates } = await admin
     .from('bulk_send_schedules')
     .select('id, conversation_ids, message')
     .eq('status', 'pending')
     .lte('scheduled_at', now)
     .limit(10)  // 1回のcronで最大10件処理
 
-  if (!schedules?.length) {
+  if (!candidates?.length) {
+    return NextResponse.json({ processed: 0 })
+  }
+
+  // 楽観的ロック: pending → processing に更新できたものだけ処理（競合状態防止）
+  const schedules: typeof candidates = []
+  for (const candidate of candidates) {
+    const { error: lockErr } = await admin
+      .from('bulk_send_schedules')
+      .update({ status: 'processing' })
+      .eq('id', candidate.id)
+      .eq('status', 'pending')
+    if (!lockErr) schedules.push(candidate)
+  }
+
+  if (!schedules.length) {
     return NextResponse.json({ processed: 0 })
   }
 
@@ -81,6 +96,9 @@ export async function GET(req: NextRequest) {
     const { error: insertErr } = await admin.from('messages').insert(messages)
     if (insertErr) {
       console.error('[bulk-send cron] insert error:', insertErr.message)
+      await admin.from('bulk_send_schedules')
+        .update({ status: 'failed', sent_at: now, sent_count: 0 })
+        .eq('id', schedule.id)
       continue
     }
 

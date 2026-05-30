@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { Send, ChevronLeft, Loader2, FileText, Save, Tag, Pencil, Trash2, Check, X, ImagePlus, VideoIcon, Library } from 'lucide-react'
+import { Send, ChevronLeft, Loader2, FileText, Save, Tag, Pencil, Trash2, Check, X, ImagePlus, VideoIcon, Library, Play } from 'lucide-react'
 import { compressImage } from '@/lib/compress-image'
 import { formatDistanceToNow, format } from 'date-fns'
 import { ja } from 'date-fns/locale'
@@ -48,7 +48,7 @@ export default function AdminConversationDetailPage() {
   const [selectedPhotoId, setSelectedPhotoId] = useState<string | null>(null)
   const [sendingOpegra, setSendingOpegra] = useState(false)
   // ステージング中のオペグラ写真
-  const [pendingOpegra, setPendingOpegra] = useState<{ photoId: string; imageUrl: string; title: string } | null>(null)
+  const [pendingOpegra, setPendingOpegra] = useState<{ photoId: string; imageUrl: string; title: string; mediaType: 'image' | 'video' } | null>(null)
 
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -332,7 +332,7 @@ export default function AdminConversationDetailPage() {
     if (!selectedPhotoId) return
     const photo = opegraPhotos.find(p => p.id === selectedPhotoId)
     if (!photo) return
-    setPendingOpegra({ photoId: photo.id, imageUrl: photo.image_url, title: photo.title ?? '' })
+    setPendingOpegra({ photoId: photo.id, imageUrl: photo.image_url, title: photo.title ?? '', mediaType: photo.media_type ?? 'image' })
     setPendingMedia(null) // 通常のメディアステージをクリア
     setSelectedPhotoId(null)
     setOpegraOpen(false)
@@ -417,6 +417,8 @@ export default function AdminConversationDetailPage() {
         channelRef.current?.send({ type: 'broadcast', event: 'new_message', payload: { message: msg } })
       }
     }
+    if (sessionStorage.getItem('convQueue')) advanceToNext()
+    else router.refresh()
   }
 
   if (loading) {
@@ -712,15 +714,23 @@ export default function AdminConversationDetailPage() {
               </button>
             </div>
           )}
-          {/* オペグラ写真プレビュー */}
+          {/* オペグラ写真・動画プレビュー */}
           {pendingOpegra && (
             <div className="flex items-center gap-3 mb-2 p-2 rounded-xl" style={{ background: 'var(--color-primary-glow)', border: '1px solid var(--color-border-warm)' }}>
               <div className="relative rounded-lg overflow-hidden flex-shrink-0" style={{ width: 56, height: 56 }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={pendingOpegra.imageUrl} alt="" className="w-full h-full object-cover" />
+                {pendingOpegra.mediaType === 'video' ? (
+                  <div className="w-full h-full flex items-center justify-center" style={{ background: 'var(--color-surface)' }}>
+                    <Play size={20} style={{ color: 'var(--color-primary)' }} />
+                  </div>
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={pendingOpegra.imageUrl} alt="" className="w-full h-full object-cover" />
+                )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium truncate" style={{ color: 'var(--color-primary)' }}>オペグラ · {pendingOpegra.title || '写真'}</p>
+                <p className="text-xs font-medium truncate" style={{ color: 'var(--color-primary)' }}>
+                  オペグラ · {pendingOpegra.mediaType === 'video' ? '動画' : '写真'}{pendingOpegra.title ? ` · ${pendingOpegra.title}` : ''}
+                </p>
                 <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">送信ボタンで確定</p>
               </div>
               <button onClick={() => setPendingOpegra(null)} className="p-1.5 rounded-full text-[var(--color-text-muted)] hover:text-[var(--color-text)] flex-shrink-0" style={{ background: 'var(--color-surface)' }}>
@@ -856,7 +866,7 @@ export default function AdminConversationDetailPage() {
               </button>
             ))}
             <span className="ml-auto text-xs text-[var(--color-text-muted)] flex items-center">
-              写真をクリックして選択
+              クリックして選択
             </span>
           </div>
 
@@ -897,13 +907,29 @@ export default function AdminConversationDetailPage() {
                           boxShadow: isSelected ? '0 0 0 3px var(--color-primary-glow)' : 'none',
                         }}
                       >
-                        <div className="aspect-[3/4] bg-[var(--color-surface-2)]">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={photo.image_url}
-                            alt={photo.title || '写真'}
-                            className="w-full h-full object-cover"
-                          />
+                        <div className="aspect-[3/4] bg-[var(--color-surface-2)] relative">
+                          {photo.media_type === 'video' ? (
+                            <>
+                              <video
+                                src={photo.image_url}
+                                className="w-full h-full object-cover"
+                                muted
+                                preload="metadata"
+                              />
+                              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <div className="bg-black/50 rounded-full w-8 h-8 flex items-center justify-center">
+                                  <Play size={14} className="text-white ml-0.5" />
+                                </div>
+                              </div>
+                            </>
+                          ) : (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={photo.image_url}
+                              alt={photo.title || '写真'}
+                              className="w-full h-full object-cover"
+                            />
+                          )}
                         </div>
                         {isSent && (
                           <div className="absolute inset-0 flex items-center justify-center bg-black/30">
