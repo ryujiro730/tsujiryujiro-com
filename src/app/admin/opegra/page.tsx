@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Loader2, Plus, Trash2, Image as ImageIcon, X, Upload, Play, CheckSquare, Square, FolderInput } from 'lucide-react'
+import { Loader2, Plus, Trash2, Image as ImageIcon, X, Upload, Play, CheckSquare, Square, FolderInput, Trash } from 'lucide-react'
 import { compressImage, heicToBlob, isHeic } from '@/lib/compress-image'
 
 type Character = { id: string; name: string }
@@ -47,6 +47,9 @@ export default function OpegraPage() {
   const [moveCharId, setMoveCharId] = useState('__generic__')
   const [moveCategory, setMoveCategory] = useState('')
   const [moving, setMoving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [editingTitleId, setEditingTitleId] = useState<string | null>(null)
+  const [editingTitleValue, setEditingTitleValue] = useState('')
 
   // Upload form state
   const [uploadFiles, setUploadFiles] = useState<File[]>([])
@@ -192,12 +195,29 @@ export default function OpegraPage() {
     if (!uploadFiles.length) return
     setCheckingHashes(true)
 
-    // 全ファイルのハッシュを並列計算
-    const hashes = await Promise.all(uploadFiles.map(computeHash))
-    const hashList = hashes.join(',')
+    let hashes: string[]
+    try {
+      hashes = await Promise.all(uploadFiles.map(computeHash))
+    } catch (e) {
+      console.error('[opegra] hash computation failed:', e)
+      setCheckingHashes(false)
+      return
+    }
 
-    const res = await fetch(`/api/admin/opegra?hashes=${hashList}`)
-    const { matches } = await res.json() as { matches: Record<string, Photo> }
+    let matches: Record<string, Photo> = {}
+    try {
+      const res = await fetch(`/api/admin/opegra?hashes=${hashes.join(',')}`)
+      const json = await res.json()
+      if (json.error) {
+        // file_hashカラムが存在しない可能性（マイグレーション未適用）
+        console.warn('[opegra] hash check API error:', json.error)
+      } else {
+        matches = json.matches ?? {}
+      }
+    } catch (e) {
+      console.warn('[opegra] hash check failed, skipping duplicate detection:', e)
+    }
+
     setCheckingHashes(false)
 
     const dups: DuplicateItem[] = []
@@ -210,7 +230,7 @@ export default function OpegraPage() {
     if (dups.length > 0) {
       setCachedHashes(hashes)
       setDuplicateItems(dups)
-      return // 確認UIを表示して待機
+      return
     }
 
     await runUpload(hashes, [])
@@ -280,6 +300,47 @@ export default function OpegraPage() {
     setLastClickedIndex(null)
     setMoveCharId('__generic__')
     setMoveCategory('')
+  }
+
+  const startEditTitle = (photo: Photo) => {
+    setEditingTitleId(photo.id)
+    setEditingTitleValue(photo.title || '')
+  }
+
+  const saveTitle = async (photoId: string) => {
+    const title = editingTitleValue.trim()
+    setEditingTitleId(null)
+    const res = await fetch(`/api/admin/opegra/${photoId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title }),
+    })
+    if (!res.ok) { alert('保存に失敗しました'); return }
+    setPhotos(prev => prev.map(p => p.id === photoId ? { ...p, title } : p))
+  }
+
+  const handleTitleKeyDown = (e: React.KeyboardEvent, photoId: string) => {
+    if (e.key === 'Enter') { e.preventDefault(); saveTitle(photoId) }
+    if (e.key === 'Escape') setEditingTitleId(null)
+  }
+
+  const handleBulkDelete = async () => {
+    if (selected.size === 0) return
+    if (!confirm(`${selected.size}件のメディアを削除しますか？送信済み履歴も消えます。`)) return
+    setDeleting(true)
+    const res = await fetch('/api/admin/opegra', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ photoIds: Array.from(selected) }),
+    })
+    if (!res.ok) {
+      alert('削除に失敗しました')
+      setDeleting(false)
+      return
+    }
+    setPhotos(prev => prev.filter(p => !selected.has(p.id)))
+    exitSelectMode()
+    setDeleting(false)
   }
 
   const selectAll = () => {
@@ -437,7 +498,25 @@ export default function OpegraPage() {
                   )}
                 </div>
                 <div className="p-2">
-                  <p className="text-xs font-medium truncate">{photo.title || '（タイトルなし）'}</p>
+                  {editingTitleId === photo.id ? (
+                    <input
+                      autoFocus
+                      value={editingTitleValue}
+                      onChange={e => setEditingTitleValue(e.target.value)}
+                      onBlur={() => saveTitle(photo.id)}
+                      onKeyDown={e => handleTitleKeyDown(e, photo.id)}
+                      className="w-full text-xs font-medium px-1.5 py-0.5 rounded border outline-none"
+                      style={{ border: '1px solid var(--color-primary)', background: 'var(--color-surface-2)' }}
+                    />
+                  ) : (
+                    <p
+                      className="text-xs font-medium truncate cursor-text hover:text-[var(--color-primary)] transition-colors"
+                      onClick={() => !selectMode && startEditTitle(photo)}
+                      title="クリックして名前を編集"
+                    >
+                      {photo.title || <span className="opacity-40">（タイトルなし）</span>}
+                    </p>
+                  )}
                   <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
                     {photo.characters?.name ?? categoryLabel(photo.category)}
                     {photo.media_type === 'video' && (
@@ -495,16 +574,29 @@ export default function OpegraPage() {
                 </div>
               )}
             </div>
-            <button
-              onClick={handleBulkMove}
-              disabled={selected.size === 0 || moving}
-              className="btn-primary px-5 py-2.5 text-sm flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap self-end"
-            >
-              {moving
-                ? <><Loader2 size={15} className="animate-spin" /> 移動中…</>
-                : <><FolderInput size={15} /> {selected.size}件を「{moveDestLabel()}」へ移動</>
-              }
-            </button>
+            <div className="flex gap-2 self-end">
+              <button
+                onClick={handleBulkMove}
+                disabled={selected.size === 0 || moving || deleting}
+                className="btn-primary px-4 py-2.5 text-sm flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+              >
+                {moving
+                  ? <><Loader2 size={15} className="animate-spin" /> 移動中…</>
+                  : <><FolderInput size={15} /> {selected.size}件を移動</>
+                }
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                disabled={selected.size === 0 || deleting || moving}
+                className="px-4 py-2.5 text-sm flex items-center justify-center gap-2 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap font-medium transition-colors"
+                style={{ background: 'rgba(239,68,68,0.12)', color: '#f87171', border: '1px solid rgba(239,68,68,0.3)' }}
+              >
+                {deleting
+                  ? <><Loader2 size={15} className="animate-spin" /> 削除中…</>
+                  : <><Trash size={15} /> {selected.size}件を削除</>
+                }
+              </button>
+            </div>
           </div>
         </div>
       )}
