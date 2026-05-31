@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { Send, ChevronLeft, Loader2, FileText, Save, Tag, Pencil, Trash2, Check, X, ImagePlus, VideoIcon, Library, Play } from 'lucide-react'
+import { Send, ChevronLeft, Loader2, FileText, Save, Tag, Pencil, Trash2, Check, X, ImagePlus, VideoIcon, Library, Play, User, StickyNote } from 'lucide-react'
 import { compressImage } from '@/lib/compress-image'
 import { formatDistanceToNow, format } from 'date-fns'
 import { ja } from 'date-fns/locale'
@@ -38,6 +38,10 @@ export default function AdminConversationDetailPage() {
   const [uploadingImage, setUploadingImage] = useState(false)
   const [uploadingVideo, setUploadingVideo] = useState(false)
   const [pendingMedia, setPendingMedia] = useState<{ file: File; mediaType: 'image' | 'video'; previewUrl: string } | null>(null)
+
+  // モバイルサイドバー
+  const [leftOpen, setLeftOpen] = useState(false)
+  const [rightOpen, setRightOpen] = useState(false)
 
   // オペグラ
   const [opegraOpen, setOpegraOpen] = useState(false)
@@ -431,14 +435,27 @@ export default function AdminConversationDetailPage() {
 
   return (
     <>
-    <div className="flex h-[calc(100vh-48px)] -my-6 overflow-hidden">
+    <div className="flex h-[calc(100vh-48px)] -my-5 overflow-hidden">
+
+      {/* モバイル：左ドロワー背景 */}
+      {leftOpen && <div className="md:hidden fixed inset-0 bg-black/50 z-40" onClick={() => setLeftOpen(false)} />}
+      {/* モバイル：右ドロワー背景 */}
+      {rightOpen && <div className="md:hidden fixed inset-0 bg-black/50 z-40" onClick={() => setRightOpen(false)} />}
 
       {/* 左サイドバー：ユーザー情報 ＋ テンプレート */}
-      <aside className="w-72 flex-shrink-0 border-r border-[var(--color-border)] bg-[var(--color-surface)] flex flex-col">
+      <aside className={`
+        fixed md:relative inset-y-0 left-0 z-50 md:z-auto
+        w-72 flex-shrink-0 border-r border-[var(--color-border)] bg-[var(--color-surface)] flex flex-col
+        transition-transform duration-200 md:translate-x-0
+        ${leftOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+      `}>
 
         {/* ユーザー情報 */}
-        <div className="p-4 border-b border-[var(--color-border)]">
+        <div className="p-4 border-b border-[var(--color-border)] flex items-center justify-between">
           <h2 className="text-sm font-bold">ユーザー情報</h2>
+          <button className="md:hidden text-[var(--color-text-muted)]" onClick={() => setLeftOpen(false)}>
+            <X size={18} />
+          </button>
         </div>
         <div className="p-4 space-y-4 text-sm overflow-y-auto" style={{ maxHeight: '40%' }}>
           {userProfile && (
@@ -575,9 +592,13 @@ export default function AdminConversationDetailPage() {
           className="flex items-center gap-3 px-5 py-3 flex-shrink-0"
           style={{ background: 'rgba(23,18,13,0.92)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--color-border)' }}
         >
-          <Link href="/admin/conversations" className="text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors">
+          <Link href="/admin/conversations" className="text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors flex-shrink-0">
             <ChevronLeft size={20} />
           </Link>
+          {/* モバイル：サイドバートグル */}
+          <button className="md:hidden flex-shrink-0 p-1.5 rounded-lg text-[var(--color-text-muted)]" onClick={() => setLeftOpen(true)}>
+            <User size={18} />
+          </button>
           {queueInfo && (
             <div className="flex items-center gap-2 flex-shrink-0">
               <span className="text-xs text-[var(--color-text-muted)] font-mono">{queueInfo.pos + 1} / {queueInfo.total}</span>
@@ -605,6 +626,10 @@ export default function AdminConversationDetailPage() {
               </div>
             </div>
           )}
+          {/* モバイル：メモトグル */}
+          <button className="md:hidden flex-shrink-0 p-1.5 rounded-lg text-[var(--color-text-muted)]" onClick={() => setRightOpen(true)}>
+            <StickyNote size={18} />
+          </button>
         </div>
 
         {/* Messages */}
@@ -687,7 +712,8 @@ export default function AdminConversationDetailPage() {
         <div className="flex-shrink-0 px-5 py-4" style={{ borderTop: '1px solid var(--color-border)', background: 'rgba(23,18,13,0.95)' }}>
           {character && (
             <p className="text-[var(--color-text-muted)] text-xs mb-2">
-              {character.name} として返信 · <kbd className="px-1 py-0.5 rounded text-[10px]" style={{ background: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}>Tab</kbd> で送信ボタンへ移動
+              {character.name} として返信
+              <span className="hidden md:inline"> · <kbd className="px-1 py-0.5 rounded text-[10px]" style={{ background: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}>Tab</kbd> で送信ボタンへ移動</span>
             </p>
           )}
           {/* メディアプレビュー（通常アップロード） */}
@@ -738,7 +764,7 @@ export default function AdminConversationDetailPage() {
               </button>
             </div>
           )}
-          <div className="flex gap-2">
+          <div className="flex flex-col md:flex-row gap-2">
             <textarea
               ref={textareaRef}
               value={input}
@@ -748,10 +774,10 @@ export default function AdminConversationDetailPage() {
               onKeyDown={handleKeyDown}
               rows={3}
               disabled={!!pendingMedia || !!pendingOpegra}
-              placeholder={pendingMedia || pendingOpegra ? '（メディアを送信します）' : `${character?.name}として返信… (Shift+Enterで改行、Tabで送信へ)`}
+              placeholder={pendingMedia || pendingOpegra ? '（メディアを送信します）' : `${character?.name}として返信…`}
               className="flex-1 input-warm px-4 py-2.5 text-sm resize-none disabled:opacity-50"
             />
-            <div className="flex flex-col gap-2">
+            <div className="flex md:flex-col gap-2">
               {/* 画像送信 */}
               <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
               <button
@@ -789,7 +815,7 @@ export default function AdminConversationDetailPage() {
                 ref={sendBtnRef}
                 onClick={pendingOpegra ? sendOpegraPhoto : pendingMedia ? sendPendingMedia : sendReply}
                 disabled={(!input.trim() && !pendingMedia && !pendingOpegra) || sending || sendingOpegra || uploadingImage || uploadingVideo}
-                className="btn-primary px-4 flex items-center gap-1.5 text-sm disabled:opacity-40 flex-1"
+                className="btn-primary px-4 flex items-center justify-center gap-1.5 text-sm disabled:opacity-40 flex-1"
               >
                 {sending || sendingOpegra || uploadingImage || uploadingVideo ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
                 {queueInfo ? '送信して次へ' : '送信'}
@@ -800,11 +826,19 @@ export default function AdminConversationDetailPage() {
       </div>
 
       {/* 右サイドバー：やり取りメモ */}
-      <aside className="w-80 flex-shrink-0 border-l border-[var(--color-border)] bg-[var(--color-surface)] flex flex-col">
-        <div className="p-4 border-b border-[var(--color-border)]">
+      <aside className={`
+        fixed md:relative inset-y-0 right-0 z-50 md:z-auto
+        w-80 flex-shrink-0 border-l border-[var(--color-border)] bg-[var(--color-surface)] flex flex-col
+        transition-transform duration-200 md:translate-x-0
+        ${rightOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}
+      `}>
+        <div className="p-4 border-b border-[var(--color-border)] flex items-center justify-between">
           <h2 className="text-sm font-bold flex items-center gap-2">
             <FileText size={16} /> やり取りメモ
           </h2>
+          <button className="md:hidden text-[var(--color-text-muted)]" onClick={() => setRightOpen(false)}>
+            <X size={18} />
+          </button>
         </div>
         <div className="p-4 flex-1 flex flex-col gap-3">
           <textarea

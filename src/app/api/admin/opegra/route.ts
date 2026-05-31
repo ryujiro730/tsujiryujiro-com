@@ -1,8 +1,9 @@
 export const dynamic = 'force-dynamic'
 /**
  * オペグラ写真管理API（管理者）
- * GET  /api/admin/opegra  - 写真一覧（キャラ情報付き）
- * POST /api/admin/opegra  - 写真レコード作成（画像URLは事前にStorage済み）
+ * GET   /api/admin/opegra  - 写真一覧（キャラ情報付き）
+ * POST  /api/admin/opegra  - 写真レコード作成（画像URLは事前にStorage済み）
+ * PATCH /api/admin/opegra  - 複数写真のカテゴリ・キャラ一括変更
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -46,8 +47,10 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()
-  const { characterId, title, imageUrl, sortOrder, mediaType } = body
+  const { characterId, title, imageUrl, sortOrder, mediaType, category } = body
   if (!imageUrl) return NextResponse.json({ error: 'imageUrl required' }, { status: 400 })
+
+  const VALID_CATEGORIES = ['food', 'scenery', 'hobby', 'other']
 
   const admin = adminSupabase()
   const { data, error } = await admin
@@ -58,10 +61,38 @@ export async function POST(req: NextRequest) {
       image_url: imageUrl,
       sort_order: sortOrder ?? 0,
       media_type: mediaType === 'video' ? 'video' : 'image',
+      category: VALID_CATEGORIES.includes(category) ? category : null,
     })
     .select('*, characters(id, name)')
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ photo: data })
+}
+
+export async function PATCH(req: NextRequest) {
+  const user = await assertAdminOrStaff()
+  if (!user) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  const body = await req.json()
+  const { photoIds, characterId, category } = body
+  if (!Array.isArray(photoIds) || photoIds.length === 0) {
+    return NextResponse.json({ error: 'photoIds required' }, { status: 400 })
+  }
+
+  const VALID_CATEGORIES = ['food', 'scenery', 'hobby', 'other']
+  const admin = adminSupabase()
+
+  const updatePayload: Record<string, unknown> = {
+    character_id: characterId ?? null,
+    category: VALID_CATEGORIES.includes(category) ? category : null,
+  }
+
+  const { error } = await admin
+    .from('opegra_photos')
+    .update(updatePayload)
+    .in('id', photoIds)
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ updated: photoIds.length })
 }

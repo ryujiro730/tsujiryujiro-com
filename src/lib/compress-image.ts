@@ -1,4 +1,21 @@
 /**
+ * HEIC/HEIF ファイルを JPEG Blob に変換する（ブラウザ専用）
+ */
+export async function heicToBlob(file: File): Promise<Blob> {
+  const heic2any = (await import('heic2any')).default
+  const result = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.92 })
+  return Array.isArray(result) ? result[0] : result
+}
+
+export function isHeic(file: File): boolean {
+  return (
+    file.type === 'image/heic' ||
+    file.type === 'image/heif' ||
+    /\.(heic|heif)$/i.test(file.name)
+  )
+}
+
+/**
  * Canvas を使って画像をリサイズ＋WebP変換する
  * @param file     元の画像ファイル
  * @param maxSize  長辺の最大ピクセル数（デフォルト 1200px）

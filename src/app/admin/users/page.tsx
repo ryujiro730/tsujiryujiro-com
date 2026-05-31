@@ -118,7 +118,7 @@ export default async function AdminUsersPage({
         </div>
 
         {/* 性別・年齢 */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
             <label className="text-xs text-[var(--color-text-muted)] mb-1.5 block">性別</label>
             <select
@@ -328,7 +328,7 @@ export default async function AdminUsersPage({
               </div>
 
               {/* 右側: ポイント・課金額 */}
-              <div className="flex items-center gap-4 flex-shrink-0 text-right">
+              <div className="flex items-center gap-3 flex-shrink-0 text-right">
                 <div>
                   <div className="text-sm font-semibold">{user.points}T</div>
                   <div className="text-xs text-[var(--color-text-muted)]">残高</div>

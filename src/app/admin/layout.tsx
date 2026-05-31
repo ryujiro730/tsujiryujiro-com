@@ -1,8 +1,8 @@
-import Link from 'next/link'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import RealtimeRefresher from './conversations/RealtimeRefresher'
 import { unstable_noStore as noStore } from 'next/cache'
+import { AdminNav } from '@/components/admin/AdminNav'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   noStore()
@@ -63,26 +63,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div className="min-h-screen warm-bg admin-layout">
-      <header className="glass px-5" style={{ position: 'sticky', top: 0, zIndex: 50 }}>
-        <div className="w-full px-5 flex items-center gap-6 h-12">
-          <span className="text-sm font-medium text-[var(--color-text-warm)]">AiKano</span>
-          <span className="text-[var(--color-border-warm)] text-xs">|</span>
-          <nav className="flex items-center gap-1">
-            {navItems.map(item => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="px-3 py-1.5 rounded-lg text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-2)] transition-colors"
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
+      <header className="glass" style={{ position: 'sticky', top: 0, zIndex: 50 }}>
+        <div className="w-full px-4 flex items-center gap-4 h-12">
+          <span className="text-sm font-medium text-[var(--color-text-warm)] shrink-0">AiKano</span>
+          <span className="text-[var(--color-border-warm)] text-xs shrink-0 hidden md:block">|</span>
+          <AdminNav navItems={navItems} />
         </div>
       </header>
 
       <RealtimeRefresher />
-      <main className="w-full px-5 py-6">
+      <main className="w-full px-4 py-5">
         {children}
       </main>
     </div>
