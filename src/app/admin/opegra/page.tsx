@@ -30,6 +30,8 @@ function categoryLabel(key: string | null): string {
   return CATEGORIES.find(c => c.key === key)?.label ?? '汎用'
 }
 
+type DuplicateItem = { file: File; hash: string; existing: Photo; action: 'skip' | 'replace' }
+
 export default function OpegraPage() {
   const [photos, setPhotos] = useState<Photo[]>([])
   const [characters, setCharacters] = useState<Character[]>([])
@@ -53,6 +55,9 @@ export default function OpegraPage() {
   const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null)
   const [uploadErrors, setUploadErrors] = useState<string[]>([])
   const [dragOver, setDragOver] = useState(false)
+  const [checkingHashes, setCheckingHashes] = useState(false)
+  const [duplicateItems, setDuplicateItems] = useState<DuplicateItem[]>([])
+  const [cachedHashes, setCachedHashes] = useState<string[]>([])
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
@@ -101,6 +106,9 @@ export default function OpegraPage() {
     setUploadCategory('')
     setUploadProgress(null)
     setUploadErrors([])
+    setCheckingHashes(false)
+    setDuplicateItems([])
+    setCachedHashes([])
     setShowUpload(true)
   }
 
@@ -108,10 +116,19 @@ export default function OpegraPage() {
     setUploadFiles([])
     setUploadProgress(null)
     setUploadErrors([])
+    setCheckingHashes(false)
+    setDuplicateItems([])
+    setCachedHashes([])
     setShowUpload(false)
   }
 
-  const uploadOneFile = async (file: File): Promise<void> => {
+  const computeHash = async (file: File): Promise<string> => {
+    const buf = await file.arrayBuffer()
+    const hashBuf = await crypto.subtle.digest('SHA-256', buf)
+    return Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('')
+  }
+
+  const uploadOneFile = async (file: File, fileHash: string, replaceId?: string): Promise<void> => {
     const isVideo = file.type.startsWith('video/')
     let uploadBlob: Blob
     let contentType: string
@@ -141,44 +158,92 @@ export default function OpegraPage() {
     const { data: urlData } = supabase.storage.from('chat-images').getPublicUrl(path)
     const isGeneric = uploadCharId === '__generic__'
 
-    const res = await fetch('/api/admin/opegra', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        characterId: isGeneric ? null : uploadCharId,
-        title: file.name.replace(/\.[^.]+$/, ''),
-        imageUrl: urlData.publicUrl,
-        mediaType: isVideo ? 'video' : 'image',
-        category: isGeneric ? (uploadCategory || null) : null,
-      }),
-    })
-    if (!res.ok) throw new Error('登録に失敗しました')
-
-    const { photo } = await res.json()
-    setPhotos(prev => [photo, ...prev])
+    if (replaceId) {
+      // 上書き：既存レコードのimage_urlとfile_hashを更新
+      const res = await fetch(`/api/admin/opegra/${replaceId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image_url: urlData.publicUrl, file_hash: fileHash }),
+      })
+      if (!res.ok) throw new Error('上書き登録に失敗しました')
+      const { photo } = await res.json()
+      setPhotos(prev => prev.map(p => p.id === replaceId ? photo : p))
+    } else {
+      const res = await fetch('/api/admin/opegra', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          characterId: isGeneric ? null : uploadCharId,
+          title: file.name.replace(/\.[^.]+$/, ''),
+          imageUrl: urlData.publicUrl,
+          mediaType: isVideo ? 'video' : 'image',
+          category: isGeneric ? (uploadCategory || null) : null,
+          fileHash,
+        }),
+      })
+      if (!res.ok) throw new Error('登録に失敗しました')
+      const { photo } = await res.json()
+      setPhotos(prev => [photo, ...prev])
+    }
   }
 
+  // ハッシュ計算 → 重複チェック → 重複があれば確認UIを表示
   const handleUpload = async () => {
     if (!uploadFiles.length) return
-    setUploadProgress({ done: 0, total: uploadFiles.length })
+    setCheckingHashes(true)
+
+    // 全ファイルのハッシュを並列計算
+    const hashes = await Promise.all(uploadFiles.map(computeHash))
+    const hashList = hashes.join(',')
+
+    const res = await fetch(`/api/admin/opegra?hashes=${hashList}`)
+    const { matches } = await res.json() as { matches: Record<string, Photo> }
+    setCheckingHashes(false)
+
+    const dups: DuplicateItem[] = []
+    for (let i = 0; i < uploadFiles.length; i++) {
+      if (matches[hashes[i]]) {
+        dups.push({ file: uploadFiles[i], hash: hashes[i], existing: matches[hashes[i]], action: 'skip' })
+      }
+    }
+
+    if (dups.length > 0) {
+      setCachedHashes(hashes)
+      setDuplicateItems(dups)
+      return // 確認UIを表示して待機
+    }
+
+    await runUpload(hashes, [])
+  }
+
+  // 重複確認後に呼ばれる実際のアップロード処理
+  const runUpload = async (hashes: string[], dups: DuplicateItem[]) => {
+    const dupMap = new Map(dups.map(d => [d.hash, d]))
+    const filesToUpload = uploadFiles.map((file, i) => ({ file, hash: hashes[i] }))
+      .filter(({ hash }) => {
+        const dup = dupMap.get(hash)
+        return !dup || dup.action === 'replace' // skipはスキップ
+      })
+
+    setDuplicateItems([])
+    setUploadProgress({ done: 0, total: filesToUpload.length })
 
     const errors: string[] = []
-    for (let i = 0; i < uploadFiles.length; i++) {
+    for (let i = 0; i < filesToUpload.length; i++) {
+      const { file, hash } = filesToUpload[i]
+      const dup = dupMap.get(hash)
       try {
-        await uploadOneFile(uploadFiles[i])
+        await uploadOneFile(file, hash, dup?.action === 'replace' ? dup.existing.id : undefined)
       } catch (e: unknown) {
-        const msg = e instanceof Error ? e.message : String(e)
-        console.error(`[opegra upload] ${uploadFiles[i].name}:`, e)
-        errors.push(`${uploadFiles[i].name}: ${msg}`)
+        const msg = e instanceof Error ? e.message : JSON.stringify(e)
+        console.error(`[opegra upload] ${file.name}:`, e)
+        errors.push(`${file.name}: ${msg}`)
       }
-      setUploadProgress({ done: i + 1, total: uploadFiles.length })
+      setUploadProgress({ done: i + 1, total: filesToUpload.length })
     }
 
-    if (errors.length) {
-      setUploadErrors(errors)
-    } else {
-      closeUpload()
-    }
+    if (errors.length) setUploadErrors(errors)
+    else closeUpload()
   }
 
   const deletePhoto = async (photoId: string) => {
@@ -229,7 +294,7 @@ export default function OpegraPage() {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        photoIds: [...selected],
+        photoIds: Array.from(selected),
         characterId: isGeneric ? null : moveCharId,
         category: isGeneric ? (moveCategory || null) : null,
       }),
@@ -482,7 +547,7 @@ export default function OpegraPage() {
             </div>
 
             {/* ファイル選択エリア */}
-            {!uploadProgress && (
+            {!uploadProgress && !checkingHashes && !duplicateItems.length && (
               <div
                 className="border-2 border-dashed rounded-xl flex items-center justify-center cursor-pointer mb-4 flex-shrink-0 py-6 transition-colors"
                 style={{
@@ -505,7 +570,7 @@ export default function OpegraPage() {
             <input ref={fileInputRef} type="file" accept="image/*,video/*,.heic,.heif" multiple className="hidden" onChange={handleFileSelect} />
 
             {/* 選択済みファイル一覧 */}
-            {uploadFiles.length > 0 && !uploadProgress && (
+            {uploadFiles.length > 0 && !uploadProgress && !checkingHashes && !duplicateItems.length && (
               <div className="flex-1 overflow-y-auto mb-4 space-y-1.5 min-h-0">
                 {uploadFiles.map((file, i) => {
                   const isVideo = file.type.startsWith('video/')
@@ -529,6 +594,77 @@ export default function OpegraPage() {
                     </div>
                   )
                 })}
+              </div>
+            )}
+
+            {/* ハッシュ確認中 */}
+            {checkingHashes && (
+              <div className="flex-1 flex flex-col items-center justify-center gap-3 py-8">
+                <Loader2 size={24} className="animate-spin text-[var(--color-primary)]" />
+                <p className="text-sm text-[var(--color-text-muted)]">重複チェック中…</p>
+              </div>
+            )}
+
+            {/* 重複確認UI */}
+            {!checkingHashes && duplicateItems.length > 0 && (
+              <div className="flex-1 flex flex-col gap-3 min-h-0">
+                <p className="text-sm font-semibold flex-shrink-0">
+                  {duplicateItems.length}件の重複が見つかりました
+                </p>
+                <div className="flex-1 overflow-y-auto space-y-2">
+                  {duplicateItems.map((item, i) => (
+                    <div key={i} className="rounded-xl p-3 flex gap-3" style={{ background: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}>
+                      {/* 既存サムネ */}
+                      <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
+                        {item.existing.media_type === 'video'
+                          ? <div className="w-full h-full flex items-center justify-center" style={{ background: 'var(--color-surface)' }}><Play size={16} className="text-[var(--color-text-muted)]" /></div>
+                          // eslint-disable-next-line @next/next/no-img-element
+                          : <img src={item.existing.image_url} alt="" className="w-full h-full object-cover" />
+                        }
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium truncate">{item.file.name}</p>
+                        <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
+                          既存: {item.existing.title || '（タイトルなし）'}
+                        </p>
+                        <div className="flex gap-2 mt-2">
+                          {(['skip', 'replace'] as const).map(action => (
+                            <button
+                              key={action}
+                              onClick={() => setDuplicateItems(prev => prev.map((d, j) => j === i ? { ...d, action } : d))}
+                              className="px-2.5 py-1 rounded-lg text-xs font-medium transition-all"
+                              style={{
+                                background: item.action === action ? (action === 'replace' ? 'var(--color-primary)' : 'var(--color-surface)') : 'var(--color-surface)',
+                                color: item.action === action ? (action === 'replace' ? '#fff' : 'var(--color-text)') : 'var(--color-text-muted)',
+                                border: `1px solid ${item.action === action ? (action === 'replace' ? 'var(--color-primary)' : 'var(--color-border)') : 'var(--color-border)'}`,
+                              }}
+                            >
+                              {action === 'skip' ? 'スキップ' : '上書き'}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => setDuplicateItems(prev => prev.map(d => ({ ...d, action: 'skip' })))}
+                    className="text-xs px-3 py-1.5 rounded-lg"
+                    style={{ background: 'var(--color-surface-2)', color: 'var(--color-text-muted)' }}
+                  >すべてスキップ</button>
+                  <button
+                    onClick={() => setDuplicateItems(prev => prev.map(d => ({ ...d, action: 'replace' })))}
+                    className="text-xs px-3 py-1.5 rounded-lg"
+                    style={{ background: 'var(--color-surface-2)', color: 'var(--color-text-muted)' }}
+                  >すべて上書き</button>
+                  <button
+                    onClick={() => runUpload(cachedHashes, duplicateItems)}
+                    className="btn-cta flex-1 py-1.5 text-sm flex items-center justify-center gap-1.5"
+                  >
+                    確定してアップロード
+                  </button>
+                </div>
               </div>
             )}
 
@@ -567,7 +703,7 @@ export default function OpegraPage() {
             )}
 
             {/* 設定 */}
-            {!uploadProgress && (
+            {!uploadProgress && !checkingHashes && !duplicateItems.length && (
               <div className="space-y-3 flex-shrink-0">
                 <div className="flex gap-2">
                   <div className="flex-1">

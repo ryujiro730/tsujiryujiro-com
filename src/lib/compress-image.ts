@@ -1,10 +1,34 @@
 /**
  * HEIC/HEIF ファイルを JPEG Blob に変換する（ブラウザ専用）
+ * 1. createImageBitmap でネイティブ変換を試みる（Safari/iOS は HEIC をネイティブサポート）
+ * 2. 失敗した場合は heic2any（WASM）にフォールバック
  */
 export async function heicToBlob(file: File): Promise<Blob> {
-  const heic2any = (await import('heic2any')).default
-  const result = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.92 })
-  return Array.isArray(result) ? result[0] : result
+  // --- 方法1: ブラウザのネイティブ HEIC サポートを利用 ---
+  try {
+    const bitmap = await createImageBitmap(file)
+    const canvas = document.createElement('canvas')
+    canvas.width = bitmap.width
+    canvas.height = bitmap.height
+    canvas.getContext('2d')!.drawImage(bitmap, 0, 0)
+    bitmap.close()
+    return await new Promise<Blob>((resolve, reject) =>
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error('canvas toBlob failed')), 'image/jpeg', 0.92)
+    )
+  } catch {
+    // Safari 以外（Chrome 等）はここに落ちる
+  }
+
+  // --- 方法2: heic2any（WASM）---
+  try {
+    const heic2any = (await import('heic2any')).default
+    const result = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.92 })
+    return Array.isArray(result) ? result[0] : result
+  } catch (e) {
+    // heic2any は Error ではなく plain object を throw することがある
+    const detail = e instanceof Error ? e.message : JSON.stringify(e)
+    throw new Error(`HEIC変換失敗: ${detail}`)
+  }
 }
 
 export function isHeic(file: File): boolean {

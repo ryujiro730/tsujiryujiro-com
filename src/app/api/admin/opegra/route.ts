@@ -27,11 +27,27 @@ async function assertAdminOrStaff() {
   return user
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const user = await assertAdminOrStaff()
   if (!user) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const admin = adminSupabase()
+
+  // ?hashes=h1,h2,... → 重複チェックモード
+  const hashParam = req.nextUrl.searchParams.get('hashes')
+  if (hashParam) {
+    const hashes = hashParam.split(',').filter(Boolean)
+    const { data } = await admin
+      .from('opegra_photos')
+      .select('*, characters(id, name)')
+      .in('file_hash', hashes)
+    const map: Record<string, unknown> = {}
+    for (const photo of data ?? []) {
+      if (photo.file_hash) map[photo.file_hash] = photo
+    }
+    return NextResponse.json({ matches: map })
+  }
+
   const { data, error } = await admin
     .from('opegra_photos')
     .select('*, characters(id, name)')
@@ -47,7 +63,7 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()
-  const { characterId, title, imageUrl, sortOrder, mediaType, category } = body
+  const { characterId, title, imageUrl, sortOrder, mediaType, category, fileHash } = body
   if (!imageUrl) return NextResponse.json({ error: 'imageUrl required' }, { status: 400 })
 
   const VALID_CATEGORIES = ['food', 'scenery', 'hobby', 'other']
@@ -62,6 +78,7 @@ export async function POST(req: NextRequest) {
       sort_order: sortOrder ?? 0,
       media_type: mediaType === 'video' ? 'video' : 'image',
       category: VALID_CATEGORIES.includes(category) ? category : null,
+      file_hash: fileHash ?? null,
     })
     .select('*, characters(id, name)')
     .single()
