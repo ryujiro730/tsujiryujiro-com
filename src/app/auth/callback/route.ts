@@ -36,12 +36,16 @@ export async function GET(request: NextRequest) {
           await admin.from('profiles').insert({
             id: user.id,
             email: user.email ?? '',
-            user_code: Math.random().toString(36).substring(2, 10).toUpperCase(),
+            user_code: String(Math.floor(100000 + Math.random() * 900000)),
             role: 'user',
             points: 0,
+            last_login_at: new Date().toISOString(),
           })
           return NextResponse.redirect(`${base}/onboarding`)
         }
+
+        // 既存ユーザー：最終ログイン日時を更新
+        await admin.from('profiles').update({ last_login_at: new Date().toISOString() }).eq('id', user.id)
 
         if (profile.age === null) {
           // プロフィールはあるがonboarding未完了

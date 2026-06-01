@@ -358,5 +358,6 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('ja-JP', {
     year: 'numeric', month: 'short', day: 'numeric',
     hour: '2-digit', minute: '2-digit',
+    timeZone: 'Asia/Tokyo',
   })
 }

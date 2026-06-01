@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ChevronLeft, Loader2, Send, User } from 'lucide-react'
-import { format } from 'date-fns'
+import { format } from 'date-fns-tz'
+import { toZonedTime } from 'date-fns-tz'
 import { ja } from 'date-fns/locale'
 
 type ChatMsg = {
@@ -118,7 +119,7 @@ export default function AdminInquiryUserPage() {
   const rows: Row[] = []
   let lastDate = ''
   for (const msg of messages) {
-    const d = format(new Date(msg.created_at), 'yyyy年M月d日(E)', { locale: ja })
+    const d = format(toZonedTime(new Date(msg.created_at), 'Asia/Tokyo'), 'yyyy年M月d日(E)', { locale: ja })
     if (d !== lastDate) {
       rows.push({ type: 'date', date: d })
       lastDate = d
@@ -178,7 +179,7 @@ export default function AdminInquiryUserPage() {
                   <p className="text-sm whitespace-pre-wrap break-words">{msg.message}</p>
                 </div>
                 <p className={`text-[10px] text-[var(--color-text-muted)] mt-1 ${isUser ? 'ml-1' : 'text-right mr-1'}`}>
-                  {format(new Date(msg.created_at), 'HH:mm')}
+                  {format(toZonedTime(new Date(msg.created_at), 'Asia/Tokyo'), 'HH:mm')}
                   {!isUser && msg.senderName && ` · ${msg.senderName}`}
                 </p>
               </div>

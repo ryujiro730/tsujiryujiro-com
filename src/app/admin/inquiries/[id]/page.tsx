@@ -1,7 +1,8 @@
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { unstable_noStore as noStore } from 'next/cache'
 import { notFound } from 'next/navigation'
-import { format } from 'date-fns'
+import { format } from 'date-fns-tz'
+import { toZonedTime } from 'date-fns-tz'
 import { ja } from 'date-fns/locale'
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
@@ -52,7 +53,7 @@ export default async function AdminInquiryDetailPage({ params }: { params: { id:
           <p className="text-xs text-[var(--color-text-muted)]">{profile?.email ?? ''}</p>
         </div>
         <div className="ml-auto text-xs text-[var(--color-text-muted)]">
-          {format(new Date(inquiry.created_at), 'yyyy/MM/dd HH:mm', { locale: ja })}
+          {format(toZonedTime(new Date(inquiry.created_at), 'Asia/Tokyo'), 'yyyy/MM/dd HH:mm', { locale: ja })}
         </div>
       </div>
 
@@ -78,7 +79,7 @@ export default async function AdminInquiryDetailPage({ params }: { params: { id:
                     {reply.sender_role === 'staff' ? `スタッフ（${staffProfile?.display_name ?? ''}）` : 'ユーザー'}
                   </span>
                   <span className="text-[11px] text-[var(--color-text-muted)]">
-                    {format(new Date(reply.created_at), 'yyyy/MM/dd HH:mm', { locale: ja })}
+                    {format(toZonedTime(new Date(reply.created_at), 'Asia/Tokyo'), 'yyyy/MM/dd HH:mm', { locale: ja })}
                   </span>
                 </div>
                 <p className="text-sm leading-relaxed whitespace-pre-wrap">{reply.message}</p>

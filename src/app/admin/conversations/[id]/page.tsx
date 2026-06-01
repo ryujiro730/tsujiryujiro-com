@@ -4,9 +4,10 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { Send, ChevronLeft, Loader2, FileText, Save, Tag, Pencil, Trash2, Check, X, ImagePlus, VideoIcon, Library, Play, User, StickyNote } from 'lucide-react'
+import { Send, ChevronLeft, Loader2, FileText, Save, Tag, Pencil, Trash2, Check, X, ImagePlus, VideoIcon, Library, Play, User, StickyNote, Search, ExternalLink } from 'lucide-react'
 import { compressImage } from '@/lib/compress-image'
-import { formatDistanceToNow, format } from 'date-fns'
+import { formatDistanceToNow } from 'date-fns'
+import { format, toZonedTime } from 'date-fns-tz'
 import { ja } from 'date-fns/locale'
 import type { Message, Character, Profile } from '@/types'
 
@@ -48,9 +49,15 @@ export default function AdminConversationDetailPage() {
   const [opegraPhotos, setOpegraPhotos] = useState<any[]>([])
   const [opegraConvCharId, setOpegraConvCharId] = useState<string | null>(null)
   const [opegraLoading, setOpegraLoading] = useState(false)
-  const [opegraFilter, setOpegraFilter] = useState<'all' | 'char' | 'generic'>('all')
+  const [opegraFilter, setOpegraFilter] = useState<'all' | 'char' | 'generic' | 'food' | 'scenery' | 'hobby' | 'other'>('all')
+  const [opegraSearch, setOpegraSearch] = useState('')
   const [selectedPhotoId, setSelectedPhotoId] = useState<string | null>(null)
   const [sendingOpegra, setSendingOpegra] = useState(false)
+
+  // ユーザー詳細モーダル
+  const [userModalOpen, setUserModalOpen] = useState(false)
+  const [userModalTx, setUserModalTx] = useState<any[]>([])
+  const [userModalTxLoading, setUserModalTxLoading] = useState(false)
   // ステージング中のオペグラ写真
   const [pendingOpegra, setPendingOpegra] = useState<{ photoId: string; imageUrl: string; title: string; mediaType: 'image' | 'video' } | null>(null)
 
@@ -66,12 +73,18 @@ export default function AdminConversationDetailPage() {
 
   const supabase = supabaseRef.current
 
-  const openUserPopup = (userId: string) => {
-    window.open(
-      `/admin/users/${userId}`,
-      'userDetail',
-      'width=900,height=700,menubar=no,toolbar=no,location=no,status=no'
-    )
+  const openUserModal = async () => {
+    if (!userProfile) return
+    setUserModalOpen(true)
+    setUserModalTxLoading(true)
+    const { data } = await supabase
+      .from('point_transactions')
+      .select('id, amount, type, description, price_yen, created_at')
+      .eq('user_id', userProfile.id)
+      .order('created_at', { ascending: false })
+      .limit(20)
+    setUserModalTx(data ?? [])
+    setUserModalTxLoading(false)
   }
 
   const scrollToBottom = useCallback(() => {
@@ -89,44 +102,74 @@ export default function AdminConversationDetailPage() {
 
   useEffect(() => { scrollToBottom() }, [messages])
 
-  const loadData = async () => {
-    const { data: conv, error: convError } = await supabase
-      .from('conversations')
-      .select('id, staff_note, characters(*), profiles(*)')
-      .eq('id', id)
-      .single()
-
-    if (convError) { console.error('conv fetch error:', convError.message); setLoading(false); return }
-    if (!conv) { router.push('/admin/conversations'); return }
-
-    const char = (conv as any).characters as Character
-    const profile = (conv as any).profiles
-    setCharacter(char)
-    setUserProfile(profile)
-
-    const userId = profile?.id
-    const DEFAULT_STAFF_NOTE = `★★★★★★$nickname$★★★★★★\n\n\n\n\n★★★★★★★★キャラ★★★★★★★`
-    const msgsPromise = supabase.from('messages').select('*').eq('conversation_id', id).order('created_at', { ascending: true })
-    const tmplPromise = char?.id
-      ? supabase.from('reply_templates').select('id, title, content, sort_order').eq('character_id', char.id).order('sort_order').order('created_at')
-      : Promise.resolve({ data: [] })
-    const labelsPromise = userId ? supabase.from('admin_labels').select('*').order('name') : Promise.resolve({ data: [] })
-    const assignPromise = userId ? supabase.from('user_label_assignments').select('label_id').eq('user_id', userId) : Promise.resolve({ data: [] })
-    const notePromise = userId ? fetch(`/api/admin/profile-note?userId=${userId}`).then(r => r.json()) : Promise.resolve({})
-
-    const [msgsRes, tmplRes, labelsRes, assignRes, noteRes] = await Promise.all([
-      msgsPromise, tmplPromise, labelsPromise, assignPromise, notePromise,
-    ])
-
-    setMessages((msgsRes as any).data || [])
-    setStaffNote((conv as any).staff_note ?? DEFAULT_STAFF_NOTE)
-    setTemplates((tmplRes as any).data ?? [])
-
-    if (userId) {
-      setLabels((labelsRes as any).data ?? [])
-      setAssignedLabelIds(new Set(((assignRes as any).data ?? []).map((a: any) => a.label_id)))
-      setAdminNote((noteRes as any)?.admin_note ?? '')
+  const prefetchNextConv = (queue: string[], pos: number) => {
+    const nextId = queue[pos + 1]
+    if (!nextId) return
+    router.prefetch(`/admin/conversations/${nextId}`)
+    // データも先読みしてsessionStorageにキャッシュ
+    const cacheKey = `conv_cache_${nextId}`
+    if (!sessionStorage.getItem(cacheKey)) {
+      fetch(`/api/admin/conversation-detail/${nextId}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(data => { if (data) sessionStorage.setItem(cacheKey, JSON.stringify(data)) })
+        .catch(() => {})
     }
+  }
+
+  const applyConvData = (json: any) => {
+    const DEFAULT_STAFF_NOTE = `★★★★★★$nickname$★★★★★★\n\n\n\n\n★★★★★★★★キャラ★★★★★★★`
+    const conv = json.conversation
+    setCharacter(conv.characters as Character)
+    setUserProfile(conv.profiles)
+    setMessages(json.messages)
+    setStaffNote(conv.staff_note ?? DEFAULT_STAFF_NOTE)
+    setTemplates(json.templates)
+    setLabels(json.labels)
+    setAssignedLabelIds(new Set(json.assignedLabelIds))
+    setAdminNote(json.adminNote)
+  }
+
+  const loadData = async () => {
+    // キャッシュがあれば即座に表示
+    const cacheKey = `conv_cache_${id}`
+    const cached = sessionStorage.getItem(cacheKey)
+    if (cached) {
+      sessionStorage.removeItem(cacheKey)
+      try {
+        const json = JSON.parse(cached)
+        if (json.conversation) {
+          applyConvData(json)
+          setLoading(false)
+          // リアルタイム購読だけセット
+          const channel = supabase.channel(`chat:${id}`)
+          channel.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${id}` }, (payload) => {
+            const m = payload.new as Message
+            setMessages(prev => prev.find(p => p.id === m.id) ? prev : [...prev, m])
+          })
+          channelRef.current = channel
+          channel.subscribe()
+          try {
+            const raw = sessionStorage.getItem('convQueue')
+            const pos = parseInt(sessionStorage.getItem('convQueuePos') ?? '-1')
+            if (raw && pos >= 0) {
+              const queue: string[] = JSON.parse(raw)
+              setQueueInfo({ pos, total: queue.length })
+              prefetchNextConv(queue, pos)
+            } else { setQueueInfo(null) }
+          } catch { /* ignore */ }
+          setTimeout(() => textareaRef.current?.focus(), 80)
+          return
+        }
+      } catch { /* キャッシュ壊れてたら通常フェッチへ */ }
+    }
+
+    // 通常フェッチ
+    const res = await fetch(`/api/admin/conversation-detail/${id}`)
+    if (!res.ok) { console.error('conv fetch error:', res.status); setLoading(false); return }
+    const json = await res.json()
+    if (!json.conversation) { router.push('/admin/conversations'); return }
+
+    applyConvData(json)
 
     const channel = supabase.channel(`chat:${id}`)
     channel.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${id}` }, (payload) => {
@@ -143,9 +186,8 @@ export default function AdminConversationDetailPage() {
       if (raw && pos >= 0) {
         const queue: string[] = JSON.parse(raw)
         setQueueInfo({ pos, total: queue.length })
-      } else {
-        setQueueInfo(null)
-      }
+        prefetchNextConv(queue, pos)
+      } else { setQueueInfo(null) }
     } catch { /* ignore */ }
 
     setTimeout(() => textareaRef.current?.focus(), 80)
@@ -281,6 +323,18 @@ export default function AdminConversationDetailPage() {
     if (stopTypingTimerRef.current) clearTimeout(stopTypingTimerRef.current)
     broadcastTyping(false)
 
+    // キューモード：送信はバックグラウンドで投げて即座に次へ
+    if (sessionStorage.getItem('convQueue')) {
+      fetch('/api/admin/staff-reply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversationId: id, content }),
+      }).catch(e => console.error('[admin] staff-reply error:', e))
+      advanceToNext()
+      return
+    }
+
+    // 通常モード：レスポンスを待つ
     const res = await fetch('/api/admin/staff-reply', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -296,11 +350,7 @@ export default function AdminConversationDetailPage() {
     }
 
     setSending(false)
-    if (sessionStorage.getItem('convQueue')) {
-      advanceToNext()
-    } else {
-      router.refresh()
-    }
+    router.refresh()
   }
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -324,6 +374,7 @@ export default function AdminConversationDetailPage() {
     setOpegraLoading(true)
     setSelectedPhotoId(null)
     setOpegraFilter('all')
+    setOpegraSearch('')
     const res = await fetch(`/api/opegra?conversationId=${id}`)
     const { photos, characterId } = await res.json()
     setOpegraPhotos(photos ?? [])
@@ -462,7 +513,7 @@ export default function AdminConversationDetailPage() {
             <>
               <div>
                 <p className="text-xs text-[var(--color-text-muted)]">ID</p>
-                <button onClick={() => openUserPopup(userProfile.id)} className="font-mono text-xs text-[var(--color-primary-light)] hover:underline">
+                <button onClick={openUserModal} className="font-mono text-xs text-[var(--color-primary-light)] hover:underline">
                   {userProfile.user_code ?? userProfile.id}
                 </button>
               </div>
@@ -476,7 +527,7 @@ export default function AdminConversationDetailPage() {
               </div>
               <div>
                 <p className="text-xs text-[var(--color-text-muted)]">登録日時</p>
-                <p>{userProfile.created_at ? format(new Date(userProfile.created_at), 'yyyy/MM/dd HH:mm') : '-'}</p>
+                <p>{userProfile.created_at ? format(toZonedTime(new Date(userProfile.created_at), 'Asia/Tokyo'), 'yyyy/MM/dd HH:mm') : '-'}</p>
               </div>
               <div className="flex gap-4">
                 <div>
@@ -643,7 +694,7 @@ export default function AdminConversationDetailPage() {
                 {showDate && (
                   <div className="text-center my-3">
                     <span className="text-[var(--color-text-muted)] text-xs px-3 py-1 rounded-full" style={{ background: 'var(--color-surface-2)' }}>
-                      {format(new Date(msg.created_at), 'M月d日(E)', { locale: ja })}
+                      {format(toZonedTime(new Date(msg.created_at), 'Asia/Tokyo'), 'M月d日(E)', { locale: ja })}
                     </span>
                   </div>
                 )}
@@ -860,6 +911,118 @@ export default function AdminConversationDetailPage() {
       </aside>
     </div>
 
+    {/* ===== ユーザー詳細モーダル ===== */}
+    {userModalOpen && userProfile && (
+      <div
+        className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
+        onClick={e => { if (e.target === e.currentTarget) setUserModalOpen(false) }}
+      >
+        <div className="bg-[var(--color-surface)] rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+          style={{ width: '480px', maxWidth: '95vw', maxHeight: '85vh' }}>
+          {/* ヘッダー */}
+          <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--color-border)' }}>
+            <div>
+              <h2 className="font-bold text-base">{userProfile.display_name ?? '匿名ユーザー'}</h2>
+              <p className="text-xs text-[var(--color-text-muted)] font-mono">{userProfile.user_code} · {userProfile.email}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Link href={`/admin/users/${userProfile.id}`} target="_blank" className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors" title="詳細ページを開く">
+                <ExternalLink size={15} />
+              </Link>
+              <button onClick={() => setUserModalOpen(false)} className="text-[var(--color-text-muted)] hover:text-[var(--color-text)]">
+                <X size={20} />
+              </button>
+            </div>
+          </div>
+          {/* コンテンツ */}
+          <div className="overflow-y-auto flex-1 p-5 space-y-5">
+            {/* 基本情報 */}
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div><p className="text-xs text-[var(--color-text-muted)]">年齢</p><p>{userProfile.age != null ? `${userProfile.age}歳` : '—'}</p></div>
+              <div><p className="text-xs text-[var(--color-text-muted)]">性別</p><p>{({'male': '男性', 'female': '女性', 'other': 'その他'} as Record<string,string>)[userProfile.gender ?? ''] ?? '—'}</p></div>
+              <div><p className="text-xs text-[var(--color-text-muted)]">ポイント残高</p><p className="font-semibold">{userProfile.points.toLocaleString()} T</p></div>
+              <div><p className="text-xs text-[var(--color-text-muted)]">登録日</p><p>{format(toZonedTime(new Date(userProfile.created_at), 'Asia/Tokyo'), 'yyyy/MM/dd HH:mm')}</p></div>
+              <div><p className="text-xs text-[var(--color-text-muted)]">最終ログイン</p><p>{userProfile.last_login_at ? formatDistanceToNow(new Date(userProfile.last_login_at), { addSuffix: true, locale: ja }) : '—'}</p></div>
+              <div><p className="text-xs text-[var(--color-text-muted)]">流入元</p><p>{(userProfile as any).referral_source ?? '—'}</p></div>
+            </div>
+            {/* ラベル */}
+            {labels.length > 0 && (
+              <div>
+                <p className="text-xs text-[var(--color-text-muted)] mb-2 flex items-center gap-1"><Tag size={11} /> ラベル</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {labels.map(label => {
+                    const assigned = assignedLabelIds.has(label.id)
+                    return (
+                      <button
+                        key={label.id}
+                        onClick={() => toggleLabel(label.id)}
+                        className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium transition-all border"
+                        style={{
+                          backgroundColor: assigned ? label.color + '33' : 'var(--color-surface-2)',
+                          borderColor: assigned ? label.color : 'var(--color-border)',
+                          color: assigned ? label.color : 'var(--color-text-muted)',
+                        }}
+                      >
+                        {label.name}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+            {/* 管理者メモ */}
+            <div>
+              <p className="text-xs text-[var(--color-text-muted)] mb-2">管理者メモ</p>
+              <textarea
+                value={adminNote}
+                onChange={e => setAdminNote(e.target.value)}
+                rows={3}
+                placeholder="このユーザーに関するメモ…"
+                className="w-full bg-[var(--color-surface-2)] border border-[var(--color-border-warm)] rounded-lg p-2 text-xs resize-none focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
+              />
+              <div className="flex items-center gap-2 mt-1.5">
+                <button
+                  onClick={saveAdminNote}
+                  disabled={adminNoteLoading}
+                  className="btn-primary px-3 py-1 text-xs flex items-center gap-1.5 disabled:opacity-40"
+                >
+                  {adminNoteLoading ? <Loader2 size={11} className="animate-spin" /> : <Save size={11} />}
+                  保存
+                </button>
+                {adminNoteSaved && <span className="text-green-400 text-xs">保存済</span>}
+              </div>
+            </div>
+            {/* ポイント履歴 */}
+            <div>
+              <p className="text-xs text-[var(--color-text-muted)] mb-2">ポイント履歴（直近20件）</p>
+              {userModalTxLoading ? (
+                <div className="flex justify-center py-4"><Loader2 size={16} className="animate-spin" style={{ color: 'var(--color-primary)' }} /></div>
+              ) : userModalTx.length === 0 ? (
+                <p className="text-xs text-[var(--color-text-muted)] text-center py-3">履歴なし</p>
+              ) : (
+                <div className="space-y-1">
+                  {userModalTx.map(tx => (
+                    <div key={tx.id} className="flex items-center justify-between px-3 py-1.5 rounded-lg text-xs" style={{ background: 'var(--color-surface-2)' }}>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-[var(--color-text-muted)] flex-shrink-0">{format(toZonedTime(new Date(tx.created_at), 'Asia/Tokyo'), 'MM/dd HH:mm')}</span>
+                        <span className="truncate">{tx.description}</span>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                        {tx.price_yen != null && <span className="text-green-400">¥{tx.price_yen.toLocaleString()}</span>}
+                        <span className={tx.type === 'purchase' ? 'text-green-400 font-medium' : 'text-[var(--color-text-muted)]'}>
+                          {tx.type === 'purchase' ? '+' : '-'}{Math.abs(tx.amount)}T
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+
     {/* ===== オペグラ ダイアログ ===== */}
     {opegraOpen && (
       <div
@@ -881,27 +1044,41 @@ export default function AdminConversationDetailPage() {
           </div>
 
           {/* フィルタータブ */}
-          <div className="flex gap-2 px-5 py-3" style={{ borderBottom: '1px solid var(--color-border)', flexShrink: 0 }}>
-            {([
-              { key: 'all', label: 'すべて' },
-              { key: 'char', label: 'このキャラ専用' },
-              { key: 'generic', label: '汎用' },
-            ] as const).map(tab => (
-              <button
-                key={tab.key}
-                onClick={() => setOpegraFilter(tab.key)}
-                className="px-3 py-1 rounded-full text-xs font-medium transition-all"
-                style={{
-                  background: opegraFilter === tab.key ? 'var(--color-primary)' : 'var(--color-surface-2)',
-                  color: opegraFilter === tab.key ? '#fff' : 'var(--color-text-muted)',
-                }}
-              >
-                {tab.label}
-              </button>
-            ))}
-            <span className="ml-auto text-xs text-[var(--color-text-muted)] flex items-center">
-              クリックして選択
-            </span>
+          <div className="px-5 py-3 space-y-2" style={{ borderBottom: '1px solid var(--color-border)', flexShrink: 0 }}>
+            <div className="flex flex-wrap gap-1.5">
+              {([
+                { key: 'all', label: 'すべて' },
+                { key: 'char', label: 'このキャラ' },
+                { key: 'generic', label: '汎用' },
+                { key: 'food', label: '食べ物' },
+                { key: 'scenery', label: '風景' },
+                { key: 'hobby', label: '趣味' },
+                { key: 'other', label: 'その他' },
+              ] as const).map(tab => (
+                <button
+                  key={tab.key}
+                  onClick={() => setOpegraFilter(tab.key)}
+                  className="px-3 py-1 rounded-full text-xs font-medium transition-all"
+                  style={{
+                    background: opegraFilter === tab.key ? 'var(--color-primary)' : 'var(--color-surface-2)',
+                    color: opegraFilter === tab.key ? '#fff' : 'var(--color-text-muted)',
+                  }}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+            {/* 検索 */}
+            <div className="relative">
+              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
+              <input
+                type="text"
+                value={opegraSearch}
+                onChange={e => setOpegraSearch(e.target.value)}
+                placeholder="ファイル名で検索…"
+                className="w-full input-warm pl-8 pr-3 py-1.5 text-xs"
+              />
+            </div>
           </div>
 
           {/* 写真グリッド */}
@@ -913,9 +1090,13 @@ export default function AdminConversationDetailPage() {
             ) : (() => {
               const filtered = opegraPhotos.filter(p => {
                 if (opegraFilter === 'char') return p.character_id === opegraConvCharId
-                if (opegraFilter === 'generic') return p.character_id === null
+                if (opegraFilter === 'generic') return p.character_id === null && !p.category
+                if (opegraFilter === 'food') return p.category === 'food'
+                if (opegraFilter === 'scenery') return p.category === 'scenery'
+                if (opegraFilter === 'hobby') return p.category === 'hobby'
+                if (opegraFilter === 'other') return p.category === 'other'
                 return true
-              })
+              }).filter(p => !opegraSearch || (p.title || '').toLowerCase().includes(opegraSearch.toLowerCase()))
               if (filtered.length === 0) {
                 return (
                   <div className="flex flex-col items-center justify-center h-full text-[var(--color-text-muted)]">

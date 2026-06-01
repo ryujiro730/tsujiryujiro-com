@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Loader2, Plus, Trash2, Image as ImageIcon, X, Upload, Play, CheckSquare, Square, FolderInput, Trash } from 'lucide-react'
+import { Loader2, Plus, Trash2, Image as ImageIcon, X, Upload, Play, CheckSquare, Square, FolderInput, Trash, Search } from 'lucide-react'
 import { compressImage, heicToBlob, isHeic } from '@/lib/compress-image'
 
 type Character = { id: string; name: string }
@@ -26,6 +26,13 @@ const CATEGORIES = [
   { key: 'other',   label: 'その他' },
 ] as const
 
+// ひらがな→カタカナに統一して比較（どちらで検索しても同義にする）
+function normalizeKana(str: string): string {
+  return str.toLowerCase().replace(/[\u3041-\u3096]/g, ch =>
+    String.fromCharCode(ch.charCodeAt(0) + 0x60)
+  )
+}
+
 function categoryLabel(key: string | null): string {
   return CATEGORIES.find(c => c.key === key)?.label ?? '汎用'
 }
@@ -37,6 +44,7 @@ export default function OpegraPage() {
   const [characters, setCharacters] = useState<Character[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
   const [showUpload, setShowUpload] = useState(false)
   const [previewMedia, setPreviewMedia] = useState<Photo | null>(null)
 
@@ -380,13 +388,15 @@ export default function OpegraPage() {
 
   const CATEGORY_KEYS = CATEGORIES.map(c => c.key) as string[]
 
-  const filteredPhotos = filter === null
-    ? photos
-    : filter === '__generic__'
-    ? photos.filter(p => p.character_id === null && !p.category)
-    : CATEGORY_KEYS.includes(filter)
-    ? photos.filter(p => p.category === filter)
-    : photos.filter(p => p.character_id === filter)
+  const q = normalizeKana(searchQuery.trim())
+  const filteredPhotos = photos
+    .filter(p => {
+      if (filter === '__generic__') return p.character_id === null && !p.category
+      if (filter && CATEGORY_KEYS.includes(filter)) return p.category === filter
+      if (filter) return p.character_id === filter
+      return true
+    })
+    .filter(p => !q || normalizeKana(p.title || '').includes(q))
 
   const moveDestLabel = () => {
     if (moveCharId !== '__generic__') {
@@ -438,6 +448,26 @@ export default function OpegraPage() {
         {characters.map(c => (
           <FilterTab key={c.id} label={c.name} active={filter === c.id} onClick={() => setFilter(c.id)} />
         ))}
+      </div>
+
+      {/* 検索ボックス */}
+      <div className="relative mb-4">
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] pointer-events-none" />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          placeholder="ファイル名で検索…"
+          className="input-warm w-full pl-8 pr-8 py-2 text-sm"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery('')}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+          >
+            <X size={14} />
+          </button>
+        )}
       </div>
 
       {/* 選択モード：全選択バー */}

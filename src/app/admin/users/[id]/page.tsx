@@ -175,7 +175,7 @@ export default function AdminUserDetailPage() {
           <div><span className="text-[var(--color-text-muted)] text-xs">性別</span><p>{{ male: '男性', female: '女性', other: 'その他' }[user.gender ?? ''] ?? '—'}</p></div>
           <div><span className="text-[var(--color-text-muted)] text-xs">残高</span><p className="font-semibold">{user.points}T</p></div>
           <div><span className="text-[var(--color-text-muted)] text-xs">累計課金</span><p className="font-semibold">{totalCharged > 0 ? `¥${totalCharged.toLocaleString()}` : '—'}</p></div>
-          <div><span className="text-[var(--color-text-muted)] text-xs">登録日</span><p>{new Date(user.created_at).toLocaleDateString('ja-JP')}</p></div>
+          <div><span className="text-[var(--color-text-muted)] text-xs">登録日</span><p>{new Date(user.created_at).toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' })}</p></div>
           <div><span className="text-[var(--color-text-muted)] text-xs">最終ログイン</span><p>{user.last_login_at ? formatDistanceToNow(new Date(user.last_login_at), { addSuffix: true, locale: ja }) : '—'}</p></div>
           <div className="col-span-2"><span className="text-[var(--color-text-muted)] text-xs">流入元</span><p>{user.referral_source ?? '—'}</p></div>
           <div className="col-span-2"><span className="text-[var(--color-text-muted)] text-xs">登録IP</span><p className="font-mono text-xs">{user.registration_ip ?? '—'}</p></div>
@@ -289,7 +289,7 @@ export default function AdminUserDetailPage() {
               <div key={tx.id} className="flex items-center justify-between px-3 py-2 rounded-lg text-sm">
                 <div>
                   <span className="text-[var(--color-text-muted)] text-xs mr-2">
-                    {new Date(tx.created_at).toLocaleDateString('ja-JP')}
+                    {new Date(tx.created_at).toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' })}
                   </span>
                   {tx.description}
                 </div>
