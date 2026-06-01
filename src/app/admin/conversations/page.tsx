@@ -29,7 +29,7 @@ export default async function AdminConversationsPage({ searchParams }: { searchP
       characters ( id, name, avatar_url ),
       profiles ( id, user_code, display_name, points )
     `, { count: 'exact' })
-    .order('last_message_at', { ascending: false })
+    .order('last_message_at', { ascending: true })
     .range(from, to)
 
   query = query.eq('has_user_reply', true)   // ユーザーが1通でも返信した会話のみ
@@ -51,6 +51,7 @@ export default async function AdminConversationsPage({ searchParams }: { searchP
           {count != null && (
             <span className="text-sm text-[var(--color-text-muted)]">{count}件</span>
           )}
+          <span className="text-xs text-[var(--color-text-muted)]">古い順</span>
         </div>
         <div className="flex gap-2">
           <Link

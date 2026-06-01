@@ -27,6 +27,8 @@ type SP = {
   points_max?: string
   registered_from?: string
   registered_to?: string
+  login_from?: string
+  login_to?: string
   payment_from?: string
   payment_to?: string
   spend_from?: string
@@ -86,6 +88,7 @@ export default async function AdminConversationsSearchPage({
       sp.user_code?.trim() || sp.user_name?.trim() || sp.gender ||
       sp.age_min || sp.age_max || sp.points_min || sp.points_max ||
       sp.registered_from || sp.registered_to ||
+      sp.login_from || sp.login_to ||
       sp.payment_from || sp.payment_to ||
       sp.charged_min || sp.charged_max
 
@@ -101,6 +104,8 @@ export default async function AdminConversationsSearchPage({
       if (sp.points_max)              pq = pq.lte('points', parseInt(sp.points_max))
       if (sp.registered_from)         pq = pq.gte('created_at', sp.registered_from)
       if (sp.registered_to)           pq = pq.lte('created_at', `${sp.registered_to}T23:59:59`)
+      if (sp.login_from)              pq = pq.gte('last_login_at', sp.login_from)
+      if (sp.login_to)                pq = pq.lte('last_login_at', `${sp.login_to}T23:59:59`)
       if (sp.payment_from)            pq = pq.gte('last_payment_at', sp.payment_from)
       if (sp.payment_to)              pq = pq.lte('last_payment_at', `${sp.payment_to}T23:59:59`)
       if (sp.charged_min)             pq = pq.gte('total_charged', parseInt(sp.charged_min))
@@ -436,6 +441,15 @@ export default async function AdminConversationsSearchPage({
                 <input type="date" name="registered_from" defaultValue={sp.registered_from} className={inputCls} />
                 <span className="text-[var(--color-text-muted)] text-xs flex-shrink-0">〜</span>
                 <input type="date" name="registered_to" defaultValue={sp.registered_to} className={inputCls} />
+              </div>
+            </div>
+            {/* 最終ログイン日時 */}
+            <div>
+              <label className={labelCls}>最終ログイン日時</label>
+              <div className="flex items-center gap-2">
+                <input type="date" name="login_from" defaultValue={sp.login_from} className={inputCls} />
+                <span className="text-[var(--color-text-muted)] text-xs flex-shrink-0">〜</span>
+                <input type="date" name="login_to" defaultValue={sp.login_to} className={inputCls} />
               </div>
             </div>
             {/* 最終入金日時 */}

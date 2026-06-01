@@ -636,7 +636,10 @@ export default function AdminConversationDetailPage() {
       </aside>
 
       {/* チャットエリア */}
-      <div className="flex-1 flex flex-col min-w-0 border-r border-[var(--color-border)]">
+      <div
+        className="flex-1 flex flex-col min-w-0 border-r border-[var(--color-border)] transition-colors"
+        style={userProfile && userProfile.points <= 14 ? { background: 'rgba(220,38,38,0.06)', borderColor: 'rgba(220,38,38,0.3)' } : undefined}
+      >
 
         {/* Header */}
         <div
@@ -670,8 +673,15 @@ export default function AdminConversationDetailPage() {
               <div className="min-w-0">
                 <p className="text-sm font-medium leading-tight">{character.name} として返信</p>
                 {userProfile && (
-                  <p className="text-[var(--color-text-muted)] text-xs truncate">
-                    相手: {userProfile.display_name || userProfile.email || '匿名'} · {userProfile.points}T
+                  <p className="text-xs truncate flex items-center gap-1.5">
+                    <span className="text-[var(--color-text-muted)]">
+                      相手: {userProfile.display_name || userProfile.email || '匿名'} · {userProfile.points}T
+                    </span>
+                    {userProfile.points <= 14 && (
+                      <span className="flex-shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold" style={{ background: 'rgba(220,38,38,0.2)', color: '#f87171' }}>
+                        ポイント不足
+                      </span>
+                    )}
                   </p>
                 )}
               </div>
