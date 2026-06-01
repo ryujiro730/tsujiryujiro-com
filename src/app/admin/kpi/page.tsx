@@ -102,7 +102,7 @@ export default async function KpiPage() {
 
   let firstPurchaseTotal = 0, firstPurchaseCount = 0
   let totalPurchaseCount = 0
-  for (const txList of purchasesByUser.values()) {
+  for (const txList of Array.from(purchasesByUser.values())) {
     const first = txList[0]
     if (first.price_yen != null && first.price_yen > 0) {
       firstPurchaseTotal += first.price_yen
@@ -114,7 +114,7 @@ export default async function KpiPage() {
   const avgPurchaseCount = usersWithPurchase > 0 ? totalPurchaseCount / usersWithPurchase : null
 
   let repurchaseCount = 0
-  for (const txList of purchasesByUser.values()) {
+  for (const txList of Array.from(purchasesByUser.values())) {
     if (txList.length >= 2) repurchaseCount++
   }
   const repurchaseRate = pct(repurchaseCount, usersWithPurchase)
@@ -164,7 +164,7 @@ export default async function KpiPage() {
   // 登録→初メッセージ率
   let usersWithAnySpend = 0
 
-  for (const [uid, createdMs] of userCreatedAt) {
+  for (const [uid, createdMs] of Array.from(userCreatedAt)) {
     const ageMs = now - createdMs
     const lastSpend = lastSpendAt.get(uid)
     if (firstSpendAt.has(uid)) usersWithAnySpend++

@@ -483,6 +483,16 @@ export default function AdminCharactersPage() {
     setSaving(false)
   }
 
+  const toggleActive = async (char: Character) => {
+    const { data } = await supabase
+      .from('characters')
+      .update({ is_active: !char.is_active })
+      .eq('id', char.id)
+      .select()
+      .single()
+    if (data) setCharacters(prev => prev.map(c => c.id === char.id ? data : c))
+  }
+
   const deleteChar = async (id: string) => {
     if (!confirm('このキャラクターを削除しますか？')) return
     await supabase.from('characters').delete().eq('id', id)
@@ -675,6 +685,13 @@ export default function AdminCharactersPage() {
                 <p className="text-[var(--color-text-muted)] text-xs truncate">{char.description}</p>
               </div>
               <div className="flex gap-2 flex-shrink-0">
+                <button
+                  onClick={() => toggleActive(char)}
+                  title={char.is_active ? '公開中（クリックで非公開）' : '非公開（クリックで公開）'}
+                  className={`p-2 rounded-lg transition-colors ${char.is_active ? 'text-emerald-400 hover:bg-emerald-900/30' : 'text-gray-500 hover:bg-[var(--color-surface-2)]'}`}
+                >
+                  <Power size={16} />
+                </button>
                 <button
                   onClick={() => openTemplates(char.id)}
                   className={`p-2 rounded-lg transition-colors ${tmplCharId === char.id ? 'bg-[var(--color-primary)] text-white' : 'hover:bg-[var(--color-surface-2)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}`}
