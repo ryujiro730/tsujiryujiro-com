@@ -1,50 +1,50 @@
-import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { createClient, createAdminClientStatic } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import RealtimeRefresher from './conversations/RealtimeRefresher'
-import { unstable_noStore as noStore } from 'next/cache'
+import { unstable_cache } from 'next/cache'
 import { AdminNav } from '@/components/admin/AdminNav'
 
+// roleチェックは30秒キャッシュ（cookies不要なstaticクライアントを使用）
+const getAdminProfile = unstable_cache(
+  async (userId: string) => {
+    const adminDb = createAdminClientStatic()
+    const { data } = await adminDb
+      .from('profiles').select('role, display_name').eq('id', userId).single()
+    return data
+  },
+  ['admin-profile'],
+  { revalidate: 30 }
+)
+
+// unreadカウントは5秒キャッシュ
+const getUnreadCount = unstable_cache(
+  async () => {
+    const adminDb = createAdminClientStatic()
+    const { count } = await adminDb
+      .from('conversations').select('id', { count: 'exact', head: true }).eq('is_unread_staff', true)
+    return count ?? 0
+  },
+  ['admin-unread-count'],
+  { revalidate: 5 }
+)
+
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  noStore()
-  const supabase = createClient() // 認証チェックはanonクライアントで
+  // getSession() はクッキー読み取りのみ（ネットワーク不要）→ 高速
+  const supabase = createClient()
+  const { data: { session } } = await supabase.auth.getSession()
+  const user = session?.user ?? null
 
-  // getUser() makes a network call — 5秒でタイムアウト、失敗時はgetSession()にフォールバック
-  let user
-  let networkError = false
-  try {
-    const result = await Promise.race([
-      supabase.auth.getUser(),
-      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000)),
-    ]) as Awaited<ReturnType<typeof supabase.auth.getUser>>
-    user = result.data.user
-  } catch { networkError = true }
+  if (!user) redirect('/auth/login')
 
-  if (!user) {
-    try {
-      const { data } = await supabase.auth.getSession()
-      user = data.session?.user ?? null
-    } catch { /* session fetch also failed */ }
-  }
-
-  // ネットワークエラーで両方失敗した場合はログイン画面に飛ばさない
-  if (!user && !networkError) redirect('/auth/login')
-  if (!user) return (
-    <div className="min-h-screen warm-bg flex items-center justify-center">
-      <p className="text-[var(--color-text-muted)] text-sm">接続エラーが発生しました。ページを再読み込みしてください。</p>
-    </div>
-  )
-
-  const { data: profile } = await supabase
-    .from('profiles').select('role, display_name').eq('id', user.id).single()
+  // roleチェックとunreadを並列取得（どちらもキャッシュ済みなら即座）
+  const [profile, unread] = await Promise.all([
+    getAdminProfile(user.id),
+    getUnreadCount(),
+  ])
 
   if (!profile || profile.role !== 'admin') {
     redirect('/characters')
   }
-
-  // unreadカウントはservice roleで（RLSオーバーヘッドなし）
-  const adminDb = createAdminClient()
-  const { count: unread } = await adminDb
-    .from('conversations').select('id', { count: 'exact', head: true }).eq('is_unread_staff', true)
 
   const navItems = [
     { href: '/admin', label: '概要' },
@@ -62,11 +62,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   ]
 
   return (
-    <div className="min-h-screen warm-bg admin-layout">
+    <div className="min-h-screen admin-layout" style={{ background: 'var(--color-bg)' }}>
       <header className="glass" style={{ position: 'sticky', top: 0, zIndex: 50 }}>
         <div className="w-full px-4 flex items-center gap-4 h-12">
-          <span className="text-sm font-medium text-[var(--color-text-warm)] shrink-0">AiKano</span>
-          <span className="text-[var(--color-border-warm)] text-xs shrink-0 hidden md:block">|</span>
+          <a href="/characters" className="text-sm font-semibold text-[var(--color-text)] shrink-0 hover:opacity-70 transition-opacity">AiKano</a>
+          <span className="text-[var(--color-text-muted)] text-xs shrink-0 hidden md:block">|</span>
           <AdminNav navItems={navItems} />
         </div>
       </header>

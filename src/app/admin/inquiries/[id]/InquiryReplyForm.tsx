@@ -29,11 +29,24 @@ export default function InquiryReplyForm({ inquiryId, status }: { inquiryId: str
     setSending(false)
   }
 
-  const handleClose = async () => {
+  const [closing, setClosing] = useState(false)
+
+  const handleMarkRead = async () => {
+    setClosing(true)
     await fetch(`/api/admin/inquiries/${inquiryId}/status`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: status === 'closed' ? 'open' : 'closed' }),
+      body: JSON.stringify({ status: 'closed' }),
+    })
+    setClosing(false)
+    router.refresh()
+  }
+
+  const handleReopen = async () => {
+    await fetch(`/api/admin/inquiries/${inquiryId}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'open' }),
     })
     router.refresh()
   }
@@ -58,12 +71,22 @@ export default function InquiryReplyForm({ inquiryId, status }: { inquiryId: str
           <Send size={14} />
           {sending ? '送信中…' : '返信を送る'}
         </button>
-        <button
-          onClick={handleClose}
-          className="px-4 py-2 text-sm rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-surface-2)] transition-colors"
-        >
-          {status === 'closed' ? '再オープン' : 'クローズ'}
-        </button>
+        {status !== 'closed' ? (
+          <button
+            onClick={handleMarkRead}
+            disabled={closing}
+            className="px-4 py-2 text-sm rounded-lg bg-[var(--color-surface-2)] text-[var(--color-text)] font-medium hover:bg-[var(--color-surface-3)] transition-colors disabled:opacity-40"
+          >
+            {closing ? '処理中…' : '既読にする'}
+          </button>
+        ) : (
+          <button
+            onClick={handleReopen}
+            className="px-4 py-2 text-sm rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-surface-2)] transition-colors"
+          >
+            再オープン
+          </button>
+        )}
       </div>
     </div>
   )

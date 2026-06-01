@@ -494,40 +494,64 @@ export default function AdminConversationDetailPage() {
       {rightOpen && <div className="md:hidden fixed inset-0 bg-black/50 z-40" onClick={() => setRightOpen(false)} />}
 
       {/* 左サイドバー：ユーザー情報 ＋ テンプレート */}
-      <aside className={`
-        fixed md:relative inset-y-0 left-0 z-50 md:z-auto
-        w-72 flex-shrink-0 border-r border-[var(--color-border)] bg-[var(--color-surface)] flex flex-col
-        transition-transform duration-200 md:translate-x-0
-        ${leftOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-      `}>
+      <aside
+        className={`
+          fixed md:relative inset-y-0 left-0 z-50 md:z-auto
+          w-72 flex-shrink-0 border-r flex flex-col
+          transition-transform duration-200 md:translate-x-0
+          ${leftOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+        `}
+        style={userProfile && userProfile.points <= 14
+          ? { background: 'rgba(220,38,38,0.08)', borderColor: 'rgba(220,38,38,0.3)' }
+          : { background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
+      >
 
-        {/* ユーザー情報 */}
-        <div className="p-4 border-b border-[var(--color-border)] flex items-center justify-between">
-          <h2 className="text-sm font-bold">ユーザー情報</h2>
+        {/* ユーザー情報ヘッダー */}
+        <div className="px-4 py-3 border-b border-[var(--color-border)] flex items-center justify-between flex-shrink-0">
+          <h2 className="text-sm font-bold">{userProfile?.display_name || userProfile?.email || 'ユーザー情報'}</h2>
           <button className="md:hidden text-[var(--color-text-muted)]" onClick={() => setLeftOpen(false)}>
             <X size={18} />
           </button>
         </div>
-        <div className="p-4 space-y-4 text-sm overflow-y-auto" style={{ maxHeight: '40%' }}>
+        {/* 管理者メモ（常時表示） */}
+        {userProfile && (
+          <div className="px-4 pt-3 pb-2 border-b border-[var(--color-border)] flex-shrink-0">
+            <p className="text-xs text-[var(--color-text-muted)] mb-1.5">管理者メモ</p>
+            <textarea
+              value={adminNote}
+              onChange={e => setAdminNote(e.target.value)}
+              rows={3}
+              placeholder="このユーザーに関するメモ…"
+              className="w-full bg-[var(--color-surface-2)] border border-[var(--color-border-warm)] rounded-lg p-2 text-xs resize-none focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
+            />
+            <div className="flex items-center gap-2 mt-1.5">
+              <button
+                onClick={saveAdminNote}
+                disabled={adminNoteLoading}
+                className="btn-primary px-3 py-1 text-xs flex items-center gap-1.5 disabled:opacity-40"
+              >
+                {adminNoteLoading ? <Loader2 size={11} className="animate-spin" /> : <Save size={11} />}
+                保存
+              </button>
+              {adminNoteSaved && <span className="text-green-400 text-xs">保存済</span>}
+            </div>
+          </div>
+        )}
+        {/* その他のユーザー情報（スクロール） */}
+        <div className="p-4 space-y-4 text-sm overflow-y-auto" style={{ maxHeight: '30%' }}>
           {userProfile && (
             <>
-              <div>
-                <p className="text-xs text-[var(--color-text-muted)]">ID</p>
-                <button onClick={openUserModal} className="font-mono text-xs text-[var(--color-primary-light)] hover:underline">
-                  {userProfile.user_code ?? userProfile.id}
-                </button>
-              </div>
-              <div>
-                <p className="text-xs text-[var(--color-text-muted)]">ポイント</p>
-                <p>{userProfile.points?.toLocaleString()} T</p>
-              </div>
-              <div>
-                <p className="text-xs text-[var(--color-text-muted)]">課金額</p>
-                <p>¥{(userProfile as any).total_spent?.toLocaleString() ?? 0}</p>
-              </div>
-              <div>
-                <p className="text-xs text-[var(--color-text-muted)]">登録日時</p>
-                <p>{userProfile.created_at ? format(toZonedTime(new Date(userProfile.created_at), 'Asia/Tokyo'), 'yyyy/MM/dd HH:mm') : '-'}</p>
+              <div className="flex gap-4">
+                <div>
+                  <p className="text-xs text-[var(--color-text-muted)]">ID</p>
+                  <button onClick={openUserModal} className="font-mono text-xs text-[var(--color-primary-light)] hover:underline">
+                    {userProfile.user_code ?? userProfile.id}
+                  </button>
+                </div>
+                <div>
+                  <p className="text-xs text-[var(--color-text-muted)]">ポイント</p>
+                  <p>{userProfile.points?.toLocaleString()} T</p>
+                </div>
               </div>
               <div className="flex gap-4">
                 <div>
@@ -538,6 +562,10 @@ export default function AdminConversationDetailPage() {
                   <p className="text-xs text-[var(--color-text-muted)]">性別</p>
                   <p>{userProfile.gender ?? '未設定'}</p>
                 </div>
+              </div>
+              <div>
+                <p className="text-xs text-[var(--color-text-muted)]">登録日時</p>
+                <p>{userProfile.created_at ? format(toZonedTime(new Date(userProfile.created_at), 'Asia/Tokyo'), 'yyyy/MM/dd HH:mm') : '-'}</p>
               </div>
               <div>
                 <p className="text-xs text-[var(--color-text-muted)]">流入元</p>
@@ -569,27 +597,6 @@ export default function AdminConversationDetailPage() {
                   </div>
                 </div>
               )}
-              <div>
-                <p className="text-xs text-[var(--color-text-muted)] mb-2">管理者メモ</p>
-                <textarea
-                  value={adminNote}
-                  onChange={e => setAdminNote(e.target.value)}
-                  rows={3}
-                  placeholder="このユーザーに関するメモ…"
-                  className="w-full bg-[var(--color-surface-2)] border border-[var(--color-border-warm)] rounded-lg p-2 text-xs resize-none focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
-                />
-                <div className="flex items-center gap-2 mt-1.5">
-                  <button
-                    onClick={saveAdminNote}
-                    disabled={adminNoteLoading}
-                    className="btn-primary px-3 py-1 text-xs flex items-center gap-1.5 disabled:opacity-40"
-                  >
-                    {adminNoteLoading ? <Loader2 size={11} className="animate-spin" /> : <Save size={11} />}
-                    保存
-                  </button>
-                  {adminNoteSaved && <span className="text-green-400 text-xs">保存済</span>}
-                </div>
-              </div>
             </>
           )}
         </div>
@@ -638,13 +645,13 @@ export default function AdminConversationDetailPage() {
       {/* チャットエリア */}
       <div
         className="flex-1 flex flex-col min-w-0 border-r border-[var(--color-border)] transition-colors"
-        style={userProfile && userProfile.points <= 14 ? { background: 'rgba(220,38,38,0.06)', borderColor: 'rgba(220,38,38,0.3)' } : undefined}
+        style={userProfile && userProfile.points <= 14 ? { background: 'rgba(220,38,38,0.07)', borderColor: 'rgba(220,38,38,0.25)' } : undefined}
       >
 
         {/* Header */}
         <div
           className="flex items-center gap-3 px-5 py-3 flex-shrink-0"
-          style={{ background: 'rgba(23,18,13,0.92)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--color-border)' }}
+          style={{ background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border)' }}
         >
           <Link href="/admin/conversations" className="text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors flex-shrink-0">
             <ChevronLeft size={20} />
@@ -770,7 +777,7 @@ export default function AdminConversationDetailPage() {
         </div>
 
         {/* Input */}
-        <div className="flex-shrink-0 px-5 py-4" style={{ borderTop: '1px solid var(--color-border)', background: 'rgba(23,18,13,0.95)' }}>
+        <div className="flex-shrink-0 px-5 py-4" style={{ borderTop: '1px solid var(--color-border)', background: 'var(--color-surface)' }}>
           {character && (
             <p className="text-[var(--color-text-muted)] text-xs mb-2">
               {character.name} として返信
