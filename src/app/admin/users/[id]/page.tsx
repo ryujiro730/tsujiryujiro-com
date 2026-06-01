@@ -67,6 +67,10 @@ export default function AdminUserDetailPage() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [newLabelName, setNewLabelName] = useState('')
   const [creatingLabel, setCreatingLabel] = useState(false)
+  const [adjustAmount, setAdjustAmount] = useState('')
+  const [adjustDesc, setAdjustDesc] = useState('')
+  const [adjusting, setAdjusting] = useState(false)
+  const [adjustError, setAdjustError] = useState('')
 
   useEffect(() => {
     loadAll()
@@ -78,7 +82,7 @@ export default function AdminUserDetailPage() {
       supabase.from('admin_labels').select('*').order('name'),
       supabase.from('user_label_assignments').select('label_id').eq('user_id', id),
       supabase.from('conversations').select('id, last_message_at, is_unread_staff, characters(name, avatar_url)').eq('user_id', id).order('last_message_at', { ascending: false }).limit(10),
-      supabase.from('point_transactions').select('id, amount, type, description, price_yen, created_at').eq('user_id', id).order('created_at', { ascending: false }).limit(20),
+      supabase.from('point_transactions').select('id, amount, type, description, price_yen, created_at').eq('user_id', id).order('created_at', { ascending: false }).limit(50),
       fetch(`/api/admin/profile-note?userId=${id}`).then(r => r.json()),
     ])
 
@@ -122,6 +126,26 @@ export default function AdminUserDetailPage() {
     }
   }
 
+  const adjustPoints = async (sign: 1 | -1) => {
+    const amt = parseInt(adjustAmount, 10)
+    if (!amt || amt <= 0) { setAdjustError('金額を入力してください'); return }
+    setAdjusting(true)
+    setAdjustError('')
+    const res = await fetch('/api/admin/adjust-points', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: id, amount: amt * sign, description: adjustDesc.trim() || undefined }),
+    })
+    const data = await res.json()
+    if (!res.ok) { setAdjustError(data.error ?? 'エラー'); setAdjusting(false); return }
+    setUser(prev => prev ? { ...prev, points: data.newPoints } : prev)
+    setAdjustAmount('')
+    setAdjustDesc('')
+    setAdjusting(false)
+    // トランザクション履歴を更新
+    loadAll()
+  }
+
   const createLabel = async () => {
     if (!newLabelName.trim()) return
     setCreatingLabel(true)
@@ -152,7 +176,8 @@ export default function AdminUserDetailPage() {
 
   if (!user) return null
 
-  const totalCharged = transactions.filter(t => t.type === 'purchase').reduce((sum, t) => sum + (t.price_yen ?? 0), 0)
+  const payments = transactions.filter(t => t.type === 'purchase' && t.price_yen != null)
+  const totalCharged = payments.reduce((sum, t) => sum + (t.price_yen ?? 0), 0)
 
   return (
     <div className="space-y-6">
@@ -180,6 +205,47 @@ export default function AdminUserDetailPage() {
           <div className="col-span-2"><span className="text-[var(--color-text-muted)] text-xs">流入元</span><p>{user.referral_source ?? '—'}</p></div>
           <div className="col-span-2"><span className="text-[var(--color-text-muted)] text-xs">登録IP</span><p className="font-mono text-xs">{user.registration_ip ?? '—'}</p></div>
           <div className="col-span-2"><span className="text-[var(--color-text-muted)] text-xs">登録UA</span><p className="text-xs break-all text-[var(--color-text-muted)]">{user.registration_ua ?? '—'}</p></div>
+        </div>
+      </div>
+
+      {/* Point adjustment */}
+      <div className="glass rounded-2xl p-5">
+        <h2 className="text-sm font-semibold mb-4 text-[var(--color-text-muted)]">
+          ポイント手動調整 <span className="font-normal">（現在: <strong className="text-[var(--color-text)]">{user.points}T</strong>）</span>
+        </h2>
+        <div className="flex gap-2 mb-2">
+          <input
+            type="number"
+            min="1"
+            value={adjustAmount}
+            onChange={e => setAdjustAmount(e.target.value)}
+            placeholder="ポイント数"
+            className="input-warm px-3 py-2 text-sm w-36"
+          />
+          <input
+            type="text"
+            value={adjustDesc}
+            onChange={e => setAdjustDesc(e.target.value)}
+            placeholder="理由（省略可）"
+            className="input-warm px-3 py-2 text-sm flex-1"
+          />
+        </div>
+        {adjustError && <p className="text-red-400 text-xs mb-2">{adjustError}</p>}
+        <div className="flex gap-2">
+          <button
+            onClick={() => adjustPoints(1)}
+            disabled={adjusting}
+            className="btn-primary px-4 py-2 text-sm disabled:opacity-40"
+          >
+            + 付与
+          </button>
+          <button
+            onClick={() => adjustPoints(-1)}
+            disabled={adjusting}
+            className="px-4 py-2 text-sm rounded-lg bg-red-50 text-red-500 border border-red-200 hover:bg-red-100 transition-colors disabled:opacity-40"
+          >
+            − 減算
+          </button>
         </div>
       </div>
 
@@ -280,10 +346,40 @@ export default function AdminUserDetailPage() {
         </div>
       )}
 
+      {/* Payment history */}
+      <div className="glass rounded-2xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-semibold text-[var(--color-text-muted)]">入金履歴</h2>
+          {totalCharged > 0 && (
+            <span className="text-sm font-semibold text-green-500">累計 ¥{totalCharged.toLocaleString()}</span>
+          )}
+        </div>
+        {payments.length === 0 ? (
+          <p className="text-sm text-[var(--color-text-muted)]">入金履歴はありません</p>
+        ) : (
+          <div className="space-y-1">
+            {payments.map(tx => (
+              <div key={tx.id} className="flex items-center justify-between px-3 py-2.5 rounded-lg text-sm" style={{ border: '1px solid var(--color-border)' }}>
+                <div>
+                  <span className="text-[var(--color-text-muted)] text-xs mr-2">
+                    {new Date(tx.created_at).toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' })}
+                  </span>
+                  <span>{tx.description}</span>
+                </div>
+                <div className="flex items-center gap-4 flex-shrink-0">
+                  <span className="text-green-500 font-semibold">¥{(tx.price_yen ?? 0).toLocaleString()}</span>
+                  <span className="text-[var(--color-text-muted)] text-xs">+{tx.amount}T</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Transactions */}
       {transactions.length > 0 && (
         <div className="glass rounded-2xl p-5">
-          <h2 className="text-sm font-semibold mb-4 text-[var(--color-text-muted)]">ポイント履歴（直近20件）</h2>
+          <h2 className="text-sm font-semibold mb-4 text-[var(--color-text-muted)]">ポイント履歴（直近50件）</h2>
           <div className="space-y-1">
             {transactions.map(tx => (
               <div key={tx.id} className="flex items-center justify-between px-3 py-2 rounded-lg text-sm">
@@ -297,8 +393,12 @@ export default function AdminUserDetailPage() {
                   {tx.price_yen != null && (
                     <span className="text-xs text-green-400">¥{tx.price_yen.toLocaleString()}</span>
                   )}
-                  <span className={`font-medium ${tx.type === 'purchase' ? 'text-green-400' : 'text-[var(--color-text-muted)]'}`}>
-                    {tx.type === 'purchase' ? '+' : '-'}{Math.abs(tx.amount)}T
+                  <span className={`font-medium ${
+                    tx.type === 'purchase' || tx.type === 'login_bonus' || (tx.type === 'admin_adjust' && tx.amount > 0) ? 'text-green-400' :
+                    tx.type === 'admin_adjust' && tx.amount < 0 ? 'text-red-400' : 'text-[var(--color-text-muted)]'
+                  }`}>
+                    {tx.type === 'purchase' || tx.type === 'login_bonus' ? '+' :
+                     tx.type === 'admin_adjust' ? (tx.amount > 0 ? '+' : '-') : '-'}{Math.abs(tx.amount)}T
                   </span>
                 </div>
               </div>

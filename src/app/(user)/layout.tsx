@@ -28,13 +28,14 @@ export default async function UserLayout({ children }: { children: React.ReactNo
   // Only 1 DB query blocks the critical path
   const { data: profile } = await admin
     .from('profiles')
-    .select('display_name, age, points, bonus_points, bonus_points_expires_at')
+    .select('display_name, age, points, bonus_points, bonus_points_expires_at, role')
     .eq('id', userId)
     .single()
 
   if (!profile || profile.age === null) {
     redirect('/onboarding')
   }
+
 
   return (
     <div className="min-h-screen warm-bg">
@@ -43,7 +44,14 @@ export default async function UserLayout({ children }: { children: React.ReactNo
           <Link href="/characters" className="text-sm font-semibold tracking-wide" style={{ color: 'var(--color-text-warm)' }}>
             AiKano
           </Link>
-          <PointsDisplay initialPoints={(profile?.points ?? 0) + (profile?.bonus_points ?? 0)} />
+          <div className="flex items-center gap-3">
+            {profile?.role === 'admin' && (
+              <a href="/admin" className="text-xs text-[var(--color-text-muted)] hover:opacity-70 transition-opacity">
+                管理画面 →
+              </a>
+            )}
+            <PointsDisplay initialPoints={(profile?.points ?? 0) + (profile?.bonus_points ?? 0)} />
+          </div>
         </div>
       </header>
 

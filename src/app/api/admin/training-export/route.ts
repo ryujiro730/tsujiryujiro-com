@@ -12,7 +12,6 @@ export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
-import { getAuthUser } from '@/lib/supabase/get-auth-user'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 
 function adminSupabase() {
@@ -23,22 +22,21 @@ function adminSupabase() {
 }
 
 export async function GET(req: NextRequest) {
-  // admin/staffのみ許可
+  // getSession()はcookie読み取りのみ（ネットワーク不要）→ 確実に動作
   const authClient = createServerClient()
-  const user = await getAuthUser(authClient)
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { data: { session } } = await authClient.auth.getSession()
+  const userId = session?.user?.id
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: profile } = await authClient
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
+  const admin = adminSupabase()
+
+  // roleチェックはservice roleで（RLSなし→高速・確実）
+  const { data: profile } = await admin
+    .from('profiles').select('role').eq('id', userId).single()
 
   if (!profile || !['admin', 'staff'].includes(profile.role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
-
-  const admin = adminSupabase()
 
   // クエリパラメーター
   const url = new URL(req.url)

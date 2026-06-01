@@ -3,6 +3,7 @@ import { Search, MessageSquare } from 'lucide-react'
 import { SavedTemplateList, SaveTemplateButton } from '@/components/admin/SearchTemplates'
 import { SearchResults } from '@/components/admin/SearchResults'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { LabelFilter } from '@/components/admin/LabelFilter'
 
 type SP = {
   // やり取り条件
@@ -38,6 +39,9 @@ type SP = {
   // 積み数
   stack_min?: string
   stack_max?: string
+  // ラベル
+  label_ids?: string | string[]
+  label_mode?: string
   // 表示設定
   dedup?: string
   sort?: string
@@ -57,8 +61,10 @@ export default async function AdminConversationsSearchPage({
 }) {
   const supabase = createClient()
 
-  const { data: characters } = await supabase
-    .from('characters').select('id, name').order('name')
+  const [{ data: characters }, { data: allLabels }] = await Promise.all([
+    supabase.from('characters').select('id, name').order('name'),
+    supabase.from('admin_labels').select('id, name, color').order('name'),
+  ])
 
   // 保存済みテンプレート
   const adminDb = createAdminClient(
@@ -72,7 +78,7 @@ export default async function AdminConversationsSearchPage({
 
 
   const isSearching = Object.entries(sp).some(
-    ([k, v]) => !['sort', 'order', 'dedup'].includes(k) && !!v,
+    ([k, v]) => !['sort', 'order', 'dedup', 'label_mode'].includes(k) && !!v,
   )
 
   let conversations: any[] = []
@@ -138,6 +144,56 @@ export default async function AdminConversationsSearchPage({
         ? includeUserIdSets[0]
         : intersectArrays(includeUserIdSets[0], ...includeUserIdSets.slice(1))
       if (finalUserIds.length === 0) noResults = true
+    }
+
+    // ラベルフィルタ
+    const rawLabelIds = sp.label_ids
+    const selectedLabelIds = rawLabelIds ? (Array.isArray(rawLabelIds) ? rawLabelIds : [rawLabelIds]) : []
+    const labelMode = sp.label_mode ?? 'or'
+    let labelExcludeUserIds: Set<string> | null = null
+
+    if (!noResults && selectedLabelIds.length > 0) {
+      const { data: labelAssignments } = await supabase
+        .from('user_label_assignments')
+        .select('user_id, label_id')
+        .in('label_id', selectedLabelIds)
+
+      if (labelMode === 'not') {
+        const excludeIds = new Set((labelAssignments ?? []).map(a => a.user_id))
+        if (finalUserIds !== null) {
+          finalUserIds = finalUserIds.filter(uid => !excludeIds.has(uid))
+          if (finalUserIds.length === 0) noResults = true
+        } else {
+          labelExcludeUserIds = excludeIds
+        }
+      } else if (labelMode === 'or') {
+        const incIds = Array.from(new Set((labelAssignments ?? []).map(a => a.user_id)))
+        if (incIds.length === 0) {
+          noResults = true
+        } else if (finalUserIds !== null) {
+          finalUserIds = finalUserIds.filter(uid => incIds.includes(uid))
+          if (finalUserIds.length === 0) noResults = true
+        } else {
+          finalUserIds = incIds
+        }
+      } else if (labelMode === 'and') {
+        const userLabelMap = new Map<string, Set<string>>()
+        for (const a of labelAssignments ?? []) {
+          if (!userLabelMap.has(a.user_id)) userLabelMap.set(a.user_id, new Set())
+          userLabelMap.get(a.user_id)!.add(a.label_id)
+        }
+        const incIds = Array.from(userLabelMap.entries())
+          .filter(([, s]) => selectedLabelIds.every(lid => s.has(lid)))
+          .map(([uid]) => uid)
+        if (incIds.length === 0) {
+          noResults = true
+        } else if (finalUserIds !== null) {
+          finalUserIds = finalUserIds.filter(uid => incIds.includes(uid))
+          if (finalUserIds.length === 0) noResults = true
+        } else {
+          finalUserIds = incIds
+        }
+      }
     }
 
     // ================================================================
@@ -219,8 +275,12 @@ export default async function AdminConversationsSearchPage({
       if (finalUserIds !== null)   query = query.in('user_id', finalUserIds)
       if (finalConvIds !== null)   query = query.in('id', finalConvIds)
 
-      const sortAsc = sp.order === 'asc'
-      query = query.order('last_message_at', { ascending: sortAsc }).limit(fetchLimit)
+      const sort = sp.sort ?? 'last_msg_desc'
+      const sortByPoints = sort === 'points_asc' || sort === 'points_desc'
+      const lastMsgAsc = sort === 'last_msg_asc'
+
+      // ポイントソートの場合はDB側でlast_message_atで取得し、後でJS側ソート
+      query = query.order('last_message_at', { ascending: sortByPoints ? false : lastMsgAsc }).limit(fetchLimit)
 
       const { data, error: qErr } = await query
       if (qErr) { queryError = qErr.message }
@@ -232,6 +292,8 @@ export default async function AdminConversationsSearchPage({
         results = results.filter(c => !convExcludeIds.has(c.id))
       if (spendExcludeIds && spendExcludeIds.size > 0)
         results = results.filter(c => !spendExcludeIds!.has((c as any).profiles?.id))
+      if (labelExcludeUserIds && labelExcludeUserIds.size > 0)
+        results = results.filter(c => !labelExcludeUserIds!.has((c as any).profiles?.id))
 
       // 重複なし：ユーザーごとに最も古いやり取り1件のみ残す
       if (sp.dedup === 'yes') {
@@ -244,14 +306,24 @@ export default async function AdminConversationsSearchPage({
             oldestByUser.set(uid, conv)
         }
         results = Array.from(oldestByUser.values())
+      }
+
+      // クライアントサイドソート
+      if (sortByPoints) {
+        results.sort((a, b) => {
+          const pa = (a as any).profiles?.points ?? 0
+          const pb = (b as any).profiles?.points ?? 0
+          return sort === 'points_asc' ? pa - pb : pb - pa
+        })
+      } else {
         results.sort((a, b) =>
-          sortAsc
+          lastMsgAsc
             ? a.last_message_at.localeCompare(b.last_message_at)
             : b.last_message_at.localeCompare(a.last_message_at)
         )
-        results = results.slice(0, 100)
       }
 
+      results = results.slice(0, 100)
       conversations = results
     }
   }
@@ -370,6 +442,16 @@ export default async function AdminConversationsSearchPage({
         <div className={sectionCls}>
           <p className={sectionTitleCls}>ユーザー条件</p>
           <div className="space-y-3">
+            {/* ラベル */}
+            <div>
+              <label className={labelCls}>ラベル</label>
+              <LabelFilter
+                labels={allLabels ?? []}
+                selectedIds={sp.label_ids ? (Array.isArray(sp.label_ids) ? sp.label_ids : [sp.label_ids]) : []}
+                mode={sp.label_mode ?? 'or'}
+              />
+            </div>
+
             {/* ID・名前 */}
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -476,7 +558,7 @@ export default async function AdminConversationsSearchPage({
         {/* ── 表示設定 ── */}
         <div className={sectionCls}>
           <p className={sectionTitleCls}>表示設定</p>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={labelCls}>重複</label>
               <select name="dedup" defaultValue={sp.dedup ?? ''} className={inputCls}>
@@ -486,15 +568,11 @@ export default async function AdminConversationsSearchPage({
             </div>
             <div>
               <label className={labelCls}>並び順</label>
-              <select name="sort" defaultValue={sp.sort ?? 'last_message_at'} className={inputCls}>
-                <option value="last_message_at">最終メッセージ日時</option>
-              </select>
-            </div>
-            <div>
-              <label className={labelCls}>昇順 / 降順</label>
-              <select name="order" defaultValue={sp.order ?? 'desc'} className={inputCls}>
-                <option value="desc">新しい順</option>
-                <option value="asc">古い順</option>
+              <select name="sort" defaultValue={sp.sort ?? 'last_msg_desc'} className={inputCls}>
+                <option value="points_asc">所持ポイント 低い順</option>
+                <option value="points_desc">所持ポイント 高い順</option>
+                <option value="last_msg_desc">最終メッセージ 近い順</option>
+                <option value="last_msg_asc">最終メッセージ 遠い順</option>
               </select>
             </div>
           </div>

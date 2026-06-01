@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { Search } from 'lucide-react'
+import { LabelFilter } from '@/components/admin/LabelFilter'
 
 type SearchParams = {
   user_code?: string
@@ -20,6 +21,8 @@ type SearchParams = {
   payment_to?: string
   sort?: string
   order?: string
+  label_ids?: string | string[]
+  label_mode?: string
 }
 
 const GENDER_LABEL: Record<string, string> = {
@@ -35,9 +38,45 @@ export default async function AdminUsersPage({
 }) {
   const supabase = createClient()
 
+  // Fetch labels for the filter UI
+  const { data: allLabels } = await supabase.from('admin_labels').select('id, name, color').order('name')
+
+  // Parse label filter
+  const rawLabelIds = searchParams.label_ids
+  const selectedLabelIds = rawLabelIds ? (Array.isArray(rawLabelIds) ? rawLabelIds : [rawLabelIds]) : []
+  const labelMode = (searchParams.label_mode ?? 'or') as 'or' | 'and' | 'not'
+
   let query = supabase
     .from('admin_users_view')
     .select('id, user_code, email, display_name, age, gender, points, total_charged, last_login_at, last_payment_at, created_at')
+
+  let noResults = false
+
+  // Label filter
+  if (selectedLabelIds.length > 0) {
+    const { data: assignments } = await supabase
+      .from('user_label_assignments')
+      .select('user_id, label_id')
+      .in('label_id', selectedLabelIds)
+
+    if (labelMode === 'or') {
+      const ids = Array.from(new Set((assignments ?? []).map(a => a.user_id)))
+      if (ids.length === 0) { noResults = true } else { query = query.in('id', ids) }
+    } else if (labelMode === 'and') {
+      const userLabelMap = new Map<string, Set<string>>()
+      for (const a of assignments ?? []) {
+        if (!userLabelMap.has(a.user_id)) userLabelMap.set(a.user_id, new Set())
+        userLabelMap.get(a.user_id)!.add(a.label_id)
+      }
+      const ids = Array.from(userLabelMap.entries())
+        .filter(([, labelSet]) => selectedLabelIds.every(lid => labelSet.has(lid)))
+        .map(([uid]) => uid)
+      if (ids.length === 0) { noResults = true } else { query = query.in('id', ids) }
+    } else if (labelMode === 'not') {
+      const excludeIds = Array.from(new Set((assignments ?? []).map(a => a.user_id)))
+      if (excludeIds.length > 0) query = query.not('id', 'in', `(${excludeIds.join(',')})`)
+    }
+  }
 
   // テキスト検索
   if (searchParams.user_code?.trim()) {
@@ -81,9 +120,17 @@ export default async function AdminUsersPage({
   const sortAsc = searchParams.order === 'asc'
   query = query.order(sortCol, { ascending: sortAsc }).limit(100)
 
-  const { data: users, error } = await query
+  let users: any[] | null = null
+  let error: any = null
+  if (!noResults) {
+    const result = await query
+    users = result.data
+    error = result.error
+  }
 
-  const hasFilters = Object.entries(searchParams).some(([k, v]) => k !== 'sort' && k !== 'order' && v)
+  const hasFilters = Object.entries(searchParams).some(
+    ([k, v]) => !['sort', 'order'].includes(k) && v
+  )
 
   return (
     <div>
@@ -235,6 +282,16 @@ export default async function AdminUsersPage({
               className="flex-1 px-3 py-2 rounded-lg bg-[var(--color-surface-2)] text-sm border border-[var(--color-border)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
             />
           </div>
+        </div>
+
+        {/* ラベル */}
+        <div>
+          <label className="text-xs text-[var(--color-text-muted)] mb-1.5 block">ラベル</label>
+          <LabelFilter
+            labels={allLabels ?? []}
+            selectedIds={selectedLabelIds}
+            mode={searchParams.label_mode ?? 'or'}
+          />
         </div>
 
         {/* ソート */}
