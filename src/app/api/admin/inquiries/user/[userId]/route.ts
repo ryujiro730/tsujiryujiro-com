@@ -148,8 +148,11 @@ export async function POST(req: NextRequest, { params }: { params: { userId: str
 
   if (error || !reply) return NextResponse.json({ error: error?.message ?? 'Failed' }, { status: 500 })
 
-  // inquiryをansweredに更新
-  await admin.from('inquiries').update({ status: 'answered' }).eq('id', targetInquiryId)
+  // そのユーザーの全openをansweredにまとめて更新
+  await admin.from('inquiries')
+    .update({ status: 'answered' })
+    .eq('user_id', userId)
+    .eq('status', 'open')
 
   return NextResponse.json({ reply })
 }

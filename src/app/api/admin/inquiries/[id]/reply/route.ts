@@ -33,8 +33,16 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     message: message.trim(),
   })
 
-  await admin().from('inquiries')
-    .update({ status: 'answered' }).eq('id', params.id)
+  // 対象inquiryのuser_idを取得して、そのユーザーの全openをansweredに更新
+  const { data: targetInquiry } = await admin()
+    .from('inquiries').select('user_id').eq('id', params.id).single()
+
+  if (targetInquiry) {
+    await admin().from('inquiries')
+      .update({ status: 'answered' })
+      .eq('user_id', targetInquiry.user_id)
+      .eq('status', 'open')
+  }
 
   return NextResponse.json({ ok: true })
 }

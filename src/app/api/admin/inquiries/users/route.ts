@@ -48,6 +48,19 @@ export async function GET() {
     }
   }
 
+  // ユーザーごとの最後のスタッフ返信日時を集計
+  const userLastStaffReply = new Map<string, string>() // userId → 最後のスタッフ返信created_at
+  for (const inq of inquiries) {
+    const staffReply = replyMap.get(inq.id)
+    if (staffReply && staffReply.sender_role === 'staff') {
+      const userId = inq.user_id
+      const cur = userLastStaffReply.get(userId)
+      if (!cur || staffReply.created_at > cur) {
+        userLastStaffReply.set(userId, staffReply.created_at)
+      }
+    }
+  }
+
   // ユーザー単位でグループ化
   const userMap = new Map<string, {
     userId: string
@@ -79,9 +92,11 @@ export async function GET() {
     }
 
     const entry = userMap.get(userId)!
-    // statusがopenかつ返信が一件もない場合を「未回答」とカウント（DBのstatus不整合を考慮）
+    // 返信がなく、かつ最後のスタッフ返信より後に作成されたinquiryのみ未回答カウント
     const hasReply = replyMap.has(inq.id)
-    if (inq.status === 'open' && !hasReply) entry.openCount++
+    const lastStaffReplyAt = userLastStaffReply.get(userId)
+    const isAfterLastReply = !lastStaffReplyAt || inq.created_at > lastStaffReplyAt
+    if (!hasReply && isAfterLastReply) entry.openCount++
     if (lastActivity > entry.lastActivity) {
       entry.lastActivity = lastActivity
       entry.lastPreview = lastPreview
