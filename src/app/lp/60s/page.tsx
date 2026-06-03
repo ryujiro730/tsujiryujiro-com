@@ -295,7 +295,7 @@ export default async function LP60sPage() {
                   { label: '月額固定費', value: '¥0', note: '完全無料', green: true },
                   { label: '登録費', value: '¥0', note: '完全無料', green: true },
                   { label: '退会費', value: '¥0', note: 'いつでも無料', green: true },
-                  { label: 'テキストチャット', value: '0pt', note: '何通でも無料', green: true },
+                  { label: 'テキストチャット', value: '15pt', note: '1通 ¥150相当', green: false },
                   { label: '写真の送受信', value: '15pt', note: '1枚 ¥150相当', green: false },
                   { label: '動画の送受信', value: '30pt', note: '1本 ¥300相当', green: false },
                 ].map(row => (
@@ -401,7 +401,7 @@ export default async function LP60sPage() {
               },
               {
                 q: '月々いくらかかりますか？',
-                a: '月額料金はありません。ポイント制なので、使った分だけ費用がかかります。テキストチャットは無料で、写真や動画の送受信のみポイントを使います。登録時に60ポイント（¥600相当）が無料でもらえます。',
+                a: '月額料金はありません。ポイント制なので、使った分だけ費用がかかります。テキストチャットは1通15pt（¥150相当）、写真・動画の送受信もポイントを使います。登録時に60ポイント（¥600相当）が無料でもらえます。',
               },
               {
                 q: 'やめたいときはどうすればいいですか？',
