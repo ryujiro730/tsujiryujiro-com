@@ -48,7 +48,7 @@ export default async function AdminUsersPage({
 
   let query = supabase
     .from('admin_users_view')
-    .select('id, user_code, email, display_name, age, gender, points, total_charged, last_login_at, last_payment_at, created_at')
+    .select('id, user_code, email, display_name, age, gender, points, total_charged, last_login_at, last_payment_at, created_at, referral_source, referral_article')
 
   let noResults = false
 
@@ -381,6 +381,16 @@ export default async function AdminUsersPage({
                   <span>登録: {fmtDate(user.created_at)}</span>
                   <span>最終ログイン: {user.last_login_at ? fmtDate(user.last_login_at) : '—'}</span>
                   <span>最終入金: {user.last_payment_at ? fmtDate(user.last_payment_at) : '—'}</span>
+                  {user.referral_source && (
+                    <span className="bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded font-mono">
+                      流入: {user.referral_source}
+                    </span>
+                  )}
+                  {user.referral_article && (
+                    <span className="bg-purple-500/10 text-purple-400 px-1.5 py-0.5 rounded font-mono">
+                      記事: {user.referral_article}
+                    </span>
+                  )}
                 </div>
               </div>
 

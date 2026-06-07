@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Loader2, ChevronLeft } from 'lucide-react'
+import { trackSignUp, trackOnboardingStart } from '@/lib/gtag'
 
 const GENDER_OPTIONS = [
   { value: 'male', label: '男性' },
@@ -42,6 +43,7 @@ export default function OnboardingPage() {
       }
 
       setLoading(false)
+      trackOnboardingStart()
     }
     init()
   }, [])
@@ -59,11 +61,12 @@ export default function OnboardingPage() {
     }
     setSaving(true)
     const referralSource = sessionStorage.getItem('referral_source') ?? undefined
+    const referralArticle = sessionStorage.getItem('referral_article') ?? undefined
     const referralByCode = sessionStorage.getItem('referral_by_code') ?? undefined
     const res = await fetch('/api/onboarding/complete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, age, gender, referralSource, referralByCode }),
+      body: JSON.stringify({ name, age, gender, referralSource, referralArticle, referralByCode }),
     })
     setSaving(false)
     if (!res.ok) {
@@ -71,7 +74,9 @@ export default function OnboardingPage() {
       alert('保存に失敗しました: ' + (data.error ?? ''))
       return
     }
+    trackSignUp({ referral_source: referralSource })
     sessionStorage.removeItem('referral_source')
+    sessionStorage.removeItem('referral_article')
     sessionStorage.removeItem('referral_by_code')
     window.location.href = '/chat'
   }

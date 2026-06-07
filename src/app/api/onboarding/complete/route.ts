@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
   const user = await getAuthUser(authClient)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { name, age, gender, referralSource, referralByCode } = await req.json()
+  const { name, age, gender, referralSource, referralArticle, referralByCode } = await req.json()
   if (!name?.trim() || !age || !gender)
     return NextResponse.json({ error: 'name, age, gender are required' }, { status: 400 })
   if (parseInt(age) < 18)
@@ -97,6 +97,7 @@ export async function POST(req: NextRequest) {
         registration_ip: ip,
         registration_ua: ua,
         ...(referralSource ? { referral_source: referralSource } : {}),
+        ...(referralArticle ? { referral_article: referralArticle } : {}),
       })
       if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 })
     } else {
@@ -109,6 +110,7 @@ export async function POST(req: NextRequest) {
         registration_ip: ip,
         registration_ua: ua,
         ...(referralSource ? { referral_source: referralSource } : {}),
+        ...(referralArticle ? { referral_article: referralArticle } : {}),
       }).eq('id', user.id)
       if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
     }

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Loader2 } from 'lucide-react'
+import { trackRegisterPageView } from '@/lib/gtag'
 
 export default function RegisterPage() {
   const [email, setEmail] = useState('')
@@ -17,8 +18,11 @@ export default function RegisterPage() {
     const params = new URLSearchParams(window.location.search)
     const ref = params.get('ref') || params.get('source')
     if (ref) sessionStorage.setItem('referral_source', ref)
+    const article = params.get('article')
+    if (article) sessionStorage.setItem('referral_article', article)
     const refBy = params.get('ref_by')
     if (refBy) sessionStorage.setItem('referral_by_code', refBy)
+    trackRegisterPageView({ ref: ref ?? undefined })
   }, [])
 
   const handleGoogle = async () => {

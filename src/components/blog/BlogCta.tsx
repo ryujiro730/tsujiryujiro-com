@@ -1,6 +1,10 @@
-import Link from 'next/link'
+'use client'
 
-export function BlogCta() {
+import Link from 'next/link'
+import { trackCtaClick } from '@/lib/gtag'
+
+export function BlogCta({ slug }: { slug?: string }) {
+  const href = slug ? `/auth/register?ref=blog&article=${slug}` : '/auth/register?ref=blog'
   return (
     <div className="mt-10 rounded-2xl overflow-hidden text-center"
       style={{ background: 'linear-gradient(135deg, #e8438f 0%, #a060e0 100%)' }}>
@@ -15,9 +19,10 @@ export function BlogCta() {
         <p className="text-sm mb-6" style={{ color: 'rgba(255,255,255,0.75)' }}>
           サービス開始と同時にポイント付与。登録は無料・30秒で完了。
         </p>
-        <Link href="/auth/register"
+        <Link href={href}
           className="inline-block font-bold text-sm px-8 py-3 rounded-xl transition-opacity hover:opacity-90"
-          style={{ background: '#fff', color: '#e8438f', borderRadius: '12px' }}>
+          style={{ background: '#fff', color: '#e8438f', borderRadius: '12px' }}
+          onClick={() => trackCtaClick({ location: 'blog', article: slug })}>
           アイカノ早期登録キャンペーンに参加する（無料）→
         </Link>
         <p className="mt-3 text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>🔒 個人情報は厳重に管理します</p>

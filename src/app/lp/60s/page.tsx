@@ -3,6 +3,8 @@ import Link from 'next/link'
 import AnimateOnScroll from '@/components/AnimateOnScroll'
 import { Shield, Clock, CreditCard, MessageCircle, ChevronDown } from 'lucide-react'
 import type { Metadata } from 'next'
+import { LpTracker } from '@/components/lp/LpTracker'
+import { LpCtaButton } from '@/components/lp/LpCtaButton'
 
 export const metadata: Metadata = {
   title: 'アイカノ｜60代の男性に寄り添うAI女性チャット',
@@ -10,7 +12,7 @@ export const metadata: Metadata = {
   robots: { index: false },
 }
 
-export default async function LP60sPage() {
+export default async function LP60sPage({ searchParams }: { searchParams: Record<string, string> }) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -20,11 +22,24 @@ export default async function LP60sPage() {
     .eq('is_active', true)
     .limit(10)
 
-  const ctaHref = user ? '/chat' : '/auth/register'
+  // 流入元パラメータをLPから登録ページへ引き継ぐ
+  const TRACKING_KEYS = ['ref', 'source', 'article', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term']
+  const trackingParams = new URLSearchParams()
+  for (const key of TRACKING_KEYS) {
+    if (searchParams[key]) trackingParams.set(key, searchParams[key])
+  }
+  // LPからの登録はデフォルトで ref=lp_60s を付ける（他のrefがなければ）
+  if (!trackingParams.get('ref') && !trackingParams.get('source')) {
+    trackingParams.set('ref', 'lp_60s')
+  }
+  const registerHref = `/auth/register?${trackingParams.toString()}`
+
+  const ctaHref = user ? '/chat' : registerHref
   const ctaText = user ? '今すぐ話しかける →' : '無料で始める →'
 
   return (
     <main style={{ background: 'var(--color-bg)', color: 'var(--color-text)', minHeight: '100vh', fontSize: '18px' }}>
+      <LpTracker lpName="lp_60s" ref={searchParams.ref} utmCampaign={searchParams.utm_campaign} />
 
       {/* ── Nav ── */}
       <nav style={{
@@ -37,9 +52,9 @@ export default async function LP60sPage() {
         <span style={{ fontWeight: 800, fontSize: '22px', background: 'linear-gradient(90deg, #e8438f, #a060e0)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
           AiKano
         </span>
-        <Link href={ctaHref} className="btn-cta" style={{ padding: '12px 28px', fontSize: '17px', borderRadius: '10px' }}>
+        <LpCtaButton href={ctaHref} lpName="lp_60s" className="btn-cta" style={{ padding: '12px 28px', fontSize: '17px', borderRadius: '10px' }}>
           {ctaText}
-        </Link>
+        </LpCtaButton>
       </nav>
 
       {/* ── Hero ── */}
@@ -74,9 +89,9 @@ export default async function LP60sPage() {
               個性豊かな女性たちが、あなたの話をじっくり聞きます。
             </p>
 
-            <Link href={ctaHref} className="btn-cta" style={{ padding: '22px 52px', fontSize: '20px', borderRadius: '16px', display: 'inline-block', textDecoration: 'none', fontWeight: 800 }}>
+            <LpCtaButton href={ctaHref} lpName="lp_60s" className="btn-cta" style={{ padding: '22px 52px', fontSize: '20px', borderRadius: '16px', display: 'inline-block', textDecoration: 'none', fontWeight: 800 }}>
               {ctaText}
-            </Link>
+            </LpCtaButton>
             <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '14px', marginTop: '12px' }}>
               登録無料・30秒で完了・月額料金なし
             </p>
@@ -100,7 +115,7 @@ export default async function LP60sPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '16px' }}>
             {characters?.map((char, i) => (
               <AnimateOnScroll key={char.id} delay={i * 80}>
-                <Link href={user ? `/chat?character=${char.id}` : '/auth/register'} style={{ textDecoration: 'none' }}>
+                <Link href={user ? `/chat?character=${char.id}` : registerHref} style={{ textDecoration: 'none' }}>
                   <div style={{ background: 'var(--color-surface)', border: '1px solid rgba(220,80,140,0.18)', borderRadius: '18px', padding: '20px 16px', textAlign: 'center', cursor: 'pointer', position: 'relative', overflow: 'hidden' }}>
                     <div style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(126,200,80,0.2)', border: '1px solid rgba(126,200,80,0.4)', borderRadius: '99px', padding: '3px 10px', fontSize: '11px', color: '#7ec850', fontWeight: 600 }}>● 待機中</div>
                     <div style={{ width: '80px', height: '80px', borderRadius: '50%', overflow: 'hidden', margin: '0 auto 14px', border: '2px solid rgba(232,67,143,0.4)', boxShadow: '0 0 16px rgba(232,67,143,0.2)' }}>
@@ -111,15 +126,15 @@ export default async function LP60sPage() {
                     <p style={{ fontSize: '14px', color: 'var(--color-text-muted)', marginBottom: '8px' }}>{char.age}歳</p>
                     <p style={{ fontSize: '13px', color: '#e8438f', fontWeight: 600 }}>{char.personality?.split('・')[0]}</p>
                   </div>
-                </Link>
+                </LpCtaButton>
               </AnimateOnScroll>
             ))}
           </div>
 
           <AnimateOnScroll style={{ textAlign: 'center', marginTop: '36px' }}>
-            <Link href={ctaHref} className="btn-cta" style={{ padding: '18px 48px', fontSize: '19px', borderRadius: '14px', display: 'inline-block', textDecoration: 'none' }}>
+            <LpCtaButton href={ctaHref} lpName="lp_60s" className="btn-cta" style={{ padding: '18px 48px', fontSize: '19px', borderRadius: '14px', display: 'inline-block', textDecoration: 'none' }}>
               {user ? '話しかけてみる →' : '無料登録して話しかける →'}
-            </Link>
+            </LpCtaButton>
           </AnimateOnScroll>
         </div>
       </section>
@@ -337,9 +352,9 @@ export default async function LP60sPage() {
               </div>
             </div>
 
-            <Link href={ctaHref} className="btn-cta" style={{ display: 'block', textAlign: 'center', padding: '22px', fontSize: '20px', borderRadius: '16px', textDecoration: 'none', fontWeight: 800 }}>
+            <LpCtaButton href={ctaHref} lpName="lp_60s" className="btn-cta" style={{ display: 'block', textAlign: 'center', padding: '22px', fontSize: '20px', borderRadius: '16px', textDecoration: 'none', fontWeight: 800 }}>
               無料で始める →
-            </Link>
+            </LpCtaButton>
           </AnimateOnScroll>
         </div>
       </section>
@@ -440,9 +455,9 @@ export default async function LP60sPage() {
             アプリ不要・月額なし・履歴残らない。<br />
             登録するだけで<span style={{ color: '#fcd34d', fontWeight: 700 }}>60ポイント（¥600相当）</span>が無料でもらえます。
           </p>
-          <Link href={ctaHref} className="btn-cta" style={{ display: 'inline-block', padding: '24px 64px', fontSize: '22px', borderRadius: '18px', textDecoration: 'none', fontWeight: 900 }}>
+          <LpCtaButton href={ctaHref} lpName="lp_60s" className="btn-cta" style={{ display: 'inline-block', padding: '24px 64px', fontSize: '22px', borderRadius: '18px', textDecoration: 'none', fontWeight: 900 }}>
             {ctaText}
-          </Link>
+          </LpCtaButton>
           <p style={{ fontSize: '15px', color: 'var(--color-text-muted)', marginTop: '16px' }}>
             🔒 登録無料・本名不要・いつでも退会できます
           </p>
