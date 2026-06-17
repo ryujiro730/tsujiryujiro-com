@@ -126,7 +126,7 @@ export default async function LP60sPage({ searchParams }: { searchParams: Record
                     <p style={{ fontSize: '14px', color: 'var(--color-text-muted)', marginBottom: '8px' }}>{char.age}歳</p>
                     <p style={{ fontSize: '13px', color: '#e8438f', fontWeight: 600 }}>{char.personality?.split('・')[0]}</p>
                   </div>
-                </LpCtaButton>
+                </Link>
               </AnimateOnScroll>
             ))}
           </div>
