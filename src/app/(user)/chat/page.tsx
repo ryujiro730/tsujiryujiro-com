@@ -4,8 +4,6 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Send, ChevronLeft, Images, X, Gift, ImagePlus, VideoIcon } from 'lucide-react'
-import { formatDistanceToNow } from 'date-fns'
-import { ja } from 'date-fns/locale'
 import type { Character, Message, Profile, CharacterPhoto, UserItem } from '@/types'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -1302,14 +1300,6 @@ function MessageBubble({ message, characterName, characterAvatar, onImageClick, 
             {message.content}
           </div>
         )}
-        <div className={`flex items-center gap-1.5 px-1 ${isUser ? 'flex-row-reverse' : ''}`}>
-          <span className="text-[var(--color-text-muted)] text-[11px]">
-            {formatDistanceToNow(new Date(message.created_at), { addSuffix: true, locale: ja })}
-          </span>
-          {isUser && message.is_read && (
-            <span className="text-[11px]" style={{ color: 'var(--color-primary)' }}>既読</span>
-          )}
-        </div>
       </div>
     </div>
   )
