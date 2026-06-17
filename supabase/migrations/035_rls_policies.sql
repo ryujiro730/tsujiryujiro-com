@@ -17,7 +17,7 @@ begin
 end;
 $$;
 
--- opegra_sent_log の user_id に外部キー制約を追加（ユーザー削除時にログも削除）
+-- opegra_sent_log の user_id に外部キー制約を追加（ユーザー削除時にログも削除）　　　　　　　　　　　
 alter table opegra_sent_log
   drop constraint if exists opegra_sent_log_user_id_fkey;
 
