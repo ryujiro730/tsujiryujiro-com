@@ -480,7 +480,13 @@ export default async function LP60sPage({ searchParams }: { searchParams: Record
               ))}
             </div>
           </div>
-          <p style={{ fontSize: '13px', color: 'var(--color-text-muted)', textAlign: 'center' }}>© 2026 AiKano　|　本サービスはAIキャラクターによる会話サービスです</p>
+          <div style={{ borderTop: '1px solid rgba(220,80,140,0.06)', paddingTop: '20px', marginTop: '4px' }}>
+            <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', textAlign: 'center', lineHeight: 1.9 }}>
+              運営会社：合同会社TJYM　／　〒530-0001 大阪府大阪市北区梅田一丁目２番２号 大阪駅前第２ビル１２－１２<br />
+              <a href="https://tjym.org" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-text-muted)', textDecoration: 'none' }}>tjym.org</a>　／　info@tjym.org
+            </p>
+            <p style={{ fontSize: '13px', color: 'var(--color-text-muted)', textAlign: 'center', marginTop: '12px' }}>© 2026 AiKano　|　本サービスはAIキャラクターによる会話サービスです</p>
+          </div>
         </div>
       </footer>
 
