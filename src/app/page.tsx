@@ -37,7 +37,7 @@ export default async function HomePage() {
     .limit(10)
 
   const ctaHref = user ? '/characters' : '/auth/register'
-  const ctaText = user ? 'つづきを話す →' : '早期登録キャンペーンに参加する（無料）→'
+  const ctaText = user ? 'つづきを話す →' : '新規登録する（無料）→'
 
   const features = [
   {
@@ -91,7 +91,7 @@ export default async function HomePage() {
           ) : (
             <>
               <Link href="/auth/login" className="btn-ghost" style={{ padding: '8px 16px', fontSize: '14px' }}>ログイン</Link>
-              <Link href="/auth/register" className="btn-cta" style={{ padding: '8px 18px', fontSize: '14px', borderRadius: '8px' }}>早期登録（無料）</Link>
+              <Link href="/auth/register" className="btn-cta" style={{ padding: '8px 18px', fontSize: '14px', borderRadius: '8px' }}>新規登録（無料）</Link>
             </>
           )}
         </div>
@@ -116,7 +116,7 @@ export default async function HomePage() {
             <div style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {!user && (
                 <span style={{ display: 'inline-block', background: 'rgba(255,200,0,0.18)', border: '1px solid rgba(255,200,0,0.5)', color: '#fcd34d', padding: '5px 16px', borderRadius: '99px', fontSize: '12px', fontWeight: 700, letterSpacing: '0.04em' }}>
-                  🎁 早期登録で3,000円分の特典をプレゼント
+                  🎁 登録で3,000円分のポイントプレゼント
                 </span>
               )}
               <span style={{ display: 'inline-block', background: 'rgba(100,220,130,0.15)', border: '1px solid rgba(100,220,130,0.45)', color: '#86efac', padding: '5px 16px', borderRadius: '99px', fontSize: '12px', fontWeight: 700, letterSpacing: '0.04em' }}>
@@ -228,11 +228,11 @@ export default async function HomePage() {
 
           <div style={{ textAlign: 'center', marginTop: '32px' }}>
             <Link href={ctaHref} className="btn-cta" style={{ padding: '14px 40px', fontSize: '15px', borderRadius: '12px', display: 'inline-block', textDecoration: 'none' }}>
-              {user ? '全員と話してみる →' : '早期登録して全員と話す →'}
+              {user ? '全員と話してみる →' : '新規登録して全員と話す →'}
             </Link>
             {!user && (
               <p style={{ marginTop: '10px', fontSize: '12px', color: 'rgba(255,255,255,0.6)' }}>
-                ※ サービス開始時に3,000円分のポイントをプレゼント
+                ※ 登録で3,000円分のポイントをプレゼント
               </p>
             )}
           </div>
@@ -512,28 +512,28 @@ export default async function HomePage() {
           ) : (
             <>
               <div style={{ display: 'inline-block', background: 'rgba(255,200,0,0.2)', border: '1px solid rgba(255,200,0,0.5)', borderRadius: '99px', padding: '6px 18px', marginBottom: '20px' }}>
-                <span style={{ color: '#fcd34d', fontSize: '13px', fontWeight: 700 }}>🎁 早期登録キャンペーン実施中</span>
+                <span style={{ color: '#fcd34d', fontSize: '13px', fontWeight: 700 }}>🎁 登録特典キャンペーン実施中</span>
               </div>
               <h2 style={{ fontSize: '26px', fontWeight: 900, marginBottom: '12px', lineHeight: 1.3, color: '#fff' }}>
-                今登録した人だけに<br />特別特典をプレゼント
+                今すぐ登録した人だけに<br />特別特典をプレゼント
               </h2>
               <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: '14px', marginBottom: '24px', lineHeight: 1.8 }}>
-                サービス開始と同時に<br />
+                新規登録で<br />
                 <span style={{ color: '#fcd34d', fontWeight: 700, fontSize: '18px' }}>3,000円分のポイント</span>をプレゼント。<br />
                 登録は無料・30秒で完了。
               </p>
               {/* 特典リスト */}
               <div style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '14px', padding: '16px 20px', marginBottom: '28px', textAlign: 'left' }}>
                 {[
-                  '✅ サービス開始時に3,000円分ポイント付与',
-                  '✅ 開始直後に優先メール通知',
+                  '✅ 登録で3,000円分ポイント付与',
+                  '✅ 3キャラクターまで無料でチャット',
                   '✅ 登録・維持費は完全無料',
                 ].map(item => (
                   <p key={item} style={{ color: 'rgba(255,255,255,0.85)', fontSize: '13px', lineHeight: 1.8, margin: 0 }}>{item}</p>
                 ))}
               </div>
               <Link href="/auth/register" className="btn-cta" style={{ display: 'block', padding: '20px', fontSize: '17px', borderRadius: '16px', textDecoration: 'none' }}>
-                早期登録キャンペーンに参加する（無料）→
+                新規登録する（無料）→
               </Link>
               <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', marginTop: '14px' }}>🔒 個人情報は厳重に管理します</p>
             </>

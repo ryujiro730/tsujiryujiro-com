@@ -130,8 +130,9 @@ async function generateWithOpenRouter(
   const apiKey = process.env.OPENROUTER_API_KEY
   if (!apiKey) throw new Error('OPENROUTER_API_KEY is not set')
 
-  const model = process.env.OPENROUTER_MODEL ?? 'sao10k/l3.1-70b-euryale-v2.2'
-  const systemPrompt = buildSystemPrompt(character, 'en')
+  const model = process.env.OPENROUTER_MODEL ?? 'google/gemma-3-4b-it'
+  const systemPrompt = buildSystemPrompt(character, 'ja') +
+    '\n\n必ず日本語で返信してください。短く自然な口語で返してください。'
 
   const messages = [
     ...history.map(m => ({ role: m.role, content: m.content })),
@@ -143,17 +144,12 @@ async function generateWithOpenRouter(
     headers: {
       Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
-      'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL ?? 'https://chatotp.app',
+      'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL ?? 'https://aikano.chat',
     },
     body: JSON.stringify({
       model,
       messages: [{ role: 'system', content: systemPrompt }, ...messages],
-      max_tokens: 512,
-      // 検閲の少ないプロバイダーを優先指定
-      provider: {
-        order: ['Mancer', 'Together', 'Fireworks'],
-        allow_fallbacks: true,
-      },
+      max_tokens: 256,
     }),
   })
 

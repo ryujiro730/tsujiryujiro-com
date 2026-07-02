@@ -49,28 +49,7 @@ export async function POST(req: NextRequest) {
       : 0
   const totalPoints = profile.points + bonusAvailable
 
-  if (totalPoints < UNLOCK_COST) {
-    return NextResponse.json({ error: 'insufficient_points', current: totalPoints, required: UNLOCK_COST }, { status: 402 })
-  }
+  await admin.from('video_unlocks').insert({ user_id: user.id, message_id: messageId })
 
-  // ポイント消費
-  const bonusDeduct = Math.min(bonusAvailable, UNLOCK_COST)
-  const regularDeduct = UNLOCK_COST - bonusDeduct
-  const newBonusPoints = bonusAvailable - bonusDeduct
-  const newPoints = profile.points - regularDeduct
-  const updatePayload: Record<string, number> = { points: newPoints }
-  if (bonusDeduct > 0) updatePayload.bonus_points = newBonusPoints
-
-  await Promise.all([
-    admin.from('profiles').update(updatePayload).eq('id', user.id),
-    admin.from('point_transactions').insert({
-      user_id: user.id,
-      amount: -UNLOCK_COST,
-      type: 'spend',
-      description: '動画視聴',
-    }),
-    admin.from('video_unlocks').insert({ user_id: user.id, message_id: messageId }),
-  ])
-
-  return NextResponse.json({ ok: true, newPoints: newPoints + (newBonusPoints ?? 0) })
+  return NextResponse.json({ ok: true })
 }

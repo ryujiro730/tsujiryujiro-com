@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Send, ChevronLeft, Images, X, Gift, ImagePlus, VideoIcon } from 'lucide-react'
-import type { Character, Message, Profile, CharacterPhoto, UserItem } from '@/types'
+import type { Character, Message, Profile, CharacterPhoto } from '@/types'
 import Link from 'next/link'
 import Image from 'next/image'
 import Lightbox from '@/components/Lightbox'
@@ -38,11 +38,7 @@ export default function ChatPage() {
   const [showAlbum, setShowAlbum] = useState(false)
   const [lightboxPhotos, setLightboxPhotos] = useState<string[]>([])
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
-  const [showGiftPanel, setShowGiftPanel] = useState(false)
-  const [inventory, setInventory] = useState<UserItem[]>([])
-  const [sendingItem, setSendingItem] = useState<string | null>(null)
   const [charLimitReached, setCharLimitReached] = useState(false)
-  const [showItemPromoDialog, setShowItemPromoDialog] = useState(false)
   const [showSharePromoDialog, setShowSharePromoDialog] = useState(false)
   const [imageLightboxUrl, setImageLightboxUrl] = useState<string | null>(null)
   const [sendingPhoto, setSendingPhoto] = useState(false)
@@ -247,17 +243,7 @@ export default function ChatPage() {
   const sendMessage = async () => {
     if (!input.trim() || sending || !conversationId || !profile || !character) return
 
-    const SEND_COST = 15
-    const now = new Date()
-    const bonusAvailable =
-      profile.bonus_points_expires_at && new Date(profile.bonus_points_expires_at) > now
-        ? (profile.bonus_points ?? 0)
-        : 0
-    const totalPoints = profile.points + bonusAvailable
-    if (totalPoints < SEND_COST) {
-      setPointsShortage({ current: totalPoints, required: SEND_COST })
-      return
-    }
+    const SEND_COST = 0
 
     // 初回メッセージの場合はキャラクター枠のチェック
     const isFirstUserMessage = !messages.some(m => m.sender_role === 'user')
@@ -279,24 +265,6 @@ export default function ChatPage() {
     setInput('')
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
 
-    // ポイント消費（ボーナスptから先に引く）
-    const bonusDeduct = Math.min(bonusAvailable, SEND_COST)
-    const regularDeduct = SEND_COST - bonusDeduct
-    const newBonusPoints = bonusAvailable - bonusDeduct
-    const newPoints = profile.points - regularDeduct
-    const updatePayload: Record<string, number> = { points: newPoints }
-    if (bonusDeduct > 0) updatePayload.bonus_points = newBonusPoints
-    await Promise.all([
-      supabase.from('profiles').update(updatePayload).eq('id', profile.id),
-      supabase.from('point_transactions').insert({
-        user_id: profile.id,
-        amount: -SEND_COST,
-        type: 'spend',
-        description: 'メッセージ送信',
-      }),
-    ])
-    setProfile(prev => prev ? { ...prev, points: newPoints, bonus_points: newBonusPoints } : prev)
-    window.dispatchEvent(new CustomEvent('pointsUpdated', { detail: { points: newPoints + newBonusPoints } }))
 
     // ユーザーメッセージをDBに保存
     const { data: msg } = await supabase.from('messages').insert({
@@ -306,12 +274,8 @@ export default function ChatPage() {
 
     if (!msg) { setSending(false); return }
 
-    // プロモーションダイアログのトリガー（初回のみ）
+    // シェアダイアログのトリガー（3通目のみ）
     const userMsgCount = messages.filter(m => m.sender_role === 'user').length + 1
-    if (userMsgCount === 2 && !localStorage.getItem(`shown_item_dialog:${characterId}`)) {
-      localStorage.setItem(`shown_item_dialog:${characterId}`, '1')
-      setTimeout(() => setShowItemPromoDialog(true), 1500)
-    }
     if (userMsgCount === 3 && !localStorage.getItem(`shown_share_dialog:${characterId}`)) {
       localStorage.setItem(`shown_share_dialog:${characterId}`, '1')
       setTimeout(() => setShowSharePromoDialog(true), 1500)
@@ -369,95 +333,8 @@ export default function ChatPage() {
     e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'
   }
 
-  const openGiftPanel = async () => {
-    if (showGiftPanel) { setShowGiftPanel(false); return }
-    const res = await fetch('/api/items')
-    if (res.ok) {
-      const { inventory: inv } = await res.json()
-      setInventory(inv.filter((i: UserItem) => i.quantity > 0))
-    }
-    setShowGiftPanel(true)
-  }
-
-  const sendItem = async (userItem: UserItem) => {
-    if (!conversationId || sendingItem) return
-    const item = userItem.item
-    if (!item) return
-
-    setSendingItem(userItem.item_id)
-    const res = await fetch('/api/items/use', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ itemId: userItem.item_id, conversationId }),
-    })
-    const data = await res.json()
-
-    if (res.ok && data.message) {
-      addMessage(data.message)
-      channelRef.current?.send({ type: 'broadcast', event: 'new_message', payload: { message: data.message } })
-      setInventory(prev => prev
-        .map(i => i.item_id === userItem.item_id ? { ...i, quantity: data.remainingQuantity } : i)
-        .filter(i => i.quantity > 0)
-      )
-      setShowGiftPanel(false)
-
-      // AI自動返信
-      setIsTyping(true)
-      try {
-        const replyRes = await fetch('/api/chat/ai-reply', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            conversationId,
-            characterId: character?.id,
-            userMessage: `${item.name}を贈りました`,
-          }),
-        })
-        if (replyRes.ok) {
-          const { message: aiMsg } = await replyRes.json()
-          if (aiMsg) addMessage(aiMsg)
-        }
-      } finally {
-        setIsTyping(false)
-      }
-    } else {
-      alert(data.error || 'アイテムの使用に失敗しました')
-    }
-    setSendingItem(null)
-  }
-
   const openAlbumLightbox = async (index: number) => {
     if (!character || !profile) return
-
-    const VIEW_COST = 30
-    const nowV = new Date()
-    const bonusAvailableV =
-      profile.bonus_points_expires_at && new Date(profile.bonus_points_expires_at) > nowV
-        ? (profile.bonus_points ?? 0)
-        : 0
-    const totalPointsV = profile.points + bonusAvailableV
-    if (totalPointsV < VIEW_COST) {
-      setPointsShortage({ current: totalPointsV, required: VIEW_COST })
-      return
-    }
-
-    const bonusDeductV = Math.min(bonusAvailableV, VIEW_COST)
-    const regularDeductV = VIEW_COST - bonusDeductV
-    const newBonusPointsV = bonusAvailableV - bonusDeductV
-    const newPoints = profile.points - regularDeductV
-    const updatePayloadV: Record<string, number> = { points: newPoints }
-    if (bonusDeductV > 0) updatePayloadV.bonus_points = newBonusPointsV
-    await Promise.all([
-      supabase.from('profiles').update(updatePayloadV).eq('id', profile.id),
-      supabase.from('point_transactions').insert({
-        user_id: profile.id,
-        amount: -VIEW_COST,
-        type: 'spend',
-        description: '画像閲覧',
-      }),
-    ])
-    setProfile(prev => prev ? { ...prev, points: newPoints, bonus_points: newBonusPointsV } : prev)
-    window.dispatchEvent(new CustomEvent('pointsUpdated', { detail: { points: newPoints + newBonusPointsV } }))
 
     const all = [character.avatar_url, ...photos.map(p => p.url)]
     setLightboxPhotos(all)
@@ -469,18 +346,6 @@ export default function ChatPage() {
     if (!conversationId || !profile || !character) return
     if (mediaType === 'photo' && sendingPhoto) return
     if (mediaType === 'video' && sendingVideo) return
-
-    const cost = mediaType === 'video' ? 30 : 15
-    const now = new Date()
-    const bonusAvailable =
-      profile.bonus_points_expires_at && new Date(profile.bonus_points_expires_at) > now
-        ? (profile.bonus_points ?? 0)
-        : 0
-    const totalPoints = profile.points + bonusAvailable
-    if (totalPoints < cost) {
-      setPointsShortage({ current: totalPoints, required: cost })
-      return
-    }
 
     if (mediaType === 'photo') setSendingPhoto(true)
     else setSendingVideo(true)
@@ -755,16 +620,6 @@ export default function ChatPage() {
               >
                 <VideoIcon size={17} />
               </button>
-              <button
-                type="button"
-                onClick={openGiftPanel}
-                disabled={!!pendingMedia}
-                className={`p-2.5 flex-shrink-0 rounded-[10px] transition-colors disabled:opacity-40 ${showGiftPanel ? 'text-white' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}`}
-                style={showGiftPanel ? { background: 'var(--color-primary)' } : {}}
-                title="ギフトを贈る"
-              >
-                <Gift size={17} />
-              </button>
               <div className="flex-1 flex flex-col min-w-0">
                 <textarea
                   ref={textareaRef}
@@ -803,58 +658,11 @@ export default function ChatPage() {
         ) : (
           <div className="rounded-2xl px-4 py-3 text-center"
             style={{ background: 'linear-gradient(135deg, rgba(249,168,184,0.15), rgba(232,121,160,0.08))', border: '1px solid var(--color-border-warm)' }}>
-            <p className="text-sm font-bold mb-0.5">🎀 早期登録キャンペーン受付中</p>
-            <p className="text-xs text-[var(--color-text-muted)]">サービス開始時にいち早くご連絡します。もうしばらくお待ちください！</p>
+            <p className="text-sm font-bold mb-0.5">🎀 アイカノでチャットを楽しもう</p>
+            <p className="text-xs text-[var(--color-text-muted)]">新規登録で3,000円分のポイントをプレゼント中。登録は無料・30秒で完了！</p>
           </div>
         )}
       </div>
-
-      {/* ギフトパネル */}
-      {showGiftPanel && (
-        <div className="flex-shrink-0 px-4 pb-3" style={{ background: 'rgba(255, 245, 248, 0.97)' }}>
-          <div className="rounded-2xl p-3" style={{ background: 'var(--color-surface-2)', border: '1px solid var(--color-border-warm)' }}>
-            <p className="text-xs font-semibold text-[var(--color-text-muted)] mb-2.5 flex items-center gap-1.5">
-              <Gift size={12} />
-              ギフトを選択
-            </p>
-            {inventory.length === 0 ? (
-              <div className="text-center py-3">
-                <p className="text-xs text-[var(--color-text-muted)] mb-2">ギフトがありません</p>
-                <a href="/shop" className="text-xs text-[var(--color-primary)] underline-offset-2 hover:underline">
-                  ショップで購入する →
-                </a>
-              </div>
-            ) : (
-              <div className="flex gap-2 overflow-x-auto pb-1">
-                {inventory.map((userItem) => {
-                  const item = userItem.item
-                  if (!item) return null
-                  return (
-                    <button
-                      key={userItem.item_id}
-                      onClick={() => sendItem(userItem)}
-                      disabled={!!sendingItem}
-                      className="flex-shrink-0 flex flex-col items-center gap-1.5 p-2 rounded-xl transition-colors disabled:opacity-50"
-                      style={{ minWidth: '72px', background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
-                    >
-                      {item.image_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={item.image_url} alt={item.name} className="w-12 h-12 object-cover rounded-lg" />
-                      ) : (
-                        <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ background: 'var(--color-surface-2)' }}>
-                          <Gift size={20} className="text-[var(--color-text-muted)]" />
-                        </div>
-                      )}
-                      <span className="text-[10px] text-center leading-tight line-clamp-2" style={{ color: 'var(--color-text)' }}>{item.name}</span>
-                      <span className="text-[10px] text-[var(--color-text-muted)]">×{userItem.quantity}</span>
-                    </button>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* アルバムオーバーレイ */}
       {showAlbum && (
@@ -930,15 +738,6 @@ export default function ChatPage() {
           65%  { transform: scale(1.05) translateY(-5px); opacity: 1; }
           100% { transform: scale(1) translateY(0); opacity: 1; }
         }
-        @keyframes promoGiftBounce {
-          0%, 100% { transform: translateY(0) rotate(-4deg) scale(1); }
-          50%       { transform: translateY(-10px) rotate(4deg) scale(1.08); }
-        }
-        @keyframes promoPulseRing {
-          0%   { box-shadow: 0 4px 16px rgba(0,0,0,0.2), 0 0 0 0 rgba(255,255,255,0.6); }
-          70%  { box-shadow: 0 4px 16px rgba(0,0,0,0.2), 0 0 0 10px rgba(255,255,255,0); }
-          100% { box-shadow: 0 4px 16px rgba(0,0,0,0.2), 0 0 0 0 rgba(255,255,255,0); }
-        }
         @keyframes promoCracker {
           0%   { transform: scale(0) rotate(-25deg); opacity: 0; }
           55%  { transform: scale(1.25) rotate(8deg); opacity: 1; }
@@ -949,128 +748,6 @@ export default function ChatPage() {
           50%       { opacity: 1; }
         }
       `}</style>
-
-      {/* アイテム贈呈プロモーションダイアログ（2通目） */}
-      {showItemPromoDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-5"
-          style={{ background: 'rgba(15,5,10,0.72)', backdropFilter: 'blur(6px)' }}>
-
-          {/* 浮かぶハート */}
-          {[12, 28, 50, 72, 88].map((left, i) => (
-            <div key={i} style={{
-              position: 'fixed', bottom: '30%', left: `${left}%`,
-              fontSize: `${14 + i * 5}px`, pointerEvents: 'none', zIndex: 51,
-              animation: `promoFloatHeart ${1.8 + i * 0.35}s ease-out ${i * 0.25}s infinite`,
-            }}>❤️</div>
-          ))}
-
-          <div style={{ position: 'relative', width: '100%', maxWidth: '360px', zIndex: 52,
-            animation: 'promoDialogIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards' }}>
-            <div style={{
-              background: 'linear-gradient(150deg, #fff5f8 0%, #fde8f2 100%)',
-              borderRadius: '24px',
-              border: '1.5px solid rgba(232,67,143,0.3)',
-              boxShadow: '0 24px 64px rgba(232,67,143,0.28), 0 8px 24px rgba(0,0,0,0.12)',
-              overflow: 'hidden',
-            }}>
-
-              {/* ヘッダー */}
-              <div style={{
-                background: 'linear-gradient(135deg, #e8438f 0%, #c0306e 100%)',
-                padding: '22px 20px 36px', position: 'relative', overflow: 'hidden',
-              }}>
-                <div style={{ position: 'absolute', top: '-24px', right: '-24px', width: '90px', height: '90px', background: 'rgba(255,255,255,0.1)', borderRadius: '50%' }} />
-                <div style={{ position: 'absolute', bottom: '-12px', left: '25%', width: '64px', height: '64px', background: 'rgba(255,255,255,0.07)', borderRadius: '50%' }} />
-                <button onClick={() => setShowItemPromoDialog(false)} style={{
-                  position: 'absolute', top: '12px', right: '12px',
-                  background: 'rgba(255,255,255,0.22)', border: 'none', borderRadius: '50%',
-                  width: '30px', height: '30px', cursor: 'pointer', color: 'white',
-                  fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>✕</button>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <div style={{
-                    position: 'relative', width: '72px', height: '72px', borderRadius: '50%', overflow: 'hidden',
-                    border: '3px solid rgba(255,255,255,0.85)',
-                    boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
-                    marginBottom: '10px',
-                    animation: 'promoPulseRing 1.8s ease-out infinite',
-                  }}>
-                    {character?.avatar_url && <Image src={character.avatar_url} alt={character.name ?? ''} fill className="object-cover" sizes="72px" />}
-                  </div>
-                  <p style={{ color: 'rgba(255,255,255,0.9)', fontSize: '12px', fontWeight: 600 }}>
-                    {character?.name}からのお願い 💕
-                  </p>
-                </div>
-              </div>
-
-              {/* ギフトボックス */}
-              <div style={{ marginTop: '-24px', display: 'flex', justifyContent: 'center', position: 'relative', zIndex: 1 }}>
-                <div style={{
-                  width: '68px', height: '68px', background: 'white',
-                  borderRadius: '16px', border: '2px solid rgba(232,67,143,0.22)',
-                  boxShadow: '0 8px 28px rgba(232,67,143,0.22)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '38px',
-                  animation: 'promoGiftBounce 2.2s ease-in-out infinite',
-                }}>🎁</div>
-              </div>
-
-              {/* テキスト＆アクション */}
-              <div style={{ padding: '14px 24px 24px', textAlign: 'center' }}>
-                <h2 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--color-text)', marginBottom: '8px', lineHeight: 1.45 }}>
-                  もっと仲良くなるために<br />
-                  <span style={{ color: 'var(--color-primary)' }}>アイテムを贈りませんか？</span>
-                </h2>
-                <p style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: '18px', lineHeight: 1.7 }}>
-                  {character?.name}にプレゼントを贈って<br />親密度をアップさせましょう！
-                </p>
-
-                {/* アイテムプレビュー */}
-                <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '20px' }}>
-                  {[
-                    { emoji: '💐', label: '花束', pts: '100' },
-                    { emoji: '🌹', label: 'バラ', pts: '200' },
-                    { emoji: '💍', label: '指輪', pts: '1000' },
-                  ].map(item => (
-                    <div key={item.label} style={{
-                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px',
-                      padding: '10px 14px',
-                      background: 'white', borderRadius: '12px',
-                      border: '1px solid rgba(232,67,143,0.15)',
-                      boxShadow: '0 2px 8px rgba(232,67,143,0.08)',
-                    }}>
-                      <span style={{ fontSize: '24px' }}>{item.emoji}</span>
-                      <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text)' }}>{item.label}</span>
-                      <span style={{ fontSize: '10px', color: 'var(--color-primary)', fontWeight: 700 }}>{item.pts}pt</span>
-                    </div>
-                  ))}
-                </div>
-
-                <button
-                  onClick={() => { setShowItemPromoDialog(false); openGiftPanel() }}
-                  style={{
-                    width: '100%', padding: '14px', borderRadius: '12px',
-                    background: 'linear-gradient(135deg, #e8438f 0%, #b5267f 100%)',
-                    color: 'white', fontSize: '15px', fontWeight: 700, border: 'none',
-                    cursor: 'pointer', boxShadow: '0 6px 20px rgba(232,67,143,0.4)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                    marginBottom: '10px',
-                    animation: 'promoShimmer 2s ease-in-out infinite',
-                  }}
-                >
-                  🎁 ギフトを贈る
-                </button>
-                <button
-                  onClick={() => setShowItemPromoDialog(false)}
-                  style={{ width: '100%', padding: '10px', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '13px', color: 'var(--color-text-muted)' }}
-                >
-                  今はやめておく
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Xシェアプロモーションダイアログ（3通目） */}
       {showSharePromoDialog && (

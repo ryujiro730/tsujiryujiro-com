@@ -92,6 +92,18 @@ export default function PaymentPage() {
         </div>
       </div>
 
+      {/* プレリリース告知 */}
+      <div className="rounded-2xl p-4 mb-6 flex gap-3"
+        style={{ background: 'rgba(255,200,0,0.1)', border: '1px solid rgba(255,200,0,0.35)' }}>
+        <span className="text-lg flex-shrink-0">🚀</span>
+        <div>
+          <p className="text-sm font-bold mb-1" style={{ color: '#b45309' }}>現在プレリリース中です</p>
+          <p className="text-xs leading-relaxed" style={{ color: '#92400e' }}>
+            以下の料金は正式リリース時の予定価格です。プレリリース期間中はすべての機能を<span className="font-bold">無料</span>でお使いいただけます。
+          </p>
+        </div>
+      </div>
+
       {/* パッケージ一覧 */}
       <div className="flex flex-col gap-3 mb-8">
         {TOKEN_PACKAGES.map((pkg) => {
@@ -99,8 +111,8 @@ export default function PaymentPage() {
           return (
             <div
               key={pkg.id}
-              className="card p-4 flex items-center gap-4"
-              style={pkg.is_popular ? { borderColor: 'var(--color-primary)', boxShadow: '0 0 16px var(--color-primary-glow)' } : {}}
+              className="card p-4 flex items-center gap-4 opacity-60"
+              style={pkg.is_popular ? { borderColor: 'var(--color-primary)' } : {}}
             >
               {/* ポイント情報 */}
               <div className="flex-1 min-w-0">
@@ -129,16 +141,16 @@ export default function PaymentPage() {
 
               {/* 価格・ボタン */}
               <div className="flex items-center gap-3 flex-shrink-0">
-                <span className="text-lg font-bold">¥{pkg.price_yen.toLocaleString()}</span>
+                <div className="text-right">
+                  <p className="text-[10px] text-[var(--color-text-muted)]">予定価格</p>
+                  <span className="text-lg font-bold">¥{pkg.price_yen.toLocaleString()}</span>
+                </div>
                 <button
-                  onClick={() => handlePurchase(pkg)}
-                  disabled={!!purchasing}
-                  className="btn-primary px-4 py-2 text-sm disabled:opacity-60 flex items-center gap-1.5"
-                  style={{ borderRadius: '10px', minWidth: '68px', justifyContent: 'center' }}
+                  disabled
+                  className="px-4 py-2 text-sm rounded-[10px] font-semibold"
+                  style={{ background: 'var(--color-surface-2)', color: 'var(--color-text-muted)', minWidth: '68px' }}
                 >
-                  {purchasing === pkg.id
-                    ? <Loader2 size={13} className="animate-spin" />
-                    : '購入'}
+                  準備中
                 </button>
               </div>
             </div>

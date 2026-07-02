@@ -1,12 +1,12 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Users, MessageCircle, ShoppingBag, Settings } from 'lucide-react'
+import { Users, MessageCircle, Settings, Megaphone } from 'lucide-react'
 
 const tabs = [
   { href: '/characters', icon: Users, label: 'キャラ' },
   { href: '/conversations', icon: MessageCircle, label: 'トーク' },
-  { href: '/shop', icon: ShoppingBag, label: 'ショップ' },
+  { href: '/feedback', icon: Megaphone, label: 'フィードバック' },
   { href: '/settings', icon: Settings, label: '設定' },
 ]
 

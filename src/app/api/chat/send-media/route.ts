@@ -17,8 +17,8 @@ function adminSupabase() {
   )
 }
 
-const PHOTO_COST = 15
-const VIDEO_COST = 30
+const PHOTO_COST = 0
+const VIDEO_COST = 0
 
 export async function POST(req: NextRequest) {
   const supabase = createClient()
@@ -52,37 +52,17 @@ export async function POST(req: NextRequest) {
       : 0
   const totalPoints = profile.points + bonusAvailable
 
-  if (totalPoints < cost) {
-    return NextResponse.json({ error: 'insufficient_points', current: totalPoints, required: cost }, { status: 402 })
-  }
-
-  const bonusDeduct = Math.min(bonusAvailable, cost)
-  const regularDeduct = cost - bonusDeduct
-  const newBonusPoints = bonusAvailable - bonusDeduct
-  const newPoints = profile.points - regularDeduct
-  const updatePayload: Record<string, number> = { points: newPoints }
-  if (bonusDeduct > 0) updatePayload.bonus_points = newBonusPoints
-
   const metadata = mediaType === 'video'
     ? { video_url: mediaUrl }
     : { image_url: mediaUrl }
 
-  const [, , { data: msg }] = await Promise.all([
-    admin.from('profiles').update(updatePayload).eq('id', user.id),
-    admin.from('point_transactions').insert({
-      user_id: user.id,
-      amount: -cost,
-      type: 'spend',
-      description: mediaType === 'video' ? '動画送信' : '写真送信',
-    }),
-    admin.from('messages').insert({
-      conversation_id: conversationId,
-      sender_role: 'user',
-      content: '',
-      points_used: cost,
-      metadata,
-    }).select().single(),
-  ])
+  const { data: msg } = await admin.from('messages').insert({
+    conversation_id: conversationId,
+    sender_role: 'user',
+    content: '',
+    points_used: 0,
+    metadata,
+  }).select().single()
 
   if (!msg) return NextResponse.json({ error: 'Failed to save message' }, { status: 500 })
 
@@ -92,9 +72,5 @@ export async function POST(req: NextRequest) {
     is_unread_staff: true,
   }).eq('id', conversationId)
 
-  return NextResponse.json({
-    ok: true,
-    message: msg,
-    newPoints: newPoints + newBonusPoints,
-  })
+  return NextResponse.json({ ok: true, message: msg })
 }
