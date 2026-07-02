@@ -12,19 +12,10 @@ export default async function CharactersPage() {
   const { data: { session } } = await supabase.auth.getSession()
   const userId = session?.user?.id
 
-  const BASE_CHARACTER_LIMIT = 1
-
-  // Fetch characters, conversations, and PLG data in parallel
-  const [{ data: characters }, { data: convData }, { data: userCharsData }, { data: shareLogsData }] = await Promise.all([
+  const [{ data: characters }, { data: convData }] = await Promise.all([
     supabase.from('characters').select('id, name, age, description, personality, avatar_url').eq('is_active', true).order('sort_order', { ascending: true }),
     userId ? admin.from('conversations').select('id, character_id').eq('user_id', userId) : Promise.resolve({ data: [] }),
-    userId ? admin.from('user_characters').select('character_id').eq('user_id', userId) : Promise.resolve({ data: [] }),
-    userId ? admin.from('share_logs').select('id').eq('user_id', userId) : Promise.resolve({ data: [] }),
   ])
-
-  const characterLimit = BASE_CHARACTER_LIMIT + (shareLogsData?.length ?? 0)
-  const activatedCharIds = new Set((userCharsData ?? []).map((c: { character_id: string }) => c.character_id))
-  const activatedCount = activatedCharIds.size
 
   // ユーザーがいれば未読カウントをキャラごとに取得
   const unreadByChar = new Map<string, number>()
@@ -78,24 +69,10 @@ export default async function CharactersPage() {
         </p>
       </div>
 
-      {userId && (
-        <div style={{ marginBottom: '16px', padding: '10px 14px', borderRadius: '10px', background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px' }}>
-          <span style={{ color: 'var(--color-text-muted)' }}>
-            チャット中のキャラ: <strong style={{ color: 'var(--color-text)' }}>{activatedCount} / {characterLimit}人</strong>
-          </span>
-          {activatedCount >= characterLimit && (
-            <a href="/settings" style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none', fontSize: '11px' }}>
-              Xシェアで追加 →
-            </a>
-          )}
-        </div>
-      )}
 
       <div className="grid grid-cols-2 gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))' }}>
         {characters?.map((char) => {
           const unread = unreadByChar.get(char.id) ?? 0
-          const isActivated = activatedCharIds.has(char.id)
-          const isLocked = userId ? (!isActivated && activatedCount >= characterLimit) : false
           return (
             <div
               key={char.id}

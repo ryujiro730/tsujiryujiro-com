@@ -120,7 +120,7 @@ export default async function HomePage() {
                 </span>
               )}
               <span style={{ display: 'inline-block', background: 'rgba(100,220,130,0.15)', border: '1px solid rgba(100,220,130,0.45)', color: '#86efac', padding: '5px 16px', borderRadius: '99px', fontSize: '12px', fontWeight: 700, letterSpacing: '0.04em' }}>
-                🎉 リリース記念｜3キャラ無料開放中
+                🚀 プレリリース公開中｜全機能いま無料
               </span>
               <span style={{ display: 'inline-block', background: 'rgba(232,67,143,0.2)', border: '1px solid rgba(232,67,143,0.45)', color: '#f472b6', padding: '5px 16px', borderRadius: '99px', fontSize: '12px', fontWeight: 600, letterSpacing: '0.05em' }}>
                 ✦ 今夜もあなたを待っています
@@ -199,6 +199,26 @@ export default async function HomePage() {
           </div>
         ))}
       </div>
+
+      {/* ── プレリリース告知バナー ── */}
+      <section style={{ padding: '24px 20px', background: 'linear-gradient(135deg, rgba(120,80,220,0.1), rgba(232,67,143,0.08))', borderTop: '1px solid rgba(160,96,224,0.25)', borderBottom: '1px solid rgba(160,96,224,0.2)' }}>
+        <div style={{ maxWidth: '640px', margin: '0 auto', display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
+            <span style={{ fontSize: '24px', flexShrink: 0 }}>🚀</span>
+            <div>
+              <p style={{ fontWeight: 800, fontSize: '15px', color: 'var(--color-text)', marginBottom: '3px' }}>
+                現在プレリリース公開中です
+              </p>
+              <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
+                サービスを体験してご意見をお聞かせください。プレリリース期間中は<strong style={{ color: '#e8438f' }}>全機能を無料</strong>でご利用いただけます。
+              </p>
+            </div>
+          </div>
+          <Link href="/feedback" style={{ flexShrink: 0, display: 'inline-block', background: 'linear-gradient(135deg, #a060e0, #e8438f)', color: '#fff', fontWeight: 700, fontSize: '13px', padding: '10px 20px', borderRadius: '10px', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+            フィードバックを送る →
+          </Link>
+        </div>
+      </section>
 
             {/* ── キャラクター ── */}
       <section style={{ padding: '64px 24px', background: 'linear-gradient(180deg, var(--color-bg) 0%, var(--color-surface) 100%)', borderTop: '1px solid rgba(220,80,140,0.1)' }}>
@@ -526,7 +546,7 @@ export default async function HomePage() {
               <div style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '14px', padding: '16px 20px', marginBottom: '28px', textAlign: 'left' }}>
                 {[
                   '✅ 登録で3,000円分ポイント付与',
-                  '✅ 3キャラクターまで無料でチャット',
+                  '✅ プレリリース期間中は全機能・全キャラ無料',
                   '✅ 登録・維持費は完全無料',
                 ].map(item => (
                   <p key={item} style={{ color: 'rgba(255,255,255,0.85)', fontSize: '13px', lineHeight: 1.8, margin: 0 }}>{item}</p>

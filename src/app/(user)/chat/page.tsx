@@ -38,7 +38,6 @@ export default function ChatPage() {
   const [showAlbum, setShowAlbum] = useState(false)
   const [lightboxPhotos, setLightboxPhotos] = useState<string[]>([])
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
-  const [charLimitReached, setCharLimitReached] = useState(false)
   const [showSharePromoDialog, setShowSharePromoDialog] = useState(false)
   const [imageLightboxUrl, setImageLightboxUrl] = useState<string | null>(null)
   const [sendingPhoto, setSendingPhoto] = useState(false)
@@ -245,19 +244,14 @@ export default function ChatPage() {
 
     const SEND_COST = 0
 
-    // 初回メッセージの場合はキャラクター枠のチェック
+    // 初回メッセージの場合はキャラクターを登録
     const isFirstUserMessage = !messages.some(m => m.sender_role === 'user')
     if (isFirstUserMessage) {
-      const activateRes = await fetch('/api/chat/activate-character', {
+      fetch('/api/chat/activate-character', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ characterId: character.id }),
-      })
-      const activateData = await activateRes.json()
-      if (!activateData.ok) {
-        setCharLimitReached(true)
-        return
-      }
+      }).catch(() => {})
     }
 
     setSending(true)
@@ -521,42 +515,6 @@ export default function ChatPage() {
       <div className="flex-shrink-0 px-4 py-3"
         style={{ borderTop: '1px solid var(--color-border)', background: 'rgba(255, 245, 248, 0.97)' }}>
         {CHAT_ENABLED ? (
-          charLimitReached ? (
-            <div className="rounded-2xl px-4 py-4" style={{ background: 'linear-gradient(135deg, rgba(249,168,184,0.12), rgba(232,121,160,0.06))', border: '1px solid var(--color-border-warm)' }}>
-              <p className="text-sm font-bold mb-1 text-center" style={{ color: 'var(--color-text)' }}>🔒 キャラクター枠が上限です</p>
-              <p className="text-xs text-center mb-3" style={{ color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
-                300ptで開放するか、Xでシェアすると無料で追加解放できます
-              </p>
-              <button
-                type="button"
-                onClick={async () => {
-                  const res = await fetch('/api/points/unlock-character', { method: 'POST' })
-                  const data = await res.json()
-                  if (data.ok) {
-                    setCharLimitReached(false)
-                    router.refresh()
-                  } else {
-                    alert(data.message ?? 'ポイントが不足しています（必要: 300pt）')
-                  }
-                }}
-                className="btn-primary w-full py-3 mb-2 flex items-center justify-center gap-2"
-                style={{ fontSize: '14px' }}
-              >
-                🔓 300ptで開放する
-              </button>
-              <a
-                href={`https://twitter.com/intent/tweet?text=${encodeURIComponent('AIと本当のカップルみたいに話せる！#アイカノ を試してみたよ → https://aikano.chat')}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full py-2.5 flex items-center justify-center gap-2 rounded-xl text-sm"
-                style={{ textDecoration: 'none', color: 'var(--color-text-muted)', border: '1px solid var(--color-border)' }}
-              >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
-                Xでシェアして無料解放
-              </a>
-              <p className="text-[11px] text-center mt-1.5" style={{ color: 'var(--color-text-muted)' }}>シェア後、設定ページからURLを送信してください</p>
-            </div>
-          ) : (
           <div className="flex flex-col gap-2">
             <input
               ref={photoInputRef}
@@ -654,7 +612,6 @@ export default function ChatPage() {
               </button>
             </form>
           </div>
-          )
         ) : (
           <div className="rounded-2xl px-4 py-3 text-center"
             style={{ background: 'linear-gradient(135deg, rgba(249,168,184,0.15), rgba(232,121,160,0.08))', border: '1px solid var(--color-border-warm)' }}>
