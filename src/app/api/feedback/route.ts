@@ -3,9 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { getAuthUser } from '@/lib/supabase/get-auth-user'
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
-
 export async function POST(req: NextRequest) {
+  const resend = new Resend(process.env.RESEND_API_KEY)
   const authClient = createClient()
   const user = await getAuthUser(authClient)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
