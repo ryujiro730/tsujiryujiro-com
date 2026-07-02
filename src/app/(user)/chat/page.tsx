@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Send, ChevronLeft, Images, X, Gift, ImagePlus, VideoIcon } from 'lucide-react'
+import { Send, ChevronLeft, Images, X, ImagePlus, VideoIcon } from 'lucide-react'
 import type { Character, Message, Profile, CharacterPhoto } from '@/types'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -38,7 +38,7 @@ export default function ChatPage() {
   const [showAlbum, setShowAlbum] = useState(false)
   const [lightboxPhotos, setLightboxPhotos] = useState<string[]>([])
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
-  const [showSharePromoDialog, setShowSharePromoDialog] = useState(false)
+
   const [imageLightboxUrl, setImageLightboxUrl] = useState<string | null>(null)
   const [sendingPhoto, setSendingPhoto] = useState(false)
   const [sendingVideo, setSendingVideo] = useState(false)
@@ -267,13 +267,6 @@ export default function ChatPage() {
     }).select().single()
 
     if (!msg) { setSending(false); return }
-
-    // シェアダイアログのトリガー（3通目のみ）
-    const userMsgCount = messages.filter(m => m.sender_role === 'user').length + 1
-    if (userMsgCount === 3 && !localStorage.getItem(`shown_share_dialog:${characterId}`)) {
-      localStorage.setItem(`shown_share_dialog:${characterId}`, '1')
-      setTimeout(() => setShowSharePromoDialog(true), 1500)
-    }
 
     addMessage(msg)
 
@@ -705,135 +698,6 @@ export default function ChatPage() {
           50%       { opacity: 1; }
         }
       `}</style>
-
-      {/* Xシェアプロモーションダイアログ（3通目） */}
-      {showSharePromoDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-5"
-          style={{ background: 'rgba(10,5,20,0.72)', backdropFilter: 'blur(6px)' }}>
-
-          {/* クラッカー紙吹雪 */}
-          {Array.from({ length: 28 }).map((_, i) => {
-            const palette = ['#e8438f', '#A060E0', '#FFD700', '#FF6B9D', '#7B2FBE', '#FF9ECE', '#54C0FF', '#FFA940']
-            const color = palette[i % palette.length]
-            const isRect = i % 3 !== 0
-            const size = 5 + (i % 5) * 3
-            return (
-              <div key={i} style={{
-                position: 'fixed', top: '-8px', left: `${(i * 3.8) % 100}%`,
-                width: `${size}px`, height: isRect ? `${size * 0.45}px` : `${size}px`,
-                background: color,
-                borderRadius: isRect ? '2px' : '50%',
-                animation: `promoConfetti ${1.4 + (i % 6) * 0.28}s ease-in ${(i * 0.07) % 1.4}s infinite`,
-                pointerEvents: 'none', zIndex: 51,
-              }} />
-            )
-          })}
-
-          {/* 浮かぶハート */}
-          {[10, 32, 68, 88].map((left, i) => (
-            <div key={i} style={{
-              position: 'fixed', bottom: '18%', left: `${left}%`,
-              fontSize: `${18 + i * 6}px`, pointerEvents: 'none', zIndex: 51,
-              animation: `promoFloatHeart ${2.2 + i * 0.4}s ease-out ${i * 0.35}s infinite`,
-            }}>{'💕🌸💖💝'[i]}</div>
-          ))}
-
-          <div style={{ position: 'relative', width: '100%', maxWidth: '360px', zIndex: 52,
-            animation: 'promoDialogIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards' }}>
-            <div style={{
-              background: 'linear-gradient(150deg, #fff5f8 0%, #f3e8ff 100%)',
-              borderRadius: '24px',
-              border: '1.5px solid rgba(160,96,224,0.3)',
-              boxShadow: '0 24px 64px rgba(160,96,224,0.25), 0 8px 24px rgba(232,67,143,0.18)',
-              overflow: 'hidden',
-            }}>
-
-              {/* ヘッダー */}
-              <div style={{
-                background: 'linear-gradient(135deg, #e8438f 0%, #A060E0 100%)',
-                padding: '28px 20px 22px', textAlign: 'center', position: 'relative', overflow: 'hidden',
-              }}>
-                <div style={{ position: 'absolute', top: '-24px', right: '-24px', width: '90px', height: '90px', background: 'rgba(255,255,255,0.1)', borderRadius: '50%' }} />
-                <div style={{ position: 'absolute', bottom: '-16px', left: '-16px', width: '70px', height: '70px', background: 'rgba(255,255,255,0.07)', borderRadius: '50%' }} />
-                <button onClick={() => setShowSharePromoDialog(false)} style={{
-                  position: 'absolute', top: '12px', right: '12px',
-                  background: 'rgba(255,255,255,0.22)', border: 'none', borderRadius: '50%',
-                  width: '30px', height: '30px', cursor: 'pointer', color: 'white',
-                  fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>✕</button>
-                <div style={{ fontSize: '52px', marginBottom: '10px', animation: 'promoCracker 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards' }}>
-                  🎉
-                </div>
-                <p style={{ color: 'rgba(255,255,255,0.92)', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em' }}>
-                  🌟 SPECIAL BONUS 🌟
-                </p>
-              </div>
-
-              {/* コンテンツ */}
-              <div style={{ padding: '20px 24px 24px', textAlign: 'center' }}>
-                <h2 style={{ fontSize: '19px', fontWeight: 800, color: 'var(--color-text)', marginBottom: '6px', lineHeight: 1.45 }}>
-                  会話が弾んでるね！<br />
-                  <span style={{ background: 'linear-gradient(to right, #e8438f, #A060E0)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                    特別ボーナス発生！
-                  </span>
-                </h2>
-                <p style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: '18px', lineHeight: 1.65 }}>
-                  Xでシェアして <strong style={{ color: 'var(--color-primary)' }}>500pt</strong> &amp; 新キャラ解放権をGET！
-                </p>
-
-                {/* ベネフィットカード */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px' }}>
-                  <div style={{
-                    background: 'white', borderRadius: '14px', padding: '14px 10px',
-                    border: '1.5px solid rgba(232,67,143,0.2)',
-                    boxShadow: '0 3px 12px rgba(232,67,143,0.1)',
-                  }}>
-                    <div style={{ fontSize: '30px', marginBottom: '6px' }}>🪙</div>
-                    <p style={{ fontSize: '14px', fontWeight: 800, color: '#c0306e', marginBottom: '2px' }}>500pt無料</p>
-                    <p style={{ fontSize: '10px', color: 'var(--color-text-muted)' }}>シェアで即付与</p>
-                  </div>
-                  <div style={{
-                    background: 'white', borderRadius: '14px', padding: '14px 10px',
-                    border: '1.5px solid rgba(160,96,224,0.22)',
-                    boxShadow: '0 3px 12px rgba(160,96,224,0.1)',
-                  }}>
-                    <div style={{ fontSize: '30px', marginBottom: '6px' }}>🔓</div>
-                    <p style={{ fontSize: '13px', fontWeight: 800, color: '#7B2FBE', lineHeight: 1.3, marginBottom: '2px' }}>シークレット<br />キャラ解放</p>
-                  </div>
-                </div>
-
-                {/* Xシェアボタン */}
-                <a
-                  href={`https://twitter.com/intent/tweet?text=${encodeURIComponent('AIカノと楽しくお喋り中！本当のカップルみたいに話せる✨ #アイカノ → https://aikano.chat')}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => setShowSharePromoDialog(false)}
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                    width: '100%', padding: '15px', borderRadius: '12px',
-                    background: 'linear-gradient(135deg, #e8438f 0%, #A060E0 100%)',
-                    color: 'white', fontSize: '15px', fontWeight: 800, textDecoration: 'none',
-                    boxShadow: '0 8px 24px rgba(160,96,224,0.4)',
-                    marginBottom: '10px',
-                    animation: 'promoShimmer 2s ease-in-out infinite',
-                  }}
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                  </svg>
-                  Xでシェアする
-                </a>
-                <button
-                  onClick={() => setShowSharePromoDialog(false)}
-                  style={{ width: '100%', padding: '10px', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '13px', color: 'var(--color-text-muted)' }}
-                >
-                  今はやめておく
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ポイント不足ダイアログ */}
       {pointsShortage && (
