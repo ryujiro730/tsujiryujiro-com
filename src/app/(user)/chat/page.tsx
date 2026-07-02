@@ -228,14 +228,14 @@ export default function ChatPage() {
       }).catch(() => {})
     }
 
-    // mark as read (fire and forget)
+    // mark as read → refresh で会話一覧のバッジも即更新
     const cid = convIdRef.current
     if (cid) {
       fetch('/api/chat/mark-read', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ conversationId: cid }),
-      }).catch(() => {})
+      }).then(() => router.refresh()).catch(() => {})
     }
   }
 
