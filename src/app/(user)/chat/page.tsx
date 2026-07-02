@@ -748,7 +748,7 @@ function MessageBubble({ message, characterName, characterAvatar, onImageClick, 
             ) : (
               <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
                 style={{ background: 'rgba(255,255,255,0.2)' }}>
-                <Gift size={20} />
+                <span style={{ fontSize: '20px' }}>🎁</span>
               </div>
             )}
             <div>
