@@ -27,6 +27,7 @@ import { HowToUseCompare1, HowToUseCompare2 } from '@/components/blog/HowToUseCo
 import { EroMethodCompare } from '@/components/blog/EroMethodCompare'
 import { JpAiHikakuTable } from '@/components/blog/JpAiHikakuTable'
 import { MdxPre } from '@/components/blog/MdxPre'
+import { MatchkoiBanner } from '@/components/blog/MatchkoiBanner'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://aikano.chat'
 
@@ -102,7 +103,9 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }} />
 
-      <div className="max-w-3xl mx-auto px-6 py-12">
+      <div className="max-w-3xl mx-auto px-6 py-12 lg:max-w-5xl">
+        <div className="lg:grid lg:grid-cols-[1fr_260px] lg:gap-10 lg:items-start">
+        <div>
         <BlogBreadcrumb crumbs={[
           { label: 'ホーム', href: '/' },
           { label: 'ブログ', href: '/blog' },
@@ -141,6 +144,9 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
 
         <BlogToc />
 
+        {/* マチコイ インライン広告（記事本文前） */}
+        <MatchkoiBanner variant="inline" />
+
         {/* Article body */}
         <article className="prose max-w-none blog-prose" style={{ maxWidth: 'none' }}>
           <MDXRemote
@@ -167,6 +173,9 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
 
         {/* Author */}
         {post.author === 'satsuki' ? <SatsukiAuthorSig /> : <AuthorSig />}
+
+        {/* マチコイ 記事末尾広告 */}
+        <MatchkoiBanner variant="end" />
 
         {/* CTA */}
         <BlogCta />
@@ -205,6 +214,15 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
 
         {/* 関連記事 */}
         <RelatedPosts currentSlug={post.slug} />
+        </div>
+
+        {/* サイドバー広告（PC のみ） */}
+        <aside className="hidden lg:block">
+          <div className="sticky top-24 space-y-4">
+            <MatchkoiBanner variant="sidebar" />
+          </div>
+        </aside>
+        </div>
       </div>
     </>
   )

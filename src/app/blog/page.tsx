@@ -1,4 +1,5 @@
 import { getAllPosts, CATEGORY_LABELS, BlogCategory } from '@/lib/blog'
+import { MatchkoiBanner } from '@/components/blog/MatchkoiBanner'
 import { Metadata } from 'next'
 import { Suspense } from 'react'
 import { BlogCard } from '@/components/blog/BlogCard'
@@ -66,7 +67,11 @@ export default function BlogPage({
           </div>
         ) : (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {filtered.map(post => (
+            {filtered.slice(0, 3).map(post => (
+              <BlogCard key={post.slug} post={post} />
+            ))}
+            {filtered.length > 0 && <MatchkoiBanner variant="list" />}
+            {filtered.slice(3).map(post => (
               <BlogCard key={post.slug} post={post} />
             ))}
           </div>

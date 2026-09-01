@@ -1,5 +1,6 @@
 import { BlogHeader } from '@/components/blog/BlogHeader'
 import { BlogFooter } from '@/components/blog/BlogFooter'
+import { MatchkoiFloatingBanner } from '@/components/blog/MatchkoiFloatingBanner'
 
 export default function BlogLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -7,6 +8,7 @@ export default function BlogLayout({ children }: { children: React.ReactNode }) 
       <BlogHeader />
       {children}
       <BlogFooter />
+      <MatchkoiFloatingBanner />
     </div>
   )
 }
